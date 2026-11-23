@@ -7,6 +7,7 @@ const SUPPORT_EMAIL='rahulg.aice@gmail.com';
 const PLAN={trialDays:30,monthly:{id:'wk_monthly',base:'monthly-499',price:'₹499',per:'/month'},five:{id:'wk_5year',price:'₹20,000',years:5}};
 const capP=n=>{try{return IS_APP?window.Capacitor.registerPlugin(n):null}catch(e){return null}};
 const NPUR=capP('NativePurchases'),LNOT=capP('LocalNotifications');
+const IS_IOS=IS_APP&&window.Capacitor.getPlatform&&window.Capacitor.getPlatform()==='ios';const STORE=IS_IOS?'App Store':'Google Play';
 const L=(en,hi)=>S.lang==='hi'&&hi?hi:en;
 var ACC={need:false,ready:false,fb:null,au:null,db:null,user:null,doc:null,play:null,mode:'in',busy:false,err:'',msg:'',admin:null};
 try{ACC.cache=JSON.parse(localStorage.getItem('wk_acc')||'null')}catch(e){ACC.cache=null}
@@ -43,7 +44,7 @@ async function acBoot(){if(!onCfg()){onStart();return}
 
 async function acLoadDoc(){const u=ACC.user;if(!u)return;const ref=ACC.db.doc('users/'+u.uid);
   try{let s=await ref.get();const ts=ACC.fb.firestore.FieldValue.serverTimestamp;
-    const meta={lastSeen:ts(),appVersion:APP_VERSION,platform:IS_APP?'android':'web'};
+    const meta={lastSeen:ts(),appVersion:APP_VERSION,platform:IS_IOS?'ios':IS_APP?'android':'web'};
     if(!s.exists){await u.getIdToken(true);const p=ACC.pending||{};await ref.set({email:u.email,name:p.name||u.displayName||'',shop:p.shop||S.shop.name||'',phone:p.phone||'',createdAt:ts(),...meta});s=await ref.get()}
     else await ref.update(meta).catch(()=>{});
     ACC.doc=s.data();ACC.pending=null;acSaveCache();if(['settings','home','admin','more'].includes(S.view.n)&&!$('#layer').innerHTML)render()}
@@ -103,16 +104,16 @@ function acDoc(p){const d=document.createElement('div');d.className='acdoc';d.in
 function acPaywall(auto){const s=acState();const app=IS_APP&&NPUR;
   sheet(`<h2>${s.active?L('Plans','प्लान'):s.kind==='blocked'?acKindName('blocked'):s.kind==='trial'?L('Your free trial has ended','फ्री ट्रायल खत्म हो गया'):L('Your plan has ended','आपका प्लान खत्म हो गया')}</h2>
   <p class="mute small">${s.active?`${acKindName(s.kind)} · ${L('valid till','तक मान्य')} ${fdy(s.until)} (${s.days} ${L('days left','दिन बाकी')})`:s.kind==='blocked'?L('Please contact support.','सपोर्ट से संपर्क करें।'):L('You can still open and export all your bills and khata. To add new entries, choose a plan.','आप अपने सारे बिल और खाता देख व एक्सपोर्ट कर सकते हैं। नई एंट्री के लिए प्लान लें।')}</p>
-  <div class="plan"><div><b>${L('Monthly','मासिक')}</b><div class="small mute">${L('Renews every month through Google Play. Cancel any time.','हर महीने Google Play से रिन्यू। कभी भी रद्द करें।')}</div></div><div class="pp">${PLAN.monthly.price}<small>${L('/month','/महीना')}</small></div>${app?`<button class="btn" onclick="A.acBuy('monthly')">${L('Choose monthly','मासिक लें')}</button>`:''}</div>
+  <div class="plan"><div><b>${L('Monthly','मासिक')}</b><div class="small mute">${L(`Renews every month through ${STORE}. Cancel any time.`,`हर महीने ${STORE} से रिन्यू। कभी भी रद्द करें।`)}</div></div><div class="pp">${PLAN.monthly.price}<small>${L('/month','/महीना')}</small></div>${app?`<button class="btn" onclick="A.acBuy('monthly')">${L('Choose monthly','मासिक लें')}</button>`:''}</div>
   <div class="plan best"><div><b>${L('5-Year Plan','5 साल का प्लान')}</b><div class="small mute">${L('Pay once. Valid for 5 years from the day you buy. Does not renew by itself.','एक बार भुगतान। खरीद के दिन से 5 साल मान्य। अपने आप रिन्यू नहीं होता।')}</div></div><div class="pp">${PLAN.five.price}<small> / ${L('5 years','5 साल')}</small></div>${app?`<button class="btn" onclick="A.acBuy('five')">${L('Choose 5-Year Plan','5 साल का प्लान लें')}</button>`:''}</div>
-  ${app?`<button class="btn ghost" onclick="A.acRestore()">${L('Already paid? Restore purchase','पहले खरीदा है? रिस्टोर करें')}</button>`:`<div class="small mute" style="margin:6px 0 10px">${L('Plans are bought in the Android app through Google Play. For help, email','प्लान Android ऐप में Google Play से खरीदे जाते हैं। मदद के लिए ईमेल करें')} <b>${SUPPORT_EMAIL}</b>.</div>`}
-  <div class="small mute" style="margin-top:8px">${L('Prices include all taxes; the price Google Play shows at checkout is final.','कीमतों में सभी टैक्स शामिल हैं; Google Play पर दिखी कीमत अंतिम है।')} <a onclick="A.acDoc('terms')">${L('Terms','शर्तें')}</a> · <a onclick="A.acDoc('refund')">${L('Refunds','रिफंड')}</a></div>
+  ${app?`<button class="btn ghost" onclick="A.acRestore()">${L('Already paid? Restore purchase','पहले खरीदा है? रिस्टोर करें')}</button>`:`<div class="small mute" style="margin:6px 0 10px">${L('Plans are bought in the Android or iPhone app. For help, email','प्लान Android या iPhone ऐप में खरीदे जाते हैं। मदद के लिए ईमेल करें')} <b>${SUPPORT_EMAIL}</b>.</div>`}
+  <div class="small mute" style="margin-top:8px">${L(`Prices include all taxes; the price ${STORE} shows at checkout is final.`,`कीमतों में सभी टैक्स शामिल हैं; ${STORE} पर दिखी कीमत अंतिम है।`)} <a onclick="A.acDoc('terms')">${L('Terms','शर्तें')}</a> · <a onclick="A.acDoc('refund')">${L('Refunds','रिफंड')}</a></div>
   <button class="btn ghost" style="margin-top:10px" onclick="A.closeSheet()">${s.active?L('Close','बंद करें'):L('Only view my books','केवल बही देखें')}</button>`)}
-async function acBuy(w){if(!NPUR)return;const p=PLAN[w],sub=w==='monthly';toast(L('Opening Google Play…','Google Play खुल रहा है…'));
+async function acBuy(w){if(!NPUR)return;const p=PLAN[w],sub=w==='monthly';toast(L(`Opening ${STORE}…`,`${STORE} खुल रहा है…`));
   try{const r=await NPUR.getProducts({productIdentifiers:[p.id],productType:sub?'subs':'inapp'});
-    if(!r||!r.products||!r.products.length){toast(L('Plans will be available once the app is live on Google Play.','ऐप Google Play पर आने के बाद प्लान उपलब्ध होंगे।'));return}
-    const t=await NPUR.purchaseProduct({productIdentifier:p.id,productType:sub?'subs':'inapp',planIdentifier:sub?p.base:undefined,appAccountToken:ACC.user?ACC.user.uid:undefined});
-    if(acPlayApply([t])){closeSheet();render();toast(L('Thank you! Your plan is active.','धन्यवाद! आपका प्लान चालू है।'))}else toast(L('Payment is pending. The plan starts when Google confirms it.','भुगतान लंबित है। Google की पुष्टि पर प्लान शुरू होगा।'))
+    if(!r||!r.products||!r.products.length){toast(L(`Plans will be available once the app is live on ${STORE}.`,`ऐप ${STORE} पर आने के बाद प्लान उपलब्ध होंगे।`));return}
+    const t=await NPUR.purchaseProduct({productIdentifier:p.id,productType:sub?'subs':'inapp',planIdentifier:sub&&!IS_IOS?p.base:undefined,appAccountToken:ACC.user?ACC.user.uid:undefined});
+    if(acPlayApply([t])){closeSheet();render();toast(L('Thank you! Your plan is active.','धन्यवाद! आपका प्लान चालू है।'))}else toast(L(`Payment is pending. The plan starts when ${STORE} confirms it.`,`भुगतान लंबित है। ${STORE} की पुष्टि पर प्लान शुरू होगा।`))
     acRecord(t,w)}
   catch(e){const m=String(e&&(e.message||e.code)||'');if(/cancel/i.test(m))return;toast(L('Purchase did not finish: ','खरीद पूरी नहीं हुई: ')+m.slice(0,80))}}
 const acPending=t=>/^(2|pending)$/i.test(String(t&&t.purchaseState||''));
@@ -126,11 +127,11 @@ function acPlayApply(list){let best=null;const now=Date.now();
 async function acPlayCheck(){if(!NPUR)return;try{const a=await NPUR.getPurchases({productType:'subs'}).catch(()=>({purchases:[]}));const b=await NPUR.getPurchases({productType:'inapp'}).catch(()=>({purchases:[]}));
   const all=[...(a.purchases||[]),...(b.purchases||[])];if(!acPlayApply(all)&&ACC.play&&ACC.play.kind==='monthly'){ACC.play=null;acSaveCache()}
   all.filter(t=>!acPending(t)).forEach(t=>acRecord(t));if(['home','settings'].includes(S.view.n)&&!$('#layer').innerHTML)render()}catch(e){}}
-async function acRestore(){toast(L('Checking Google Play…','Google Play जाँच रहे हैं…'));await acPlayCheck();closeSheet();render();toast(acCan()?L('Plan restored.','प्लान रिस्टोर हुआ।'):L('No active plan found on this Google account.','इस Google खाते में कोई प्लान नहीं मिला।'))}
+async function acRestore(){toast(L(`Checking ${STORE}…`,`${STORE} जाँच रहे हैं…`));await acPlayCheck();closeSheet();render();toast(acCan()?L('Plan restored.','प्लान रिस्टोर हुआ।'):L(`No active plan found on this ${IS_IOS?'Apple ID':'Google account'}.`,`इस ${IS_IOS?'Apple ID':'Google खाते'} में कोई प्लान नहीं मिला।`))}
 /* a copy of each purchase goes to the admin list (once per order) */
 async function acRecord(t,w){if(!ACC.db||!ACC.user||!t)return;const id=String(t.orderId||t.transactionId||'').replace(/[^\w.-]/g,'_');if(!id)return;const k='wk_pr_'+id;try{if(localStorage.getItem(k))return}catch(e){}
   const product=t.productIdentifier===PLAN.monthly.id?'monthly':t.productIdentifier===PLAN.five.id?'five':String(t.productIdentifier||w||'');const ts=ACC.fb.firestore.FieldValue.serverTimestamp();
-  try{await ACC.db.doc('purchases/'+id).set({uid:ACC.user.uid,email:ACC.user.email||'',product,orderId:String(t.orderId||t.transactionId||''),purchaseToken:String(t.purchaseToken||'').slice(0,600),purchaseDate:String(t.purchaseDate||''),status:'new',createdAt:ts});
+  try{await ACC.db.doc('purchases/'+id).set({uid:ACC.user.uid,email:ACC.user.email||'',product,orderId:String(t.orderId||t.transactionId||''),purchaseToken:String(t.purchaseToken||'').slice(0,600),purchaseDate:String(t.purchaseDate||''),status:'new',platform:IS_IOS?'ios':'android',createdAt:ts});
     await ACC.db.doc('users/'+ACC.user.uid).update({lastPurchase:{product,orderId:String(t.orderId||''),at:String(t.purchaseDate||'')}}).catch(()=>{});localStorage.setItem(k,'1')}catch(e){}}
 
 /* view-only when no trial or plan: these actions add or change entries */
@@ -140,7 +141,7 @@ async function acRecord(t,w){if(!ACC.db||!ACC.user||!t)return;const id=String(t.
 function acCard(){if(!onCfg())return '';const s=acState(),u=ACC.user;
   return `<div class="card"><b>${L('Account & plan','खाता और प्लान')}</b><div class="small mute" style="margin:4px 0 8px">${u?esc(u.email):ACC.cache?esc(ACC.cache.email||''):''}${u&&!u.emailVerified?` · <a onclick="A.acVerify()">${L('verify email','ईमेल सत्यापित करें')}</a>`:''}</div>
   <div class="li" style="padding:6px 0"><div class="sp"><div class="t">${acKindName(s.kind)}</div><div class="s">${s.active?L('Valid till','तक मान्य')+' '+fdy(s.until)+' · '+s.days+' '+L('days left','दिन बाकी'):L('Ended · view only','खत्म · केवल देखना')}</div></div><span class="pill ${s.active?(s.days<=7?'amber':'green'):'red'}">${s.active?s.days+'d':L('Ended','खत्म')}</span></div>
-  <div class="btns"><button class="btn" onclick="A.acPaywall()">${L('Plans','प्लान')}</button>${IS_APP&&NPUR&&ACC.play&&ACC.play.kind==='monthly'?`<button class="btn ghost" onclick="A.acManage()">${L('Manage in Google Play','Google Play में बदलें')}</button>`:''}</div>
+  <div class="btns"><button class="btn" onclick="A.acPaywall()">${L('Plans','प्लान')}</button>${IS_APP&&NPUR&&ACC.play&&ACC.play.kind==='monthly'?`<button class="btn ghost" onclick="A.acManage()">${L(`Manage in ${STORE}`,`${STORE} में बदलें`)}</button>`:''}</div>
   ${acIsAdmin()?`<button class="btn ghost" style="margin-top:8px" onclick="A.go('admin')">${L('Admin: users & subscriptions','एडमिन: यूज़र और प्लान')}</button>`:''}
   <div class="btns" style="margin-top:8px"><button class="btn ghost" onclick="A.acPw()">${L('Change password','पासवर्ड बदलें')}</button><button class="btn ghost" onclick="A.acOut()">${L('Sign out','साइन आउट')}</button></div>
   <div class="small mute" style="margin-top:10px"><a onclick="A.acDoc('terms')">${L('Terms','शर्तें')}</a> · <a onclick="A.acDoc('refund')">${L('Refunds','रिफंड')}</a> · <a onclick="A.acDoc('privacy')">${L('Privacy','गोपनीयता')}</a> · <a style="color:var(--out)" onclick="A.acDelAsk()">${L('Delete account','खाता हटाएँ')}</a></div></div>`}
@@ -163,7 +164,7 @@ async function acDelete(){const pw=$('#acd_w').value,wipe=$('#acd_x').checked;co
     try{localStorage.removeItem('wk_acc');localStorage.removeItem('wk_data_uid')}catch(e){}ACC.cache=null;ACC.doc=null;ACC.play=null;
     if(wipe){await IDB.set('before_restore',snapshot());S.books={daily:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[],cns:[]},gst:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[],cns:[]}};contacts.splice(0,contacts.length);S.staff=[];saveLocal()}
     closeSheet();S.view={n:'home'};S.stack=[];ACC.mode='in';ACC.msg=L('Your account was deleted.','आपका खाता हटा दिया गया।');ACC.need=true;render();
-    if(IS_APP&&ACC.play&&ACC.play.kind==='monthly')toast(L('Remember to cancel the monthly plan in Google Play.','Google Play में मासिक प्लान रद्द करना न भूलें।'))}
+    if(IS_APP&&ACC.play&&ACC.play.kind==='monthly')toast(L(`Remember to cancel the monthly plan in ${STORE}.`,`${STORE} में मासिक प्लान रद्द करना न भूलें।`))}
   catch(e){err.textContent=acErr(e);err.style.display='block';b.disabled=false;b.textContent=L('Delete my account','मेरा खाता हटाएँ')}}
 
 /* ---- admin: accounts and plans only (shop books stay on each phone) ---- */
@@ -184,7 +185,7 @@ V.admin=v=>{v.title=L('Admin','एडमिन');if(!acIsAdmin())return backBtn(
   const chip=k=>`<span class="pill ${k==='trial'?'amber':k==='ended'||k==='blocked'?'red':'green'}">${k==='ended'?L('Ended','खत्म'):acKindName(k)}</span>`;
   return backBtn()+`<div class="stats"><div class="stat"><div class="l">${L('Accounts','खाते')}</div><div class="big num">${us.length}</div></div><div class="stat"><div class="l">${L('Paid','पेड')}</div><div class="big num in">${cnt('paid')}</div></div></div>
   <div class="stats"><div class="stat"><div class="l">${L('On trial','ट्रायल पर')}</div><div class="big num">${cnt('trial')}</div></div><div class="stat"><div class="l">${L('Ended','खत्म')}</div><div class="big num out">${cnt('ended')}</div></div></div>
-  ${nb?`<div class="alert" onclick="A.acAdminBuys()"><b>${nb} ${L('new purchase','नई खरीद')}${nb>1?'s':''}</b> · ${L('match them in Play Console','Play Console में मिलाएँ')}<span class="sp"></span>›</div>`:''}
+  ${nb?`<div class="alert" onclick="A.acAdminBuys()"><b>${nb} ${L('new purchase','नई खरीद')}${nb>1?'s':''}</b> · ${L('match them in the store console','स्टोर कंसोल में मिलाएँ')}<span class="sp"></span>›</div>`:''}
   <div class="search"><input placeholder="${L('Search name, shop, phone, email','नाम, दुकान, फ़ोन, ईमेल खोजें')}" value="${esc(a.q)}" oninput="A.acAq(this.value)" autocomplete="off"></div>
   <div class="seg">${[['all',L('All','सभी')],['trial',L('Trial','ट्रायल')],['soon',L('Ending','खत्म होने वाले')+(soon?' '+soon:'')],['paid',L('Paid','पेड')],['ended',L('Ended','खत्म')]].map(([k,l])=>`<button class="${a.f===k?'on':''}" onclick="A.acAf('${k}')">${l}</button>`).join('')}</div>
   <div class="card" id="aclist">${list.length?list.map(u=>`<div class="li" onclick="A.acAu('${u.id}')"><div class="sp"><div class="t">${esc(u.shop||u.name||u.email)}</div><div class="s">${esc(u.name||'')} · ${esc(u.phone||'')} · ${L('since','से')} ${fd(onTs(u.createdAt)||now)}${u.lastSeen?' · '+L('seen','देखा')+' '+fd(onTs(u.lastSeen)):''}</div></div><div style="text-align:right">${chip(u.st.k)}<div class="small mute">${u.st.until>now?Math.ceil((u.st.until-now)/DAY)+'d':''}</div></div></div>`).join(''):`<div class="mute small">${L('No accounts here.','यहाँ कोई खाता नहीं।')}</div>`}</div>
@@ -194,7 +195,7 @@ function acAu(id){const u=ACC.admin.users.find(x=>x.id===id);if(!u)return;const 
   sheet(`<h2>${esc(u.shop||u.name||'')}</h2><div class="small mute">${esc(u.name||'')} · <a href="tel:${esc(u.phone||'')}">${esc(u.phone||'')}</a> · ${esc(u.email||'')}</div>
   <div class="card" style="margin-top:10px"><div class="small">${L('Joined','जुड़े')} ${fdy(onTs(u.createdAt)||now)} · ${L('Last seen','आखिरी बार')} ${u.lastSeen?fdy(onTs(u.lastSeen)):'-'} · ${esc(u.platform||'')} ${esc(u.appVersion||'')}</div>
   <div style="margin-top:6px"><b>${st.k==='ended'?L('Ended','खत्म'):acKindName(st.k)}</b> ${st.until?'· '+(st.until>now?L('till','तक')+' ':L('ended on','खत्म')+' ')+fdy(st.until):''}${u.extraDays?' · +'+u.extraDays+' '+L('trial days','ट्रायल दिन'):''}</div>${u.note?`<div class="small mute" style="margin-top:4px">${esc(u.note)}</div>`:''}</div>
-  ${buys.length?`<div class="card"><b>${L('Google Play purchases','Google Play खरीद')}</b>${buys.map(b=>`<div class="small" style="margin-top:6px">${esc(b.product)} · ${esc(b.orderId)} · ${esc((b.purchaseDate||'').slice(0,10))} · ${esc(b.status)}</div>`).join('')}</div>`:''}
+  ${buys.length?`<div class="card"><b>${L('Store purchases','स्टोर खरीद')}</b>${buys.map(b=>`<div class="small" style="margin-top:6px">${esc(b.product)} · ${esc(b.orderId)} · ${esc((b.purchaseDate||'').slice(0,10))} · ${esc(b.status)}</div>`).join('')}</div>`:''}
   <div class="btns"><button class="btn ghost" onclick="A.acAdm('${id}','trial7')">+7 ${L('trial days','ट्रायल दिन')}</button><button class="btn ghost" onclick="A.acAdm('${id}','month')">+1 ${L('month','महीना')}</button></div>
   <div class="btns"><button class="btn ghost" onclick="A.acAdm('${id}','five')">${L('Give 5-Year Plan','5 साल का प्लान दें')}</button><button class="btn ghost" onclick="A.acAdm('${id}','${u.blocked?'unblock':'block'}')">${u.blocked?L('Unblock','अनब्लॉक'):L('Put on hold','रोकें')}</button></div>
   <label class="f"><span>${L('Note (only you see this)','नोट (केवल आपको दिखेगा)')}</span><input class="inp" id="acn" value="${esc(u.note||'')}" placeholder="${L('e.g. paid ₹20,000 cash on 5 Dec','जैसे 5 दिसंबर को ₹20,000 नकद')}"></label>
@@ -206,7 +207,7 @@ async function acAdm(id,op){const u=ACC.admin.users.find(x=>x.id===id);if(!u)ret
   else if(op==='block')d={blocked:true};else if(op==='unblock')d={blocked:false};else if(op==='note')d={note:$('#acn').value.trim().slice(0,300)};
   const go=async()=>{try{await ACC.db.doc('users/'+id).update(d);Object.assign(u,d);toast(L('Saved','सेव हुआ'));closeSheet();render()}catch(e){toast(acErr(e))}};
   if(op==='five'||op==='block')ask(op==='five'?L('Give 5-Year Plan?','5 साल का प्लान दें?'):L('Put this account on hold?','यह खाता रोकें?'),op==='five'?L('Use this when the shop paid you directly (cash or bank). Valid 5 years from today.','जब दुकान ने सीधे भुगतान किया हो। आज से 5 साल मान्य।'):L('They can still view their books but cannot add entries.','वे बही देख सकेंगे, नई एंट्री नहीं कर पाएँगे।'),L('Yes','हाँ'),go);else go()}
-function acAdminBuys(){const nb=ACC.admin.buys;sheet(`<h2>${L('Google Play purchases','Google Play खरीद')}</h2><div class="small mute" style="margin-bottom:8px">${L('Match each order ID with Play Console → Order management, then mark it checked.','हर ऑर्डर ID को Play Console में मिलाएँ, फिर जाँचा हुआ चिह्नित करें।')}</div>
+function acAdminBuys(){const nb=ACC.admin.buys;sheet(`<h2>${L('Store purchases','स्टोर खरीद')}</h2><div class="small mute" style="margin-bottom:8px">${L('Match each order ID with Play Console (Android) or App Store Connect (iPhone), then mark it checked.','हर ऑर्डर ID को Play Console या App Store Connect में मिलाएँ, फिर जाँचा हुआ चिह्नित करें।')}</div>
   ${nb.slice(0,60).map(b=>`<div class="li"><div class="sp"><div class="t">${esc(b.product)} · ${esc(b.email)}</div><div class="s">${esc(b.orderId)} · ${esc((b.purchaseDate||'').slice(0,10))}</div></div>${b.status==='new'?`<button class="btn ghost" style="width:auto;padding:0 12px" onclick="A.acBuyOk('${esc(b.id)}')">${L('Checked','जाँचा')}</button>`:`<span class="pill green">${esc(b.status)}</span>`}</div>`).join('')||L('No purchases yet.','अभी कोई खरीद नहीं।')}`)}
 
 /* ---- alerts: badge counts and phone notifications ---- */
@@ -225,7 +226,7 @@ async function acNotifInit(){if(!S.online)return;
 async function acNotifAsk(){if(LNOT)return acNotifInit();if(!('Notification' in window)){toast(L('This browser cannot show alerts.','यह ब्राउज़र अलर्ट नहीं दिखा सकता।'));return}const p=await Notification.requestPermission();ACC.notif=p==='granted';render()}
 function acNotify(msg){const n=acCount();
   if(LNOT&&ACC.notif){LNOT.schedule({notifications:[{id:acNid++,title:'Wholesale Khata',body:msg,channelId:'orders',extra:{go:'online'}}]}).catch(()=>{});return}
-  if(!LNOT&&document.hidden&&ACC.notif){try{const x=new Notification('Wholesale Khata',{body:msg,tag:'wk-orders',icon:'icon.png'});x.onclick=()=>{window.focus();A.go('online');x.close()}}catch(e){}}
+  if(!LNOT&&document.hidden&&ACC.notif){try{const x=new Notification('Wholesale Khata',{body:msg,tag:'wk-orders',icon:'icon-192.png'});x.onclick=()=>{window.focus();A.go('online');x.close()}}catch(e){}}
   try{if(navigator.setAppBadge)n?navigator.setAppBadge(n):navigator.clearAppBadge()}catch(e){}}
 /* online page: phone alerts switch */
 const _acOnl=V.online;V.online=v=>{const h=_acOnl(v);if(!S.online||!ONL.on||ACC.notif)return h;
@@ -241,7 +242,7 @@ Object.assign(A,{acMode:m=>{ACC.mode=m;ACC.err='';ACC.msg='';acScreen()},acGo,ac
   acVerify:async()=>{try{await ACC.au.currentUser.sendEmailVerification();toast(L('Verification email sent.','सत्यापन ईमेल भेजा।'))}catch(e){toast(acErr(e))}},
   acPw:()=>ask(L('Change password?','पासवर्ड बदलें?'),L('We will email a link to','लिंक भेजा जाएगा')+' '+esc(ACC.user?ACC.user.email:''),L('Send link','लिंक भेजें'),async()=>{try{await ACC.au.sendPasswordResetEmail(ACC.user.email);toast(L('Link sent. Check your email.','लिंक भेजा। ईमेल देखें।'))}catch(e){toast(acErr(e))}}),
   acOut:()=>ask(L('Sign out?','साइन आउट करें?'),L('Your books stay on this phone. You need your email and password to open the app again.','आपकी बही इस फ़ोन पर रहेगी। दोबारा खोलने के लिए ईमेल और पासवर्ड चाहिए।'),L('Sign out','साइन आउट'),async()=>{try{await ACC.au.signOut()}catch(e){}try{localStorage.removeItem('wk_acc')}catch(e){}ACC.cache=null;ACC.doc=null;ACC.play=null;ACC.mode='in';ACC.msg='';S.view={n:'home'};S.stack=[];ACC.need=true;render()}),
-  acDelAsk:()=>sheet(`<h2>${L('Delete account','खाता हटाएँ')}</h2><p class="mute small">${L('This deletes your login, your trial and plan record, and your online shop link with its orders. Records of Google Play payments are kept as tax law requires. A monthly plan must be cancelled in Google Play separately.','इससे आपका लॉगिन, ट्रायल/प्लान रिकॉर्ड और ऑनलाइन दुकान लिंक व ऑर्डर हट जाएँगे। Google Play भुगतान के रिकॉर्ड टैक्स कानून के अनुसार रखे जाते हैं। मासिक प्लान Google Play में अलग से रद्द करें।')}</p>
+  acDelAsk:()=>sheet(`<h2>${L('Delete account','खाता हटाएँ')}</h2><p class="mute small">${L(`This deletes your login, your trial and plan record, and your online shop link with its orders. Records of ${STORE} payments are kept as tax law requires. A monthly plan must be cancelled in ${STORE} separately.`,`इससे आपका लॉगिन, ट्रायल/प्लान रिकॉर्ड और ऑनलाइन दुकान लिंक व ऑर्डर हट जाएँगे। ${STORE} भुगतान के रिकॉर्ड टैक्स कानून के अनुसार रखे जाते हैं। मासिक प्लान ${STORE} में अलग से रद्द करें।`)}</p>
     <label class="f"><span>${L('Enter your password to confirm','पुष्टि के लिए पासवर्ड डालें')}</span><input class="inp" id="acd_w" type="password" autocomplete="current-password"></label>
     <label class="acchk"><input type="checkbox" id="acd_x"> <span>${L('Also erase the bills and khata on this phone','इस फ़ोन के बिल और खाता भी मिटाएँ')}</span></label>
     <div class="warnbox" id="acd_err" style="display:none"></div><div class="btns"><button class="btn ghost" onclick="A.closeSheet()">${T('cancel')}</button><button class="btn danger" id="acd_go" onclick="A.acDelete()">${L('Delete my account','मेरा खाता हटाएँ')}</button></div>`),

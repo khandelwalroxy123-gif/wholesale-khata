@@ -1,8 +1,8 @@
 /* Wholesale Khata website: keep the app files so pages open fast and work with a weak connection.
    Pages (HTML) always try the network first, so updates show at once; other files come from the cache and refresh in the background. */
-const V='wk-v1.2';
+const V='wk-v1.3';
 const CORE=['./','index.html','shop.html','privacy.html','terms.html','refund.html','delete-account.html','firebase-config.js',
-  'vendor/firebase-app-compat.js','vendor/firebase-auth-compat.js','vendor/firebase-firestore-compat.js','vendor/qrcode.js','fonts/fonts.css'];
+  'vendor/firebase-app-compat.js','vendor/firebase-auth-compat.js','vendor/firebase-firestore-compat.js','vendor/qrcode.js','fonts/fonts.css','manifest.webmanifest','icon-180.png','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==V).map(n=>caches.delete(n)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;const u=new URL(r.url);if(u.origin!==location.origin)return;

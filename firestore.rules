@@ -116,10 +116,10 @@ service cloud.firestore {
       allow delete: if (member() && request.auth.uid == uid) || isAdmin();
     }
 
-    // Google Play purchases reported by the app, for the admin to match with Play Console.
+    // Google Play / App Store purchases reported by the app, for the admin to match with Play Console.
     match /purchases/{id} {
       allow create: if member() && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['uid','email','product','orderId','purchaseToken','purchaseDate','status','createdAt'])
+        && request.resource.data.keys().hasOnly(['uid','email','product','orderId','purchaseToken','purchaseDate','status','createdAt','platform'])
         && request.resource.data.status == 'new' && request.resource.data.createdAt == request.time;
       allow read: if isAdmin() || (member() && resource.data.uid == request.auth.uid);
       allow update, delete: if isAdmin();
