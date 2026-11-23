@@ -1,0 +1,220 @@
+  if(a.q==='purchase'){const v=bl.filter(x=>x.type==='purchase').reduce((t,x)=>t+billTotal(x).grand,0);return hi?`${pl(a.per)} की खरीद ${inr(v)}।`:`Purchase ${pl(a.per)} is ${inr(v)}.`}
+  if(a.q==='cash'){const v=b.pays.filter(p=>p.dir==='in'&&p.date>=s&&p.date<e&&!(p.chq&&p.chq.st!=='cleared')).reduce((t,p)=>t+p.amt,0);return hi?`${pl(a.per)} ${inr(v)} पैसा आया।`:`${inr(v)} received ${pl(a.per)}.`}
+  if(a.q==='expense'){const v=b.exps.filter(x=>x.date>=s&&x.date<e).reduce((t,x)=>t+x.amt,0);return hi?`${pl(a.per)} का खर्चा ${inr(v)}।`:`Expenses ${pl(a.per)} are ${inr(v)}.`}
+  const v=bl.filter(x=>x.type==='sale').reduce((t,x)=>t+billTotal(x).grand,0);return hi?`${pl(a.per)} की बिक्री ${inr(v)}, ${bl.filter(x=>x.type==='sale').length} बिल।`:`Sale ${pl(a.per)} is ${inr(v)} in ${bl.filter(x=>x.type==='sale').length} bills.`}
+function aText(a){
+  if(a.kind==='query')return qAnswer(a);
+  if(a.kind==='sale'||a.kind==='purchase'){const tot=billTotal({cid:a.cid,items:a.items}).grand;return `${a.kind==='sale'?'Sale':'Purchase'} bill${a.cid?' · '+cOf(a.cid).name:' · party not found'}: ${a.items.map(i=>`${i.qty} ${i.unit==='ctn'?'carton':'piece'} ${vname(i.vid)} @ ${inr2(i.rate)}`).join(', ')}. Total ${inr(tot)}.`}
+  if(a.kind==='payment'){const c=cOf(a.cid);return `${a.dir==='in'?'Received':'Paid'} ${inr(a.amt)} ${a.dir==='in'?'from':'to'} ${c.name} by ${a.mode}.`}
+  if(a.kind==='expense')return `Expense: ${a.head} ${inr(a.amt)}.`;
+  if(a.kind==='attendance')return `${S.staff.find(s=>s.id===a.sid).name}: ${AT[a.status]} today.`;
+  if(a.kind==='advance')return `Advance ${inr(a.amt)} to ${S.staff.find(s=>s.id===a.sid).name}.`;
+  return ''}
+function aIssue(a){if((a.kind==='sale'||a.kind==='purchase')&&!a.cid)return 'Choose the '+(a.kind==='sale'?'party':'vendor')+' (tap Edit)';if(['payment','expense','advance'].includes(a.kind)&&!(a.amt>0))return 'Amount not heard (tap Edit)';return ''}
+async function vSay(text){if(!S.vspeak||!text)return;if(await nativeSpeak(text))return;try{if(TTSO){await TTSO.speak(text.slice(0,1900),{language:S.lang==='hi'?'hi':'en'});return}}catch(e){}try{const u=new SpeechSynthesisUtterance(text);u.lang=S.lang==='hi'?'hi-IN':'en-IN';speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
+function vLive(text,final){const e=$('#vtxt');if(!e)return;if(final){VFIN=(VFIN+' '+text).trim();e.value=VFIN}else e.value=(VFIN+' '+text).trim()}
+function vMicState(on){const b=$('#micb'),l=$('#micl');if(b)b.classList.toggle('on',on);if(l)l.textContent=on?(S.lang==='hi'?'सुन रहा हूँ… रोकने के लिए दबाएँ':'Listening… tap to stop'):(S.lang==='hi'?'बोलने के लिए दबाएँ':'Tap and speak');if(!on&&S.vlisten){S.vlisten=false;setTimeout(()=>{const e=$('#vtxt');if(e&&e.value.trim())A.vrun()},250)}}
+const VEX=['Sharma ko 2 peti Surf 1 kg 3300 rupees aur 24 piece Clinic Plus 175 ml','Agarwal se 5 peti Colgate 100 g kharida','Patel se 20000 UPI mila','bijli bill 3200','Ramesh aur Suresh present, Raju absent','Sharma ka kitna baaki hai?','Surf ka stock kitna hai?','aaj ka profit kitna hai?','Pinky ko 1000 advance'];
+V.voice=v=>{v.title=S.lang==='hi'?'आवाज़ सहायक':'Voice assistant';const ai=S.vmode==='ai';const res=v.res;
+  return backBtn()+`<div class="seg"><button class="${!ai?'on':''}" onclick="A.vmode('offline')">Offline · free</button><button class="${ai?'on':''}" onclick="A.vmode('ai')">AI · smart</button></div>
+  <div class="small mute" style="margin:-4px 0 6px">${ai?(SAMP?'Understands any way you speak, in Hindi, English or Hinglish. Needs internet.':'AI mode is not available in this view. Offline mode still works.'):'Works without internet. Speak simple sentences: who, what, how much.'}</div>
+  <button class="mic" id="micb" onclick="A.listen()" style="width:112px;height:112px" aria-label="Speak">${svg('voice',36)}</button><div id="micl" style="text-align:center;color:var(--mute);font-size:14px;margin:-2px 0 12px">${S.lang==='hi'?'बोलने के लिए दबाएँ':'Tap and speak'}</div>
+  <label class="f"><span>${S.lang==='hi'?'आपने कहा':'What you said'}</span><textarea class="inp" id="vtxt" placeholder="e.g. Sharma ko 2 peti Surf 1 kg 3300 rupees">${esc(v.txt||'')}</textarea></label>
+  <div class="row" style="gap:8px;margin-bottom:10px"><button class="btn" onclick="A.vrun()">${S.lang==='hi'?'समझो':'Understand'}</button><button class="btn ghost" style="width:auto;padding:0 14px" onclick="A.vtoggleSpeak()" aria-label="Speak back">${S.vspeak?'Reply: On':'Reply: Off'}</button></div>
+  <div id="vres">${res?vResHTML(res):''}</div>
+  <h3>Try saying</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${VEX.map(s=>`<button class="pill" style="border:0;cursor:pointer;padding:7px 11px;font-size:13.5px" onclick="A.vex(this.textContent)">${esc(s)}</button>`).join('')}</div>
+  <div class="sample">${DICT?'Microphone ready.':'Microphone is not available in this view. Type or tap an example; the microphone works in the Android app.'}</div>`};
+function vResHTML(res){if(res.err)return `<div class="card"><div class="out">${esc(res.err)}</div></div>`;
+  if(!res.acts.length)return `<div class="card"><div class="out">${S.lang==='hi'?'समझ नहीं आया। प्रोडक्ट, पार्टी और रकम साफ़ बोलें।':'Could not understand. Say the product, party and amount clearly, or try AI mode.'}</div></div>`;
+  const saveable=res.acts.filter(a=>a.kind!=='query');const anyIssue=saveable.some(aIssue);
+  return `<div class="small mute" style="margin-bottom:6px">${res.by==='ai'?'Understood by AI':'Understood offline'} · check before saving</div>`+res.acts.map((a,k)=>{const iss=aIssue(a);const ic={sale:['sale','#1f7a4d'],purchase:['purchase','#7d1d2c'],payment:['payment','#5b3a8c'],expense:['expense','#a0701c'],attendance:['attendance','#1f6b6b'],advance:['staff','#1f6b6b'],query:['reports','#a34a1f']}[a.kind];
+    return `<div class="card"><div class="row" style="align-items:flex-start">${icT(ic[0],ic[1])}<div class="sp"><div style="font-weight:600;text-transform:capitalize">${a.kind==='query'?(S.lang==='hi'?'जवाब':'Answer'):a.kind}</div><div style="${a.kind==='query'?'font-size:17px;font-weight:600':''}">${esc(aText(a))}</div>${iss?`<div class="warnbox">${iss}</div>`:''}</div></div>${a.kind!=='query'?`<div class="btns" style="margin-top:8px"><button class="btn ghost sm" style="width:100%" onclick="A.vedit(${k})">Edit</button><button class="btn ghost sm" style="width:100%;color:var(--out)" onclick="A.vdrop(${k})">Remove</button></div>`:''}</div>`}).join('')+
+  (saveable.length?`<button class="btn green" ${anyIssue?'disabled':''} onclick="A.vsave()">${anyIssue?'Fix the items above first':'Save '+(saveable.length>1?'all '+saveable.length:'')+' ✓'}</button>`:'')}
+function vSaveOne(a){const b=B();
+  if(a.kind==='sale'||a.kind==='purchase'){const g=S.book==='gst';const x={id:uid(),type:a.kind,no:nextNo(a.kind),date:Date.now(),cid:a.cid,items:a.items,transport:0,status:g?(a.kind==='sale'?'draft':'issued'):'saved',del:'pending',delBy:'',vinv:''};b.bills.push(x);return x}
+  if(a.kind==='payment')b.pays.push({id:uid(),cid:a.cid,dir:a.dir,amt:a.amt,mode:a.mode,date:Date.now(),note:'By voice',chq:a.mode==='cheque'?{no:'',bank:'',due:today0,st:'pending'}:null});
+  if(a.kind==='expense')b.exps.push({id:uid(),head:a.head,amt:a.amt,date:Date.now(),note:a.note||'By voice'});
+  if(a.kind==='attendance')S.staff.find(s=>s.id===a.sid).att[dkey(today0)]=a.status;
+  if(a.kind==='advance'){const s=S.staff.find(s=>s.id===a.sid);s.adv.push({date:Date.now(),amt:a.amt,note:'By voice'});b.exps.push({id:uid(),head:'Worker salary',amt:a.amt,date:Date.now(),note:'Advance – '+s.name})}
+  return null}
+Object.assign(A,{
+  voiceGo:()=>{if(S.view.n!=='voice')go('voice');A.listen()},
+  vmode:m=>{S.vmode=m;render()},vtoggleSpeak:()=>{S.vspeak=!S.vspeak;render()},
+  vex:s=>{const e=$('#vtxt');e.value=s;S.view.txt=s;A.vrun()},
+  listen:()=>{const b=$('#micb');if(NSR){nativeListen();return}if(DICT){if(b&&b.classList.contains('on')){DICT.stop().catch(()=>{});return}VFIN='';const e=$('#vtxt');if(e)e.value='';S.vlisten=true;DICT.start().catch(err=>{S.vlisten=false;vMicState(false);toast(err&&err.code==='not_granted'?'Microphone permission was not given. Type instead.':'Microphone not available. Type instead.')});return}
+    const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){toast('Microphone works in the Android app. Type or tap an example here.');return}
+    try{const r=new R();r.lang=S.lang==='hi'?'hi-IN':'en-IN';r.interimResults=true;VFIN='';S.vlisten=true;vMicState(true);r.onresult=e=>{let t='';for(const x of e.results)t+=x[0].transcript;$('#vtxt').value=t};r.onerror=()=>{S.vlisten=false;vMicState(false);toast('Microphone not available. Type instead.')};r.onend=()=>vMicState(false);r.start()}catch(e){S.vlisten=false;toast('Microphone not available. Type instead.')}},
+  vrun:async()=>{const t=($('#vtxt')||{}).value||'';S.view.txt=t;if(!t.trim()){toast('Say or type something first');return}
+    let res;if(S.vmode==='ai'&&SAMP){$('#vres').innerHTML='<div class="card"><div class="prog"><i style="width:60%"></i></div><div class="mute">AI is understanding…</div></div>';try{res={acts:await vAI(t),by:'ai'}}catch(e){if(e&&e.code==='not_granted'){SAMP=null}res={acts:vOffline(t),by:'offline'};toast('AI not reachable, used offline mode')}}else res={acts:vOffline(t),by:'offline'};
+    S.view.res=res;render();setTimeout(()=>{const r=$('#vres');r&&r.scrollIntoView({behavior:'smooth',block:'start'})},60);const q=res.acts.filter(a=>a.kind==='query').map(aText);const n=res.acts.filter(a=>a.kind!=='query').length;
+    vSay(q.length?q.join(' '):n?(S.lang==='hi'?`${n} एंट्री समझी। जाँच कर सेव करें।`:`I understood ${n} ${n>1?'entries':'entry'}. `+res.acts.filter(a=>a.kind!=='query').map(aText).join(' ')+' Please check and save.'):(S.lang==='hi'?'समझ नहीं आया, फिर से बोलें।':'Sorry, I did not understand. Please say it again.'))},
+  vdrop:k=>{S.view.res.acts.splice(k,1);render()},
+  vedit:k=>{const a=S.view.res.acts[k];S.view.res.acts.splice(k,1);
+    if(a.kind==='sale'||a.kind==='purchase'){S.draft={type:a.kind,cid:a.cid,items:a.items,transport:0,paid:0,mode:'cash',date:Date.now(),vinv:''};go('billform')}
+    else if(a.kind==='payment'){payForm(a.cid,a.amt);PF.mode=a.mode;drawPay()}
+    else if(a.kind==='expense'){EF={head:a.head,amt:a.amt||'',note:a.note||''};drawExp()}
+    else if(a.kind==='attendance'||a.kind==='advance'){go('staffd',{sid:a.sid})}},
+  vsave:()=>{const acts=S.view.res.acts.filter(a=>a.kind!=='query');let last=null;acts.forEach(a=>{const x=vSaveOne(a);if(x)last=x});S.view.res=null;S.view.txt='';
+    const msg=S.lang==='hi'?`${acts.length} एंट्री सेव हो गई।`:`Saved ${acts.length} ${acts.length>1?'entries':'entry'}.`;vSay(msg);
+    if(last&&acts.length===1){S.stack.push(S.view);S.view={n:'bill',id:last.id};render(true)}else render();toast(msg+(S.book==='gst'&&acts.some(a=>a.kind==='sale')?' GST sale saved as draft.':''))}
+});
+
+/* ---------- saving: phone (local) + Google Drive + app server ---------- */
+const PR_BASE=JSON.parse(JSON.stringify(products)),CT_BASE=JSON.parse(JSON.stringify(contacts));
+S.cloud=S.cloud||{drive:true,server:true,driveAt:0,serverAt:0,driveOk:false,serverOk:false};S.localAt=0;S.localSize=0;
+const DATA_KEYS=['lang','book','pin','finger','autoBackup','shop','books','staff','cloud','lastBackup'];
+function snapshot(){const o={v:1,app:'wholesale-khata',savedAt:Date.now()};DATA_KEYS.forEach(k=>o[k]=S[k]);o.products=products;o.contacts=contacts;return o}
+function restoreData(d){if(!d||d.app!=='wholesale-khata')throw new Error('Not a backup of this app');
+  DATA_KEYS.forEach(k=>{if(d[k]!==undefined)S[k]=d[k]});
+  products.splice(0,products.length,...d.products);Object.keys(VAR).forEach(k=>delete VAR[k]);products.forEach(p=>p.v.forEach(v=>VAR[v.id]=v));
+  contacts.splice(0,contacts.length,...d.contacts);S.books.daily.cns=S.books.daily.cns||[];S.books.gst.cns=S.books.gst.cns||[];
+  S.cloud=Object.assign({drive:true,server:true,driveAt:0,serverAt:0,driveOk:false,serverOk:false},S.cloud||{});S.view={n:'home'};S.stack=[];S.tab='home'}
+/* local: IndexedDB, falls back to localStorage */
+const IDB={db:null,open(){return new Promise((res,rej)=>{try{const r=indexedDB.open('wholesale-khata',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>{this.db=r.result;res(this.db)};r.onerror=()=>rej(r.error)}catch(e){rej(e)}})},
+  async get(k){try{const db=this.db||await this.open();return await new Promise((res,rej)=>{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}catch(e){try{const s=localStorage.getItem('wk_'+k);return s?JSON.parse(s):undefined}catch(e2){return undefined}}},
+  async set(k,v){try{const db=this.db||await this.open();await new Promise((res,rej)=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)});return true}catch(e){try{localStorage.setItem('wk_'+k,JSON.stringify(v));return true}catch(e2){return false}}}};
+let saveT=null,booted=false;
+function saveLocal(){if(!booted)return;clearTimeout(saveT);saveT=setTimeout(async()=>{const s=snapshot();const ok=await IDB.set('data',s);if(ok){S.localAt=Date.now();S.localSize=JSON.stringify(s).length;const e=$('#locst');if(e)e.textContent=localLine()}},500)}
+window.__afterRender=saveLocal;
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&booted)IDB.set('data',snapshot())});
+const kb=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+const localLine=()=>S.localAt?`Saved on this phone · ${ft(S.localAt)} · ${kb(S.localSize)}`:'Saving on this phone…';
+/* cloud helpers */
+let MCP=null,DBC=null,USR=null;
+try{if(window.claude&&window.claude.use){window.claude.use('mcp').then(m=>{MCP=m;if(S.view.n==='settings')render()}).catch(()=>{});window.claude.use('db').then(d=>{DBC=d;if(S.view.n==='settings')render()}).catch(()=>{});window.claude.use('user').then(u=>USR=u).catch(()=>{})}}catch(e){}
+async function driveCall(tool,input){if(!MCP)throw {code:'unavailable'};let r;if(typeof MCP.callTool==='function')r=await MCP.callTool('Google Drive',tool,input);else r=await (await MCP.server('Google Drive'))[tool](input);return r&&r.payload!==undefined?r.payload:r}
+function deepFind(o,test,depth=0){if(o==null||depth>6)return null;if(test(o))return o;if(typeof o==='object'){for(const k of Object.keys(o)){const r=deepFind(o[k],test,depth+1);if(r)return r}}return null}
+function fileList(p){const arr=deepFind(p,x=>Array.isArray(x)&&x.length&&x[0]&&typeof x[0]==='object'&&(x[0].id||x[0].fileId));return (arr||[]).map(f=>({id:f.id||f.fileId,title:f.title||f.name||'Backup',at:Date.parse(f.modifiedTime||f.createdTime||'')||0}))}
+function b64ToText(b){const bin=atob(b.replace(/\s/g,''));const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new TextDecoder().decode(u)}
+function payloadJSON(p){const tryParse=s=>{try{const o=JSON.parse(s);return o&&o.app==='wholesale-khata'?o:null}catch(e){return null}};
+  if(p&&p.app==='wholesale-khata')return p;let hit=null;deepFind(p,x=>{if(typeof x!=='string')return false;hit=tryParse(x);if(!hit&&/^[A-Za-z0-9+/=\s]{40,}$/.test(x)){try{hit=tryParse(b64ToText(x))}catch(e){}}return !!hit});return hit}
+const bkTitle=()=>`${S.shop.name} khata backup ${dkey(Date.now())} ${String(new Date().getHours()).padStart(2,'0')}-${String(new Date().getMinutes()).padStart(2,'0')}.json`;
+async function backupDrive(){const json=JSON.stringify(snapshot());await driveCall('create_file',{title:bkTitle(),textContent:json,contentMimeType:'application/json',disableConversionToGoogleType:true});S.cloud.driveAt=Date.now();S.cloud.driveOk=true}
+async function listDrive(){const p=await driveCall('search_files',{query:"title contains 'khata backup' and trashed = false",orderBy:'modifiedTime desc',pageSize:10,excludeContentSnippets:true});return fileList(p)}
+async function readDrive(id){const p=await driveCall('download_file_content',{fileId:id});const d=payloadJSON(p);if(!d)throw new Error('Could not read this backup file');return d}
+const CH=300000;
+async function srvCol(){if(!DBC||!USR)throw {code:'unavailable'};const id=await USR.id();return DBC.collection('data/users/'+id)}
+const docData=async r=>{if(!r)return null;if(typeof r.data==='function')return r.data();if(r.data&&typeof r.data==='object')return r.data;return r};
+async function backupServer(){const col=await srvCol();const json=JSON.stringify(snapshot());const key='bk'+Date.now();const n=Math.ceil(json.length/CH);
+  for(let i=0;i<n;i++)await col.doc(key+'_p'+i).set({chunk:json.slice(i*CH,(i+1)*CH)});
+  const idx=(await docData(await col.doc('index').get().catch(()=>null)))||{};const list=(idx.list||[]).filter(Boolean);list.unshift({key,at:Date.now(),parts:n,size:json.length});
+  const old=list.splice(7);await col.doc('index').set({list});for(const o of old){for(let i=0;i<o.parts;i++)await col.doc(o.key+'_p'+i).delete().catch(()=>{})}
+  S.cloud.serverAt=Date.now();S.cloud.serverOk=true}
+async function listServer(){const col=await srvCol();const idx=(await docData(await col.doc('index').get()))||{};return (idx.list||[]).map(o=>({id:o.key,at:o.at,parts:o.parts,title:'Backup · '+kb(o.size)}))}
+async function readServer(o){const col=await srvCol();let s='';for(let i=0;i<o.parts;i++){const d=await docData(await col.doc(o.id+'_p'+i).get());s+=(d&&d.chunk)||''}return JSON.parse(s)}
+const errMsg=e=>e&&e.code==='unavailable'?'Not available in this view':e&&e.code==='not_granted'?'Permission was not given':e&&(e.code==='server_not_connected'||/connect/i.test(e.message||''))?'Google Drive is not connected':((e&&e.message)||'Failed').slice(0,90);
+async function runBackup(which,silent){const done=[],fail=[];
+  if(which.includes('drive')){try{await backupDrive();done.push('Google Drive')}catch(e){fail.push('Google Drive: '+errMsg(e))}}
+  if(which.includes('server')){try{await backupServer();done.push('App server')}catch(e){fail.push('App server: '+errMsg(e))}}
+  if(done.length)S.lastBackup=Date.now();await IDB.set('data',snapshot());if(S.view.n==='settings')render();
+  if(!silent||fail.length)toast((done.length?'Backed up to '+done.join(' and ')+'. ':'')+(fail.length?fail.join('. '):''))}
+/* settings card + restore sheet */
+function storageCard(){const c=S.cloud;const row=(k,name,desc,ok,at,avail)=>`<div class="li" style="cursor:default;align-items:flex-start"><div class="sp"><div class="t">${name}</div><div class="s">${desc}</div><div class="s">${avail?(at?'Last backup '+fd(at)+', '+ft(at):'No backup yet'):'<span class="out">Not available in this view</span>'}</div></div><button class="btn ${c[k]?'':'ghost'} sm" onclick="A.stTog('${k}')" ${avail?'':'disabled'}>${c[k]?'On':'Off'}</button></div>`;
+  return `<div class="card"><b>Where your data is saved</b>
+  <div class="li" style="cursor:default"><div class="sp"><div class="t">This phone</div><div class="s" id="locst">${localLine()}</div><div class="s">Always on. Every entry is saved instantly and works without internet.</div></div><span class="pill green">Always</span></div>
+  ${row('drive','Google Drive','A backup file in your own Google Drive.',c.driveOk,c.driveAt,!!MCP)}
+  ${row('server','App server (Khata cloud)','Private copy only your login can read. Keeps the last 7 backups.',c.serverOk,c.serverAt,!!DBC)}
+  <div class="btns"><button class="btn" onclick="A.backup()">Back up now</button><button class="btn ghost" onclick="A.restoreMenu()">Restore</button></div>
+  <button class="btn ghost" style="margin-top:10px" onclick="A.tog('autoBackup')">Automatic daily backup: ${S.autoBackup?'On':'Off'}</button>
+  <div class="small mute" style="margin-top:8px">Backups include all bills, khata, stock, staff and settings of both books.</div></div>`}
+let RS=null;
+function drawRestore(){const src=RS.src;sheet(`<h2>Restore a backup</h2><div class="seg"><button class="${src==='drive'?'on':''}" onclick="A.rsSrc('drive')">Google Drive</button><button class="${src==='server'?'on':''}" onclick="A.rsSrc('server')">App server</button></div>
+  ${RS.loading?'<div class="prog"><i style="width:60%"></i></div><div class="mute">Looking for backups…</div>':RS.err?`<div class="warnbox">${esc(RS.err)}</div>`:RS.list.length?RS.list.map((f,k)=>`<div class="li" onclick="A.rsPick(${k})"><div class="sp"><div class="t">${f.at?fdy(f.at)+', '+ft(f.at):esc(f.title)}</div><div class="s">${esc(f.title)}</div></div><span class="chev">›</span></div>`).join(''):'<div class="mute">No backups found here yet.</div>'}
+  <div class="small mute" style="margin-top:10px">Restoring replaces the data on this phone. A copy of the current data is kept on the phone first.</div>`)}
+async function loadRestoreList(){RS.loading=true;RS.err='';drawRestore();try{RS.list=RS.src==='drive'?await listDrive():await listServer()}catch(e){RS.err=errMsg(e);RS.list=[]}RS.loading=false;drawRestore()}
+Object.assign(A,{
+  stTog:k=>{S.cloud[k]=!S.cloud[k];render()},
+  backup:()=>{const w=[];if(S.cloud.drive&&MCP)w.push('drive');if(S.cloud.server&&DBC)w.push('server');if(!w.length){toast('Turn on Google Drive or App server first. Data is already saved on the phone.');return}toast('Backing up…');runBackup(w)},
+  restoreMenu:()=>{RS={src:MCP&&S.cloud.drive?'drive':'server',list:[],loading:false,err:''};loadRestoreList()},
+  rsSrc:s=>{RS.src=s;loadRestoreList()},
+  rsPick:k=>{const f=RS.list[k];ask('Restore this backup?',`Data from ${f.at?fdy(f.at)+', '+ft(f.at):esc(f.title)} will replace what is on this phone now.`,'Restore',async()=>{try{toast('Restoring…');const d=RS.src==='drive'?await readDrive(f.id):await readServer(f);await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());render(true);toast('Backup restored')}catch(e){toast('Restore failed: '+errMsg(e))}},true)},
+  resetSample:()=>ask('Load sample data again?','Everything on this phone is replaced with the sample shop data.','Load sample',async()=>{await IDB.set('before_restore',snapshot());S.books={daily:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[]},gst:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[]}};products.splice(0,products.length,...JSON.parse(JSON.stringify(PR_BASE)));Object.keys(VAR).forEach(k=>delete VAR[k]);products.forEach(p=>p.v.forEach(v=>VAR[v.id]=v));contacts.splice(0,contacts.length,...JSON.parse(JSON.stringify(CT_BASE)));seed=7;gen();S.view={n:'home'};S.stack=[];S.tab='home';render(true);toast('Sample data loaded')},true),
+  startFresh:()=>ask('Start fresh?','All bills, payments, expenses, parties, vendors and staff are removed. Your product list stays, with zero stock. A copy of the current data is kept on the phone first.','Start fresh',async()=>{await IDB.set('before_restore',snapshot());S.books={daily:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[],cns:[]},gst:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[],cns:[]}};contacts.splice(0,contacts.length);S.staff=[];S.view={n:'home'};S.stack=[];S.tab='home';render(true);toast('Fresh books ready')},true)
+});
+/* settings view: put storage card first */
+const _settings=V.settings;V.settings=v=>{const h=_settings(v);const i=h.indexOf('<div class="card"><b>Backup to Google Drive</b>');if(i<0)return h;const j=h.indexOf('<div class="card"><b>App lock</b>');
+  return h.slice(0,i)+storageCard()+`<div class="card"><b>Data on this phone</b><div class="small mute">Start using the app for real, or bring back the sample shop.</div><div class="btns"><button class="btn ghost" onclick="A.startFresh()">Start fresh</button><button class="btn ghost" onclick="A.resetSample()">Load sample data</button></div></div>`+h.slice(j)};
+function autoB(){setTimeout(()=>{if(!S.autoBackup)return;if(Date.now()-(S.lastBackup||0)<20*3600e3)return;const w=[];if(S.cloud.drive&&S.cloud.driveOk&&MCP)w.push('drive');if(S.cloud.server&&S.cloud.serverOk&&DBC)w.push('server');if(w.length)runBackup(w,true)},6000)}
+
+/* ---------- app guide with voice ---------- */
+const GUIDE=[
+{ic:'stock',c:'#7d1d2c',go:"A.tab('home')",
+ en:['Welcome to your shop in your pocket','This app replaces the bill book, khata diary, stock register, attendance register and calculator. Every sale, purchase, payment and expense goes in once, and stock, khata and profit update by themselves.','No more searching diaries. Your whole business is on one phone, safe and up to date.'],
+ hi:['आपकी दुकान अब आपकी जेब में','यह ऐप बिल बुक, खाता डायरी, स्टॉक रजिस्टर, हाज़िरी रजिस्टर और कैलकुलेटर, सबका काम करता है। हर बिक्री, खरीद, पेमेंट और खर्चा एक बार डालिए, स्टॉक, खाता और मुनाफ़ा अपने आप अपडेट हो जाते हैं।','डायरी ढूँढने का झंझट ख़त्म। पूरा कारोबार एक फ़ोन में, सुरक्षित और हमेशा ताज़ा।']},
+{ic:'bills',c:'#173a6b',go:"A.tab('home')",icn:'expense',
+ en:['Two separate books','At the top you switch between the Daily book and the GST book. Each has its own stock, khata and reports. Daily book entries of a finished month can be cleared. GST bills are locked once issued and stay forever, with credit notes for changes.','Your GST records stay clean and ready for your CA, while daily work stays quick and simple.'],
+ hi:['दो अलग बही','ऊपर से आप रोज़ का खाता और GST खाता बदल सकते हैं। दोनों का स्टॉक, खाता और रिपोर्ट अलग है। रोज़ के खाते का पूरा महीना बाद में साफ़ कर सकते हैं। GST बिल जारी होने के बाद लॉक हो जाता है और हमेशा रहता है, बदलाव क्रेडिट नोट से होता है।','GST का हिसाब साफ़ और CA के लिए तैयार, और रोज़ का काम तेज़ और आसान।']},
+{ic:'reports',c:'#a34a1f',go:"A.go('variant',{vid:'p0v1'})",icn:'sale',
+ en:['Search any product, see every rate','Type a product name, pick the size, and you see stock and all sale and purchase rates, newest first. You also see the last 5 rates for every vendor and every party, and the full history below.','When a party asks for a rate, you answer in seconds and never quote below your cost.'],
+ hi:['कोई भी सामान खोजें, हर रेट देखें','सामान का नाम लिखिए, साइज़ चुनिए, और स्टॉक के साथ सारे बिक्री और खरीद के रेट दिखेंगे, नए से पुराने। हर वेंडर और हर पार्टी के आखिरी 5 रेट भी दिखते हैं, और नीचे पूरी हिस्ट्री।','पार्टी रेट पूछे तो सेकंडों में जवाब, और कभी लागत से कम रेट नहीं।']},
+{ic:'sale',c:'#1f7a4d',go:"A.newBill('sale','c1')",
+ en:['Sale bill in 30 seconds','Tap plus, choose Sale, pick the party and add items. Enter cartons and loose pieces together. The rate fills in from the last rate given to that party. The app warns you if you sell below cost, have less stock, or the party crosses its credit limit. Print the bill as PDF or send it on WhatsApp.','Fast, correct bills with no calculation mistakes, and no loss-making sale goes out by accident.'],
+ hi:['30 सेकंड में बिक्री बिल','प्लस दबाइए, बिक्री चुनिए, पार्टी चुनिए और सामान जोड़िए। पेटी और खुले पीस एक साथ डालिए। उस पार्टी का पिछला रेट अपने आप आ जाता है। लागत से कम रेट, कम स्टॉक या पार्टी की उधार सीमा पार होने पर ऐप चेतावनी देता है। बिल PDF में प्रिंट करें या WhatsApp पर भेजें।','तेज़ और सही बिल, हिसाब में गलती नहीं, और घाटे का सौदा गलती से नहीं होगा।']},
+{ic:'upload',c:'#173a6b',go:"A.upload()",
+ en:['Purchase bills, even from a PDF','Enter purchase bills like sale bills, or in the GST book upload the vendor’s bill PDF or photo. The app reads the vendor, items, rates and GST and shows them for you to check. New item names are matched once and remembered.','Almost no typing for purchases, stock goes up instantly, and your input tax credit papers are in order.'],
+ hi:['खरीद बिल, PDF से भी','खरीद बिल बिक्री की तरह डालिए, या GST खाते में वेंडर के बिल की PDF या फ़ोटो अपलोड कीजिए। ऐप वेंडर, सामान, रेट और GST पढ़कर दिखाता है, आप जाँच कर सेव करें। नया नाम एक बार मिलाइए, ऐप याद रखता है।','खरीद में लगभग कोई टाइपिंग नहीं, स्टॉक तुरंत बढ़ता है, और इनपुट टैक्स क्रेडिट के कागज़ सही रहते हैं।']},
+{ic:'stock',c:'#4b463f',go:"A.go('stock',{f:'low'})",
+ en:['Live stock and smart ordering','Stock updates with every bill, shown in cartons and pieces. Set a minimum for each size. Low items are listed with the vendor who gave the best recent rate, and one tap sends the order on WhatsApp. Items not selling for 45 days are shown separately.','You never run out of fast items, you buy at the best rate, and your money does not stay stuck in slow stock.'],
+ hi:['लाइव स्टॉक और समझदारी से ऑर्डर','हर बिल के साथ स्टॉक बदलता है, पेटी और पीस में। हर साइज़ का न्यूनतम स्टॉक तय कीजिए। कम सामान के साथ सबसे सस्ता रेट देने वाला वेंडर दिखता है, एक टच में WhatsApp पर ऑर्डर। 45 दिन से न बिकने वाला सामान अलग दिखता है।','चलने वाला माल कभी ख़त्म नहीं, सबसे अच्छे रेट पर खरीद, और पैसा धीमे माल में नहीं फँसता।']},
+{ic:'payment',c:'#5b3a8c',go:"A.tab('khata')",
+ en:['Khata: who owes, who to pay','Khata shows every party’s balance and every vendor you have to pay. You see how old each due is: 0 to 30, 30 to 60, 60 to 90 and 90 plus days. Record cash, UPI or cheque payments, send a reminder on WhatsApp in one tap, and track cheque dates and bounces.','Money comes back faster, nothing is forgotten, and you know exactly whom to chase today.'],
+ hi:['खाता: किससे लेना, किसे देना','खाते में हर पार्टी का बाकी और हर वेंडर को देना दिखता है। हर बाकी कितना पुराना है, 0 से 30, 30 से 60, 60 से 90 और 90 दिन से ज़्यादा, यह भी दिखता है। कैश, UPI या चेक पेमेंट डालिए, एक टच में WhatsApp पर याद दिलाइए, और चेक की तारीख़ व बाउंस का ध्यान रखिए।','पैसा जल्दी वापस आता है, कुछ भूलता नहीं, और पता रहता है आज किससे माँगना है।']},
+{ic:'delivery',c:'#2f5d7c',go:"A.go('delivery')",
+ en:['Delivery and goods received','Every sale moves from pending to dispatched to delivered to received by the party. Every purchase is marked received only after you check the goods.','No arguments about delivery, and you never pay for goods that did not arrive.'],
+ hi:['डिलीवरी और माल मिलना','हर बिक्री बाकी से भेजा, पहुँचा और पार्टी को मिला तक चलती है। हर खरीद तभी मिली मानी जाती है जब आप माल जाँच लें।','डिलीवरी पर कोई बहस नहीं, और बिना आए माल का पैसा नहीं जाता।']},
+{ic:'expense',c:'#a0701c',go:"A.go('expenses')",
+ en:['Expenses by head','Write electricity, water, salary, rent, transport, tea and other expenses under their heads. See where money goes every month.','You see your real profit after all costs, not just the margin on goods.'],
+ hi:['हर खर्चा उसके खाने में','बिजली, पानी, तनख्वाह, किराया, भाड़ा, चाय और बाकी खर्चे उनके खाने में डालिए। हर महीने पैसा कहाँ जा रहा है, साफ़ दिखेगा।','सब खर्चों के बाद असली मुनाफ़ा दिखता है, सिर्फ़ माल का मार्जिन नहीं।']},
+{ic:'attendance',c:'#1f6b6b',go:"A.go('staff')",
+ en:['Staff attendance and salary','Mark present, half day, absent or leave in one tap each morning. The calendar shows the whole month. Advances and overtime are recorded, salary is calculated automatically, and the salary slip goes on WhatsApp.','No salary disputes, and you know exactly what each worker earned.'],
+ hi:['स्टाफ़ हाज़िरी और तनख्वाह','सुबह एक टच में हाज़िर, आधा दिन, गैरहाज़िर या छुट्टी लगाइए। कैलेंडर में पूरा महीना दिखता है। एडवांस और ओवरटाइम दर्ज होता है, तनख्वाह अपने आप बनती है, और सैलरी स्लिप WhatsApp पर जाती है।','तनख्वाह पर कोई झगड़ा नहीं, और पता रहता है किसने कितना कमाया।']},
+{ic:'reports',c:'#a34a1f',go:"A.go('reports')",
+ en:['Profit and loss, daily to monthly','Reports show sale, purchase, gross profit, transport, expenses and net profit for today, the week or the month, with charts. Profit is also shown by product, by party, and which vendor is cheaper.','You know which products and parties really earn money, and where to push or cut.'],
+ hi:['मुनाफ़ा-घाटा, रोज़ से महीने तक','रिपोर्ट में आज, हफ़्ते या महीने की बिक्री, खरीद, कुल मुनाफ़ा, भाड़ा, खर्चे और असली मुनाफ़ा चार्ट के साथ दिखता है। हर सामान, हर पार्टी का मुनाफ़ा और कौन सा वेंडर सस्ता है, यह भी।','पता चलता है कौन सा माल और कौन सी पार्टी सच में कमाई देती है, कहाँ बढ़ाना है और कहाँ कम करना है।']},
+{ic:'voice',c:'#7d1d2c',go:"A.go('voice')",
+ en:['Just speak','Tap the mic at the top and speak in Hindi, English or Hinglish. For example: Sharma ko 2 peti Surf 1 kg 3300 rupees. Or ask: Sharma ka kitna baaki hai? The app fills the entry or answers aloud. Nothing is saved until you check it.','Entries while your hands are busy at the counter, and answers without searching.'],
+ hi:['बस बोलिए','ऊपर माइक दबाइए और हिंदी, अंग्रेज़ी या हिंग्लिश में बोलिए। जैसे: शर्मा को 2 पेटी सर्फ 1 किलो 3300 रुपये। या पूछिए: शर्मा का कितना बाकी है? ऐप एंट्री भर देता है या बोलकर जवाब देता है। जाँच के बिना कुछ सेव नहीं होता।','काउंटर पर हाथ व्यस्त हों तब भी एंट्री, और बिना ढूँढे जवाब।']},
+{ic:'settings',c:'#5a5550',go:"A.go('settings')",
+ en:['Safe and backed up','The app opens only with your PIN or fingerprint. Every entry is saved on the phone instantly and works without internet. Backups go to your Google Drive and to the app server, automatically every day, and any backup can be restored.','Even if the phone is lost or broken, your full business record is safe.'],
+ hi:['सुरक्षित और बैकअप','ऐप सिर्फ़ आपके PIN या फ़िंगरप्रिंट से खुलता है। हर एंट्री तुरंत फ़ोन में सेव होती है और बिना इंटरनेट चलती है। बैकअप रोज़ अपने आप Google Drive और ऐप सर्वर पर जाता है, और कोई भी बैकअप वापस लाया जा सकता है।','फ़ोन खो जाए या टूट जाए, तब भी पूरा हिसाब सुरक्षित।']},
+{ic:'attendance',c:'#8a6a1f',go:"A.tab('home')",
+ en:['Your daily routine','Morning: open Home, read the summary, mark attendance. During the day: make bills by tap or voice, record payments. Evening: confirm deliveries, check the day’s profit, send reminders. Month end: pay salaries, clear the daily book, send the GST export to your CA.','About 15 minutes of phone work a day replaces hours of diary work, and you always know where your business stands.'],
+ hi:['आपकी रोज़ की दिनचर्या','सुबह: होम खोलिए, सारांश पढ़िए, हाज़िरी लगाइए। दिन में: टच या आवाज़ से बिल बनाइए, पेमेंट डालिए। शाम को: डिलीवरी पक्की कीजिए, दिन का मुनाफ़ा देखिए, याद दिलाने के संदेश भेजिए। महीने के अंत में: तनख्वाह दीजिए, रोज़ का खाता साफ़ कीजिए, GST एक्सपोर्ट CA को भेजिए।','रोज़ करीब 15 मिनट का फ़ोन का काम घंटों के डायरी काम की जगह लेता है, और कारोबार की पूरी तस्वीर हमेशा सामने।']}
+];
+const GIC={bills:'expense'};
+let GP={i:0,auto:false,speaking:false,tok:0};
+function gText(i){const g=GUIDE[i];const L=S.lang==='hi'?g.hi:g.en;return {t:L[0],b:L[1],f:L[2]}}
+async function gSpeak(i){const {t,b,f}=gText(i);const txt=`${t}. ${b} ${S.lang==='hi'?'फ़ायदा':'Benefit'}: ${f}`;const tok=++GP.tok;GP.speaking=true;gBtn();
+  const done=()=>{if(tok!==GP.tok)return;GP.speaking=false;gBtn();if(GP.auto&&S.view.n!=='guide'){GP.auto=false;gBtn();return}if(GP.auto){if(GP.i<GUIDE.length-1){setTimeout(()=>{if(GP.auto&&tok===GP.tok){GP.i++;render();gSpeak(GP.i)}},700)}else{GP.auto=false;gBtn()}}};
+  if(NTTS){if(await nativeSpeak(txt)){done();return}}
+  try{if(TTSO){await TTSO.speak(txt,{language:S.lang==='hi'?'hi':'en'});done();return}}catch(e){if(tok!==GP.tok)return;if(e&&e.code==='viewer_stopped'){GP.auto=false;GP.speaking=false;gBtn();return}}
+  try{if(window.speechSynthesis){const u=new SpeechSynthesisUtterance(txt);u.lang=S.lang==='hi'?'hi-IN':'en-IN';u.rate=.95;u.onend=done;u.onerror=()=>{GP.speaking=false;GP.auto=false;gBtn()};speechSynthesis.cancel();speechSynthesis.speak(u);return}}catch(e){}
+  GP.speaking=false;GP.auto=false;gBtn();toast(S.lang==='hi'?'इस जगह आवाज़ उपलब्ध नहीं, पढ़कर देखें':'Voice is not available here. Read the text instead.')}
+function gStop(){GP.tok++;GP.auto=false;GP.speaking=false;try{NTTS&&NTTS.stop()}catch(e){}try{TTSO&&TTSO.stop()}catch(e){}try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){}gBtn()}
+function gBtn(){const b=$('#gplay'),a=$('#gall');if(b)b.innerHTML=GP.speaking&&!GP.auto?(S.lang==='hi'?'■ रोकें':'■ Stop'):(S.lang==='hi'?'▶ सुनें':'▶ Listen');if(a)a.innerHTML=GP.auto?(S.lang==='hi'?'■ टूर रोकें':'■ Stop tour'):(S.lang==='hi'?'▶ पूरा टूर आवाज़ के साथ':'▶ Play full tour with voice')}
+V.guide=v=>{v.title=S.lang==='hi'?'ऐप गाइड':'App guide';const i=GP.i,g=GUIDE[i],{t,b,f}=gText(i);const hi=S.lang==='hi';
+  return backBtn()+`<div class="row" style="margin-bottom:10px"><div class="sp small mute">${hi?'चरण':'Step'} ${i+1} / ${GUIDE.length}</div><div class="seg" style="margin:0;width:150px"><button class="${!hi?'on':''}" onclick="A.gLang('en')">English</button><button class="${hi?'on':''}" onclick="A.gLang('hi')">हिंदी</button></div></div>
+  <div style="display:flex;gap:4px;margin-bottom:12px">${GUIDE.map((x,k)=>`<button onclick="A.gTo(${k})" aria-label="Step ${k+1}" style="flex:1;height:6px;border:0;border-radius:9px;cursor:pointer;background:${k<=i?'var(--gold)':'var(--line)'}"></button>`).join('')}</div>
+  <div class="hero" style="padding:20px 18px"><div style="display:flex;gap:12px;align-items:center;position:relative;z-index:1">${icT(g.icn||g.ic,'rgba(255,255,255,.18)')}<div style="font-family:var(--serif);font-size:24px;font-weight:700;line-height:1.15">${esc(t)}</div></div></div>
+  <div class="card" style="font-size:17px;line-height:1.6">${esc(b)}</div>
+  <div class="card" style="border-color:var(--gold);background:color-mix(in srgb,var(--gold) 9%,var(--card))"><div class="small" style="color:var(--gold2);font-weight:600;margin-bottom:2px">${hi?'आपका फ़ायदा':'How this helps you'}</div><div style="font-size:16.5px">${esc(f)}</div></div>
+  <div class="btns"><button class="btn" id="gplay" onclick="A.gPlay()">${hi?'▶ सुनें':'▶ Listen'}</button><button class="btn ghost" onclick="${g.go}">${hi?'यह स्क्रीन खोलें':'Open this screen'}</button></div>
+  <div class="btns"><button class="btn ghost" onclick="A.gTo(${i-1})" ${i===0?'disabled':''}>‹ ${hi?'पिछला':'Previous'}</button><button class="btn ghost" onclick="A.gTo(${i+1})" ${i===GUIDE.length-1?'disabled':''}>${hi?'अगला':'Next'} ›</button></div>
+  <button class="btn gold" id="gall" style="margin-top:12px" onclick="A.gAll()">${GP.auto?(hi?'■ टूर रोकें':'■ Stop tour'):(hi?'▶ पूरा टूर आवाज़ के साथ':'▶ Play full tour with voice')}</button>
+  <div class="sample">${hi?'टूर में ऐप अपने आप पढ़कर सुनाता है। कभी भी रोक सकते हैं।':'The tour reads each step aloud and moves on by itself. Stop any time.'}</div>`};
+Object.assign(A,{
+  guide:()=>{GP.i=0;go('guide')},
+  gTo:k=>{if(k<0||k>=GUIDE.length)return;const wasAuto=GP.auto;gStop();GP.i=k;render(true);if(wasAuto){GP.auto=true;gSpeak(k)}},
+  gPlay:()=>{if(GP.speaking){gStop();return}GP.auto=false;gSpeak(GP.i)},
+  gAll:()=>{if(GP.auto){gStop();return}gStop();GP.auto=true;gSpeak(GP.i)},
+  gLang:l=>{gStop();S.lang=l;render()}
+});
+const _more=V.more;V.more=v=>{const h=_more(v);return `<div class="hero" style="cursor:pointer" onclick="A.guide()"><div class="g">${S.lang==='hi'?'नए हैं? 3 मिनट का टूर':'New here? 3-minute tour'}</div><div style="font-family:var(--serif);font-size:22px;font-weight:700;margin:4px 0;position:relative;z-index:1">${S.lang==='hi'?'ऐप गाइड, आवाज़ के साथ':'App guide with voice'}</div><div class="note" style="margin-top:4px">${S.lang==='hi'?'हर फ़ीचर और उसका फ़ायदा, हिंदी या अंग्रेज़ी में सुनें':'Every feature and how it helps you, in Hindi or English'} ›</div></div>`+h};
+const _home=V.home;V.home=v=>{let h=_home(v);const card=`<div class="alert" onclick="A.guide()" style="border-color:var(--gold)"><b style="color:var(--gold2)">${S.lang==='hi'?'ऐप गाइड:':'App guide:'}</b> ${S.lang==='hi'?'आवाज़ के साथ पूरा टूर सुनें':'listen to the full tour with voice'}<span class="sp"></span>›</div>`;const k=h.indexOf('<h3>');return k>0?h.slice(0,k)+card+h.slice(k):h};
+/* ---------- start ---------- */
+try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
+IDB.get('data').then(d=>{let ok=false;if(d){try{restoreData(d);ok=true}catch(e){}}if(!ok)gen();booted=true;render(true);saveLocal();autoB()}).catch(()=>{gen();booted=true;render(true)});
+}
+</script>
+</body>
+</html>
