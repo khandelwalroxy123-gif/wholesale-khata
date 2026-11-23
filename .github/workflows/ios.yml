@@ -73,6 +73,19 @@ jobs:
           cd build/Build/Products/Release-iphonesimulator && zip -qry "$GITHUB_WORKSPACE/WholesaleKhata-iOS-Simulator.zip" App.app
           ls -l "$GITHUB_WORKSPACE/WholesaleKhata-iOS-Simulator.zip"
 
+      - name: Unsigned iPhone build (.ipa) for local testing with Sideloadly / AltStore
+        run: |
+          set -o pipefail
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build-device \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            MARKETING_VERSION="$VERSION_NAME" CURRENT_PROJECT_VERSION="$BUILD_NO" build | tail -20
+          D="$RUNNER_TEMP/ipa"; mkdir -p "$D/Payload"
+          cp -R build-device/Build/Products/Release-iphoneos/App.app "$D/Payload/"
+          cd "$D" && zip -qry "$GITHUB_WORKSPACE/WholesaleKhata-iOS-unsigned.ipa" Payload
+          ls -l "$GITHUB_WORKSPACE/WholesaleKhata-iOS-unsigned.ipa"
+
       - name: Signed build and upload to TestFlight (only when Apple secrets are set – see IOS.md)
         if: env.HAS_APPLE == 'true'
         env:
@@ -111,11 +124,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: WholesaleKhata-ios
-          path: WholesaleKhata-iOS-Simulator.zip
+          path: |
+            WholesaleKhata-iOS-Simulator.zip
+            WholesaleKhata-iOS-unsigned.ipa
 
       - name: Add to the latest release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           T=$(gh release list -L 1 --json tagName -q '.[0].tagName' || true)
-          [ -n "$T" ] && gh release upload "$T" WholesaleKhata-iOS-Simulator.zip --clobber || echo "No release to attach to"
+          [ -n "$T" ] && gh release upload "$T" WholesaleKhata-iOS-Simulator.zip WholesaleKhata-iOS-unsigned.ipa --clobber || echo "No release to attach to"
