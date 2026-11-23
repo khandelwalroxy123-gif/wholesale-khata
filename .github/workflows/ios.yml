@@ -15,7 +15,7 @@ concurrency:
 jobs:
   ios:
     name: iPhone (iOS)
-    runs-on: macos-latest
+    runs-on: macos-15-intel   # Apple-silicon Macs on GitHub are often full; Intel Macs are free more often
     timeout-minutes: 60
     env:
       HAS_APPLE: ${{ secrets.ASC_KEY_P8_BASE64 != '' && secrets.APPLE_TEAM_ID != '' }}
