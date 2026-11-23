@@ -1,3 +1,21 @@
+  if(hm||has(t,['kharcha','expense','खर्चा'])){if(!findProd(t)&&!findParty(t,['party','vendor'])){acts.push({kind:'expense',head:hm?hm[0]:'Other',amt:amt(),note:raw.trim().slice(0,60)});return acts}}
+  const p=findProd(t);const c=findParty(t,['party','vendor']);
+  if(!p&&c){const out=has(t,['diya','diye','paid','bheja','de diya','दिया','भेजा','chukaya'])||c.type==='vendor'&&!has(t,['mila','received','aaya','मिला']);
+    const mode=has(t,['upi','phonepe','phone pe','gpay','google pay','paytm','online'])?'upi':has(t,['cheque','check','chek','चेक'])?'cheque':'cash';
+    acts.push({kind:'payment',cid:c.id,dir:out?'out':'in',amt:amt(),mode});return acts}
+  if(p){const pur=has(t,['kharid','kharida','purchase','liya','mangaya','aaya maal','खरीद','लिया','मंगाया'])||(c&&c.type==='vendor');const type=pur?'purchase':'sale';
+    const items=parseItems(t,c&&c.type===(pur?'vendor':'party')?c.id:null,type);acts.push({kind:type,cid:c&&c.type===(pur?'vendor':'party')?c.id:null,items});return acts}
+  return acts;
+}
+async function vAI(raw){
+  if(!SAMP)throw {message:'AI not available here'};
+  const cat=products.map(p=>({pid:p.id,name:p.name,sizes:p.v.map(v=>({vid:v.id,size:v.size,pcs_per_carton:v.ppc}))}));
+  const prompt=`You turn a wholesale shop owner's spoken words (Hindi, English or Hinglish, may be Devanagari) into app actions. Today is ${fdy(NOW)}. Book: ${S.book}.
+Products: ${JSON.stringify(cat)}
+Parties (buyers): ${JSON.stringify(contacts.filter(c=>c.type==='party').map(c=>({id:c.id,name:c.name})))}
+Vendors: ${JSON.stringify(contacts.filter(c=>c.type==='vendor').map(c=>({id:c.id,name:c.name})))}
+Staff: ${JSON.stringify(S.staff.map(s=>({id:s.id,name:s.name})))}
+Expense heads: ${JSON.stringify(HEADS)}
 Words "peti", "carton", "box", "dabba" mean unit "ctn"; otherwise unit "pcs". Rate is per that unit; use null if not said.
 Return ONLY JSON: {"actions":[...]} where each action is one of:
 {"kind":"sale"|"purchase","cid":party/vendor id or null,"items":[{"vid":..,"unit":"ctn"|"pcs","qty":number,"rate":number|null}]}
@@ -56,7 +74,7 @@ V.voice=v=>{v.title=S.lang==='hi'?'आवाज़ सहायक':'Voice assis
 function vResHTML(res){if(res.err)return `<div class="card"><div class="out">${esc(res.err)}</div></div>`;
   if(!res.acts.length)return `<div class="card"><div class="out">${S.lang==='hi'?'समझ नहीं आया। प्रोडक्ट, पार्टी और रकम साफ़ बोलें।':'Could not understand. Say the product, party and amount clearly, or try AI mode.'}</div></div>`;
   const saveable=res.acts.filter(a=>a.kind!=='query');const anyIssue=saveable.some(aIssue);
-  return `<div class="small mute" style="margin-bottom:6px">${res.by==='ai'?'Understood by AI':'Understood offline'} · check before saving</div>`+res.acts.map((a,k)=>{const iss=aIssue(a);const ic={sale:['sale','#1f7a4d'],purchase:['purchase','#7d1d2c'],payment:['payment','#5b3a8c'],expense:['expense','#a0701c'],attendance:['attendance','#1f6b6b'],advance:['staff','#1f6b6b'],query:['reports','#a34a1f']}[a.kind];
+  return `<div class="small mute" style="margin-bottom:6px">${res.by==='ai'?'Understood by AI':'Understood offline'} · check before saving</div>`+res.acts.map((a,k)=>{const iss=aIssue(a);const ic={sale:['sale','#157a46'],purchase:['purchase','#c0362c'],payment:['payment','#2559a6'],expense:['expense','#c0362c'],attendance:['attendance','#2559a6'],advance:['staff','#2559a6'],query:['reports','#2559a6']}[a.kind];
     return `<div class="card"><div class="row" style="align-items:flex-start">${icT(ic[0],ic[1])}<div class="sp"><div style="font-weight:600;text-transform:capitalize">${a.kind==='query'?(S.lang==='hi'?'जवाब':'Answer'):a.kind}</div><div style="${a.kind==='query'?'font-size:17px;font-weight:600':''}">${esc(aText(a))}</div>${iss?`<div class="warnbox">${iss}</div>`:''}</div></div>${a.kind!=='query'?`<div class="btns" style="margin-top:8px"><button class="btn ghost sm" style="width:100%" onclick="A.vedit(${k})">Edit</button><button class="btn ghost sm" style="width:100%;color:var(--out)" onclick="A.vdrop(${k})">Remove</button></div>`:''}</div>`}).join('')+
   (saveable.length?`<button class="btn green" ${anyIssue?'disabled':''} onclick="A.vsave()">${anyIssue?'Fix the items above first':'Save '+(saveable.length>1?'all '+saveable.length:'')+' ✓'}</button>`:'')}
 function vSaveOne(a){const b=B();
@@ -217,9 +235,3 @@ const GUIDE=[
  hi:['मुनाफ़ा-घाटा, रोज़ से महीने तक','रिपोर्ट में आज, हफ़्ते या महीने की बिक्री, खरीद, कुल मुनाफ़ा, भाड़ा, खर्चे और असली मुनाफ़ा चार्ट के साथ दिखता है। हर सामान, हर पार्टी का मुनाफ़ा और कौन सा वेंडर सस्ता है, यह भी।','पता चलता है कौन सा माल और कौन सी पार्टी सच में कमाई देती है, कहाँ बढ़ाना है और कहाँ कम करना है।']},
 {ic:'voice',c:'#7d1d2c',go:"A.go('voice')",
  en:['Just speak','Tap the mic at the top and speak in Hindi, English or Hinglish. For example: Sharma ko 2 peti Surf 1 kg 3300 rupees. Or ask: Sharma ka kitna baaki hai? The app fills the entry or answers aloud. Nothing is saved until you check it.','Entries while your hands are busy at the counter, and answers without searching.'],
- hi:['बस बोलिए','ऊपर माइक दबाइए और हिंदी, अंग्रेज़ी या हिंग्लिश में बोलिए। जैसे: शर्मा को 2 पेटी सर्फ 1 किलो 3300 रुपये। या पूछिए: शर्मा का कितना बाकी है? ऐप एंट्री भर देता है या बोलकर जवाब देता है। जाँच के बिना कुछ सेव नहीं होता।','काउंटर पर हाथ व्यस्त हों तब भी एंट्री, और बिना ढूँढे जवाब।']},
-{ic:'settings',c:'#5a5550',go:"A.go('settings')",
- en:['Safe and backed up','The app opens only with your PIN or fingerprint. Every entry is saved on the phone instantly and works without internet. From Settings, save a backup file to Google Drive, WhatsApp or your computer, and restore it on any phone.','If you keep your backup file safe, your full business record is safe even if the phone is lost or broken.'],
- hi:['सुरक्षित और बैकअप','ऐप सिर्फ़ आपके PIN या फ़िंगरप्रिंट से खुलता है। हर एंट्री तुरंत फ़ोन में सेव होती है और बिना इंटरनेट चलती है। सेटिंग से बैकअप फ़ाइल Google Drive, WhatsApp या कंप्यूटर में सेव कीजिए और किसी भी फ़ोन पर वापस लाइए।','बैकअप फ़ाइल संभाल कर रखें, तो फ़ोन खो जाए या टूट जाए तब भी पूरा हिसाब सुरक्षित।']},
-{ic:'attendance',c:'#8a6a1f',go:"A.tab('home')",
- en:['Your daily routine','Morning: open Home, read the summary, mark attendance. During the day: make bills by tap or voice, record payments. Evening: confirm deliveries, check the day’s profit, send reminders. Month end: pay salaries, clear the daily book, send the GST export to your CA.','About 15 minutes of phone work a day replaces hours of diary work, and you always know where your business stands.'],

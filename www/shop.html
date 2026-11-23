@@ -3,23 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#7d1d2c">
+<meta name="theme-color" content="#8a1c2b">
 <title>Order online</title>
 <link href="fonts/fonts.css" rel="stylesheet">
 <style>
-:root{color-scheme:light;--bg:#fbf8f3;--ink:#1f1a17;--mute:#6f665e;--line:#ece4d8;--card:#fff;--soft:#f4eee5;--gold:#c9a24a;--gold2:#9b7a2c;--book:#7d1d2c;--book2:#4f0f1b;--in:#147a43;--out:#b3261e;--warnbg:#fbf1dc;--warn:#8a5a00}
+:root{color-scheme:light;--bg:#f6f6f4;--ink:#161616;--mute:#5f5f5a;--line:#e4e4e0;--card:#fff;--soft:#f1f1ee;--gold:#d9d9d4;--gold2:#5f5f5a;--book:#8a1c2b;--book2:#8a1c2b;--in:#157a46;--out:#c0362c;--warnbg:#fdf3df;--warn:#9a6200}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
-body{background:#e8e1d6;color:var(--ink);font:16px/1.45 Hind,system-ui,sans-serif}
+body{background:#e9e9e6;color:var(--ink);font:16px/1.45 Hind,system-ui,sans-serif}
 #app{max-width:520px;min-height:100%;margin:0 auto;background:var(--bg);padding-bottom:110px;position:relative}
-header{background:radial-gradient(120% 140% at 100% 0%,#9b2a3c 0%,var(--book) 45%,var(--book2) 100%);color:#fff;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 0;border-bottom:3px solid var(--gold);position:sticky;top:0;z-index:5}
+header{background:var(--book);color:#fff;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 0;position:sticky;top:0;z-index:5}
 header h1{font-family:"Playfair Display",Georgia,serif;font-size:24px;margin:0;line-height:1.2}
 header .sub{opacity:.85;font-size:14px}
-.tabs{display:flex;gap:6px;margin-top:10px}.tabs button{flex:1;background:transparent;border:0;color:#f3e3c2;font:600 16px Hind,sans-serif;padding:10px 0;border-bottom:3px solid transparent;cursor:pointer}
-.tabs button.on{color:#fff;border-bottom-color:var(--gold)}
+.tabs{display:flex;gap:6px;margin-top:10px}.tabs button{flex:1;background:transparent;border:0;color:rgba(255,255,255,.7);font:600 16px Hind,sans-serif;padding:10px 0;border-bottom:3px solid transparent;cursor:pointer}
+.tabs button.on{color:#fff;border-bottom-color:#fff}
 main{padding:14px 14px 0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(60,30,10,.05)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
 h2{font-family:"Playfair Display",Georgia,serif;font-size:21px;margin:4px 0 10px}
-h3{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold2);margin:16px 2px 8px}
+h3{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:16px 2px 8px}
 .mute{color:var(--mute)}.small{font-size:14px}
 label.f{display:block;margin-bottom:10px}label.f span{display:block;font-size:14px;color:var(--mute);margin-bottom:4px}
 .inp{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;font:16px Hind,sans-serif;background:#fff;color:var(--ink)}
@@ -34,14 +34,14 @@ label.f{display:block;margin-bottom:10px}label.f span{display:block;font-size:14
 .qty{display:flex;align-items:center;gap:6px}.qty button{width:34px;height:34px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font:700 18px Hind;color:var(--book);cursor:pointer}.qty b{min-width:22px;text-align:center}
 .qty .u{font-size:12px;color:var(--mute);width:24px}
 .chips{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;padding-bottom:2px}.chips button{flex:none;border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:5px 12px;font:500 14px Hind;color:var(--ink);cursor:pointer}.chips button.on{background:var(--book);color:#fff;border-color:var(--book)}
-.bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(500px,calc(100% - 24px));background:#1f1a17;color:#fff;border-radius:18px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);border:1px solid var(--gold);z-index:6}
-.bar .sp{flex:1}.bar .btn{width:auto;background:var(--gold);color:#1f1a17;padding:10px 16px}
+.bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(500px,calc(100% - 24px));background:#1f1a17;color:#fff;border-radius:18px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:6}
+.bar .sp{flex:1}.bar .btn{width:auto;background:#fff;color:#161616;padding:10px 16px}
 .steps{display:flex;gap:4px;margin:10px 0 6px}.steps i{flex:1;height:6px;border-radius:3px;background:var(--line)}.steps i.f{background:#1f7a4d}
 .pill{display:inline-block;font-size:13px;padding:2px 9px;border-radius:12px;background:var(--soft);color:var(--mute)}.pill.g{background:#e3f4ea;color:var(--in)}.pill.r{background:#fde7e5;color:var(--out)}.pill.y{background:var(--warnbg);color:var(--warn)}
 .warn{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:14px;margin:8px 0}
 table.t{width:100%;border-collapse:collapse;font-size:15px}table.t td{padding:6px 0;border-bottom:1px solid var(--line);vertical-align:top}table.t td.r{text-align:right;white-space:nowrap}
 .spin{width:44px;height:44px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--book);animation:sp 1s linear infinite;margin:10px auto}@keyframes sp{to{transform:rotate(360deg)}}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:#1f1a17;color:#fff;padding:10px 14px;border-radius:12px;z-index:9;font-size:15px;border:1px solid var(--gold);display:none;max-width:90%}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:#1f1a17;color:#fff;padding:10px 14px;border-radius:12px;z-index:9;font-size:15px;display:none;max-width:90%}
 .qr{width:180px;height:180px;margin:8px auto;background:#fff;padding:6px;border-radius:12px}
 .foot{text-align:center;font-size:13px;color:var(--mute);padding:14px}
 .foot a{color:var(--mute)}

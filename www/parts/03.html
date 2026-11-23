@@ -1,3 +1,10 @@
+  <label class="f"><span>${T('paid')}</span><input class="inp" inputmode="numeric" id="paidnow" value="${d.paid||''}" placeholder="0" oninput="S_.draft.paid=+this.value||0"></label></div>
+  <div class="seg">${['cash','upi','cheque'].map(m=>`<button class="${d.mode===m?'on':''}" onclick="A.dmode('${m}')">${m==='upi'?'UPI':m[0].toUpperCase()+m.slice(1)}</button>`).join('')}</div>
+  <div class="card"><table class="t"><tbody>${g?`<tr><td>Taxable</td><td class="r num">${inr2(tt.sub)}</td></tr><tr><td>${tt.igst?'IGST':'CGST + SGST'}</td><td class="r num">${inr2(tt.tax)}</td></tr>`:''}<tr><td><b>${T('total')}</b></td><td class="r num" style="font-size:22px"><b>${inr(tt.grand)}</b></td></tr></tbody></table>
+  <button class="btn ghost sm" style="margin-top:8px" onclick="A.fullPaid(${tt.grand})">Full amount paid</button></div>
+  ${g&&d.type==='sale'?`<div class="btns"><button class="btn ghost" onclick="A.saveBill('draft')">Save draft</button><button class="btn green" onclick="A.saveBill('issued')">Issue bill</button></div><div class="small mute" style="margin-top:6px">Drafts can be changed. Issued bills are locked.</div>`:`<button class="btn green" style="margin-top:4px" onclick="A.saveBill('${g?'issued':'saved'}')">${T('save')} bill</button>`}`};
+let IT=null;
+function itemSheet(k){const d=S.draft;if(k>=0){const i=d.items[k];const pp=ppcOf(i);const pr=perPc(i);IT={k,step:'q',pid:VAR[i.vid].pid,vid:i.vid,rt:i.rt||'wholesale',ppc:pp,ctn:i.unit==='ctn'?i.qty:0,pc:i.unit==='pcs'?i.qty:0,rate:i.unit==='ctn'?i.rate:Math.round(pr*pp),prate:i.unit==='pcs'?i.rate:Math.round(pr*100)/100}}else IT={k:-1,step:'p',q:'',rt:'wholesale',ctn:1,pc:0};drawItem()}
 const prodRows=q=>{q=(q||'').toLowerCase();return products.filter(p=>!q||p.name.toLowerCase().includes(q)||p.cat.toLowerCase().includes(q)).map(p=>`<div class="li" onclick="A.ipick('${p.id}')"><div class="av" ${avs(p.cat)}>${esc(p.name[0])}</div><div class="sp"><div class="t">${esc(p.name)}</div><div class="s">${p.v.map(v=>esc(v.size)).join(' · ')}</div></div></div>`).join('')||'<div class="mute" style="padding:10px 2px">Not found. Add it as a new product.</div>'};
 function drawItem(){const d=S.draft;const it=IT;let h='';const unitL=u=>u==='ctn'?T('ctn').toLowerCase():T('pcs').toLowerCase();
   if(it.step==='p'){h=`<h2>Choose product</h2><div class="search"><input id="isq" placeholder="${esc(T('searchp'))}" value="${esc(it.q)}" oninput="A.isq(this.value)" autocomplete="off"></div><button class="btn ghost" style="margin-bottom:8px" onclick="A.newProduct('bill')">+ New product</button><div id="isr">${prodRows(it.q)}</div>`}
@@ -230,21 +237,3 @@ function vOffline(raw){
   if(st.length&&!findProd(t)){const stOf=x=>has(x,['absent','nahi aaya','nahin aaya','nahi aayi','gair','गैरहाजिर','नहीं आया'])?'A':has(x,['half','aadha','आधा','हाफ'])?'H':has(x,['chhutti','chutti','leave','छुट्टी'])?'L':'P';const seen={};t.split(/ , | \. | । /).forEach(seg=>{const ss=findStaff(' '+seg+' ');const a=stOf(seg);ss.forEach(s=>{if(!seen[s.id]){seen[s.id]=1;acts.push({kind:'attendance',sid:s.id,status:a})}})});return acts}
   const HM=[['Electricity bill',['bijli','electric','light bill','बिजली']],['Water bill',['paani','pani','water','पानी']],['Worker salary',['salary','tankhwah','पगार','तनख्वाह','majdoori','मजदूरी']],['Shop rent',['rent','kiraya','किराया']],['Tea & snacks',['chai','tea','nashta','नाश्ता','चाय']],['Transport',['transport','bhada','bhaada','tempo','भाड़ा','टेम्पो']],['Repair',['repair','marammat','मरम्मत']]];
   const hm=HM.find(h=>has(t,h[1]));
-  if(hm||has(t,['kharcha','expense','खर्चा'])){if(!findProd(t)&&!findParty(t,['party','vendor'])){acts.push({kind:'expense',head:hm?hm[0]:'Other',amt:amt(),note:raw.trim().slice(0,60)});return acts}}
-  const p=findProd(t);const c=findParty(t,['party','vendor']);
-  if(!p&&c){const out=has(t,['diya','diye','paid','bheja','de diya','दिया','भेजा','chukaya'])||c.type==='vendor'&&!has(t,['mila','received','aaya','मिला']);
-    const mode=has(t,['upi','phonepe','phone pe','gpay','google pay','paytm','online'])?'upi':has(t,['cheque','check','chek','चेक'])?'cheque':'cash';
-    acts.push({kind:'payment',cid:c.id,dir:out?'out':'in',amt:amt(),mode});return acts}
-  if(p){const pur=has(t,['kharid','kharida','purchase','liya','mangaya','aaya maal','खरीद','लिया','मंगाया'])||(c&&c.type==='vendor');const type=pur?'purchase':'sale';
-    const items=parseItems(t,c&&c.type===(pur?'vendor':'party')?c.id:null,type);acts.push({kind:type,cid:c&&c.type===(pur?'vendor':'party')?c.id:null,items});return acts}
-  return acts;
-}
-async function vAI(raw){
-  if(!SAMP)throw {message:'AI not available here'};
-  const cat=products.map(p=>({pid:p.id,name:p.name,sizes:p.v.map(v=>({vid:v.id,size:v.size,pcs_per_carton:v.ppc}))}));
-  const prompt=`You turn a wholesale shop owner's spoken words (Hindi, English or Hinglish, may be Devanagari) into app actions. Today is ${fdy(NOW)}. Book: ${S.book}.
-Products: ${JSON.stringify(cat)}
-Parties (buyers): ${JSON.stringify(contacts.filter(c=>c.type==='party').map(c=>({id:c.id,name:c.name})))}
-Vendors: ${JSON.stringify(contacts.filter(c=>c.type==='vendor').map(c=>({id:c.id,name:c.name})))}
-Staff: ${JSON.stringify(S.staff.map(s=>({id:s.id,name:s.name})))}
-Expense heads: ${JSON.stringify(HEADS)}

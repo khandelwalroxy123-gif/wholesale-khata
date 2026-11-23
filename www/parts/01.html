@@ -183,6 +183,35 @@ table.t .r{text-align:right}
 .sample{font-size:13px;color:var(--mute);text-align:center;margin:18px 0 4px}
 @media(min-width:520px){#app{border-left:1px solid var(--line);border-right:1px solid var(--line);box-shadow:0 0 60px rgba(60,30,10,.15)}}
 @media print{body{overflow:visible;background:#fff}#app{height:auto;max-width:none;border:0}header.top,nav.bot,.noprint{display:none!important}main{overflow:visible;padding:0}.sheetbg{position:static;background:none}.sheet{max-height:none;padding:0}}
+
+/* MINIMAL – flat, quiet surfaces; colour is used only to carry meaning.
+   Book colour (header, main button): maroon = Daily book, navy = GST book.
+   Green = money in / paid / in stock · Red = money out / due / loss / out of stock · Amber = waiting / needs attention · Blue = people & information */
+:root{--bg:light-dark(#f6f6f4,#111111);--page:light-dark(#e9e9e6,#060606);--card:light-dark(#ffffff,#1a1a1a);--line:light-dark(#e4e4e0,#2c2c2c);--soft:light-dark(#f1f1ee,#242424);
+ --ink:light-dark(#161616,#f2f2f2);--mute:light-dark(#5f5f5a,#a5a5a0);--daily:#8a1c2b;--daily2:#8a1c2b;--gst:#1d3f73;--gst2:#1d3f73;
+ --in:light-dark(#157a46,#4fc583);--out:light-dark(#c0362c,#ff7a6e);--warn:light-dark(#9a6200,#f0b44c);--warnbg:light-dark(#fdf3df,#33270f);--info:light-dark(#2559a6,#82b1ff);
+ --gold:light-dark(#d9d9d4,#3a3a3a);--gold2:var(--mute);--sh:none}
+header.top{background:var(--book);border-bottom:0}
+header.top::after{display:none}
+.booksw{background:rgba(0,0,0,.2);border-color:transparent}
+.booksw button.on{background:#fff;color:var(--book);box-shadow:none}
+.hero{background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.hero::after{display:none}
+.hero .g,.hero .note{color:var(--mute);opacity:1}
+.hero .pr{background:color-mix(in srgb,var(--in) 12%,transparent);color:var(--in);font-weight:600}
+.spark i{background:var(--soft)}.spark i.t{background:var(--book)}
+.spark span{color:var(--mute)}
+.card,.stat,.qa button,.search,.alert{box-shadow:none}
+.stat::before{display:none}
+.alert::before{background:var(--warn)}
+nav.bot{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+nav.bot .plus{background:var(--book);box-shadow:0 0 0 4px var(--bg)}
+h3{color:var(--mute)}
+.chev{color:var(--mute)}
+.search:focus-within{border-color:var(--book)}
+.ic{box-shadow:none}.ic.tint{background:color-mix(in srgb,var(--c) 13%,transparent);color:var(--c)}
+.pill.blue{background:color-mix(in srgb,var(--info) 13%,transparent);color:var(--info)}
+.av{background:var(--soft);color:var(--ink)}
 </style>
 </head>
 <body>
@@ -379,7 +408,7 @@ function defRate(vid,type,unit,rt){const V=VAR[vid];const p=type==='purchase'?la
 /* ---------- shell ---------- */
 const IP={sale:'<path d="M3 7h12l5 5-5 5H3z"/><circle cx="8" cy="12" r="1.6"/>',purchase:'<path d="M2 6h12v10H2z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',payment:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M16 11h5v4h-5a2 2 0 010-4z"/><path d="M6 6l9-3 2 3"/>',expense:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',attendance:'<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/>',stock:'<path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',upload:'<path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v5h16v-5"/>',voice:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>',reports:'<path d="M4 20V11M10 20V5M16 20v-6M2 20h20"/>',delivery:'<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a3.5 3.5 0 000-7H9a3.5 3.5 0 010-7h7"/>',cheques:'<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 14h6M15 10h3M6 10h4"/>',settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',staff:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0114 0"/><path d="M16 4.5a3.5 3.5 0 010 7M18 20a7 7 0 00-2.5-5.4"/>',up:'<path d="M7 17L17 7M9 7h8v8"/>',down:'<path d="M17 7L7 17M15 17H7V9"/>'};
 const svg=(n,w)=>`<svg viewBox="0 0 24 24" width="${w||24}" height="${w||24}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${IP[n]||''}</svg>`;
-const icT=(n,c)=>`<span class="ic" style="background:linear-gradient(160deg,color-mix(in srgb,${c} 80%,#fff),${c})">${svg(n)}</span>`;
+const icT=(n,c)=>/^rgba/.test(c)?`<span class="ic" style="background:${c}">${svg(n)}</span>`:`<span class="ic tint" style="--c:${c}">${svg(n)}</span>`;
 const AVC=['#7d1d2c','#173a6b','#8a6a1f','#1f6b52','#6b3a7d','#a34a1f','#2f5d7c','#5a5a2a'];
 const avs=n=>{let h=0;for(const ch of String(n))h=(h*31+ch.charCodeAt(0))%997;const c=AVC[h%AVC.length];return `style="background:color-mix(in srgb,${c} 13%,transparent);color:light-dark(${c},color-mix(in srgb,${c} 40%,#fff))"`};
 const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -426,26 +455,3 @@ function lockScreen(){
   ${S.pin==='1234'?'<div style="margin-top:22px;opacity:.8;font-size:14px">Sample PIN: 1234 · change it in Settings</div>':''}</div>`;
 }
 function fingerOn(){return !!(S.finger&&IS_APP&&BIO)}
-async function bioUnlock(){try{const a=await BIO.isAvailable();if(!a||!a.isAvailable){toast('Fingerprint is not set up on this phone. Use your PIN.');return}await BIO.verifyIdentity({reason:'Open Wholesale Khata',title:'Unlock Wholesale Khata',subtitle:'Use your fingerprint',negativeButtonText:'Use PIN',maxAttempts:3});pinIn='';S.locked=false;closeSheet();render(true)}catch(e){toast('Fingerprint not recognised. Use your PIN.')}}
-function pin(k){
-  if(k==='fp'){if(!fingerOn())return;bioUnlock();return}
-  if(k==='del')pinIn=pinIn.slice(0,-1);else if(pinIn.length<4)pinIn+=k;
-  if(pinIn.length===4){if(pinIn===S.pin){pinIn='';S.locked=false;closeSheet();render(true);return}pinIn='';lockScreen();toast('Wrong PIN, try again');return}
-  lockScreen();
-}
-
-/* ---------- views ---------- */
-const V={};
-V.home=()=>{
-  const b=B();const t0=today0,y0=today0-DAY;
-  const tb=b.bills.filter(x=>live(x)&&x.date>=t0);const yb=b.bills.filter(x=>live(x)&&x.date>=y0&&x.date<t0);
-  const sum=(a,ty)=>a.filter(x=>x.type===ty).reduce((s,x)=>s+billTotal(x).grand,0);
-  const prof=a=>a.reduce((s,x)=>s+profitOf(x),0);
-  const cashIn=b.pays.filter(p=>p.dir==='in'&&p.date>=t0&&!(p.chq&&p.chq.st!=='cleared')).reduce((s,p)=>s+p.amt,0);
-  const low=Object.keys(VAR).filter(v=>stockOf(v)<VAR[v].min);
-  const over=contacts.filter(c=>c.type==='party'&&balance(c.id)>0&&ageing(c.id).oldest&&(today0-ageing(c.id).oldest)/DAY>30);
-  const chq=b.pays.filter(p=>p.chq&&p.chq.st==='pending'&&p.chq.due<=today0+3*DAY);
-  const pend=b.bills.filter(x=>live(x)&&x.del!=='received');
-  const drafts=b.bills.filter(x=>x.status==='draft');
-  const q=S.view.q||'';
-  const sp=[];for(let d=6;d>=0;d--){const a=today0-d*DAY;sp.push({l:d?DOW[new Date(a).getDay()][0]:'T',v:b.bills.filter(x=>live(x)&&x.type==='sale'&&x.date>=a&&x.date<a+DAY).reduce((s,x)=>s+billTotal(x).grand,0)})}const spm=Math.max(1,...sp.map(o=>o.v));

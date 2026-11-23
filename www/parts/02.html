@@ -1,4 +1,27 @@
-  const qa=[['sale','S','#1f7a4d',"A.newBill('sale')"],['purchase','P','#7d1d2c',"A.newBill('purchase')"],['payment','₹','#5b3a8c','A.payForm()'],['expense','E','#a0701c','A.expForm()'],['attendance','H','#0d7680',"A.go('staff')"],['stock','St','#4b463f',"A.go('stock')"],[S.book==='gst'?'upload':'voice',S.book==='gst'?'Up':'Mic','#173a6b',S.book==='gst'?'A.upload()':"A.go('voice')"],['reports','R','#a34a1f',"A.go('reports')"]];
+async function bioUnlock(){try{const a=await BIO.isAvailable();if(!a||!a.isAvailable){toast('Fingerprint is not set up on this phone. Use your PIN.');return}await BIO.verifyIdentity({reason:'Open Wholesale Khata',title:'Unlock Wholesale Khata',subtitle:'Use your fingerprint',negativeButtonText:'Use PIN',maxAttempts:3});pinIn='';S.locked=false;closeSheet();render(true)}catch(e){toast('Fingerprint not recognised. Use your PIN.')}}
+function pin(k){
+  if(k==='fp'){if(!fingerOn())return;bioUnlock();return}
+  if(k==='del')pinIn=pinIn.slice(0,-1);else if(pinIn.length<4)pinIn+=k;
+  if(pinIn.length===4){if(pinIn===S.pin){pinIn='';S.locked=false;closeSheet();render(true);return}pinIn='';lockScreen();toast('Wrong PIN, try again');return}
+  lockScreen();
+}
+
+/* ---------- views ---------- */
+const V={};
+V.home=()=>{
+  const b=B();const t0=today0,y0=today0-DAY;
+  const tb=b.bills.filter(x=>live(x)&&x.date>=t0);const yb=b.bills.filter(x=>live(x)&&x.date>=y0&&x.date<t0);
+  const sum=(a,ty)=>a.filter(x=>x.type===ty).reduce((s,x)=>s+billTotal(x).grand,0);
+  const prof=a=>a.reduce((s,x)=>s+profitOf(x),0);
+  const cashIn=b.pays.filter(p=>p.dir==='in'&&p.date>=t0&&!(p.chq&&p.chq.st!=='cleared')).reduce((s,p)=>s+p.amt,0);
+  const low=Object.keys(VAR).filter(v=>stockOf(v)<VAR[v].min);
+  const over=contacts.filter(c=>c.type==='party'&&balance(c.id)>0&&ageing(c.id).oldest&&(today0-ageing(c.id).oldest)/DAY>30);
+  const chq=b.pays.filter(p=>p.chq&&p.chq.st==='pending'&&p.chq.due<=today0+3*DAY);
+  const pend=b.bills.filter(x=>live(x)&&x.del!=='received');
+  const drafts=b.bills.filter(x=>x.status==='draft');
+  const q=S.view.q||'';
+  const sp=[];for(let d=6;d>=0;d--){const a=today0-d*DAY;sp.push({l:d?DOW[new Date(a).getDay()][0]:'T',v:b.bills.filter(x=>live(x)&&x.type==='sale'&&x.date>=a&&x.date<a+DAY).reduce((s,x)=>s+billTotal(x).grand,0)})}const spm=Math.max(1,...sp.map(o=>o.v));
+  const qa=[['sale','S','#157a46',"A.newBill('sale')"],['purchase','P','#c0362c',"A.newBill('purchase')"],['payment','₹','#2559a6','A.payForm()'],['expense','E','#c0362c','A.expForm()'],['attendance','H','#2559a6',"A.go('staff')"],['stock','St','#5f5f5a',"A.go('stock')"],[S.book==='gst'?'upload':'voice',S.book==='gst'?'Up':'Mic','#173a6b',S.book==='gst'?'A.upload()':"A.go('voice')"],['reports','R','#2559a6',"A.go('reports')"]];
   return `<div class="search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--mute)"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="ps" placeholder="${esc(T('searchp'))}" value="${esc(q)}" oninput="A.psearch(this.value)" autocomplete="off"></div>
   <div id="sres">${q?searchRes(q):''}</div>
   <div id="homebody" style="${q?'display:none':''}">
@@ -190,7 +213,7 @@ V.reports=v=>{v.title=T('reports');const p=v.p||'day';const b=B();
   <h3>Purchase by vendor</h3><div class="card">${Object.entries(byVd).map(([k,o])=>{const d=o.diff/o.n*100;return `<div class="li" style="padding:9px 2px"><div class="sp"><div class="t">${esc(cOf(k).name)}</div><div class="s">${d<=0?'<span class="in">'+Math.abs(d).toFixed(1)+'% cheaper</span>':'<span class="out">'+d.toFixed(1)+'% costlier</span>'} than your average rate</div></div><b class="num">${inr(o.amt)}</b></div>`}).join('')||'<div class="mute small">No purchases in this period.</div>'}</div>
   <div class="btns"><button class="btn" onclick="A.printBill()">Print / PDF</button>${waBtn(S.shop.phone,summ,'Send to my WhatsApp')}</div>`};
 /* ---------- more & settings ---------- */
-V.more=()=>{const items=[['stock','Stock & low items',"A.go('stock')",'#4b463f'],['reports','Profit / loss reports',"A.go('reports')",'#a34a1f'],['staff','Staff attendance & salary',"A.go('staff')",'#1f6b6b'],['expense','Expenses',"A.go('expenses')",'#a0701c'],['delivery','Delivery status',"A.go('delivery')",'#2f5d7c'],['cheques','Cheques',"A.go('cheques')",'#5b3a8c'],['voice','Speak an entry',"A.go('voice')",'#7d1d2c'],['upload','Upload GST purchase bill','A.upload()','#173a6b'],['settings','Settings, backup, PIN',"A.go('settings')",'#5a5550']];
+V.more=()=>{const items=[['stock','Stock & low items',"A.go('stock')",'#5f5f5a'],['reports','Profit / loss reports',"A.go('reports')",'#2559a6'],['staff','Staff attendance & salary',"A.go('staff')",'#2559a6'],['expense','Expenses',"A.go('expenses')",'#c0362c'],['delivery','Delivery status',"A.go('delivery')",'#b7791f'],['cheques','Cheques',"A.go('cheques')",'#b7791f'],['voice','Speak an entry',"A.go('voice')",'#2559a6'],['upload','GST purchase bill','A.upload()','#c0362c'],['settings','Settings, backup, PIN',"A.go('settings')",'#5f5f5a']];
   return `<div class="card">${items.map(i=>`<div class="li" onclick="${i[2]}">${icT(i[0],i[3])}<div class="sp t">${i[1]}</div><span class="chev">›</span></div>`).join('')}</div><div class="sample">Sample data · preview of the Android app</div>`};
 V.settings=v=>{v.title=T('settings');const months=[];const b=S.books.daily;const m0=new Date(NOW.getFullYear(),NOW.getMonth(),1).getTime();
   const byM={};[...b.bills,...b.pays,...b.exps].forEach(o=>{if(o.date<m0){const d=new Date(o.date);const k=d.getFullYear()+'-'+d.getMonth();byM[k]=(byM[k]||0)+1}});
@@ -225,7 +248,7 @@ function parseVoice(txt){
 }
 /* ---------- add menu ---------- */
 function addMenu(){const g=S.book==='gst';sheet(`<h2>Add new · ${g?'GST book':'Daily book'}</h2><div class="addgrid">
-  ${[['sale','Sale bill',"A.newBill('sale')",'#1f7a4d'],['purchase','Purchase bill',"A.newBill('purchase')",'#7d1d2c'],['payment','Payment','A.payForm()','#5b3a8c'],['expense','Expense','A.expForm()','#a0701c'],['attendance','Attendance',"A.go('staff')",'#1f6b6b'],[g?'upload':'voice',g?'Upload GST bill':'Speak entry',g?'A.upload()':"A.go('voice')",'#173a6b']].map(x=>`<button onclick="A.closeSheet();${x[2]}">${icT(x[0],x[3])}${x[1]}</button>`).join('')}</div>`)}
+  ${[['sale','Sale bill',"A.newBill('sale')",'#157a46'],['purchase','Purchase bill',"A.newBill('purchase')",'#c0362c'],['payment','Payment','A.payForm()','#2559a6'],['expense','Expense','A.expForm()','#c0362c'],['attendance','Attendance',"A.go('staff')",'#2559a6'],[g?'upload':'voice',g?'Upload GST bill':'Speak entry',g?'A.upload()':"A.go('voice')",'#173a6b']].map(x=>`<button onclick="A.closeSheet();${x[2]}">${icT(x[0],x[3])}${x[1]}</button>`).join('')}</div>`)}
 
 /* ---------- bill form ---------- */
 function nextNo(type){const b=B();const g=S.book==='gst';const xs=b.bills.filter(x=>x.type===type);
@@ -241,10 +264,3 @@ V.billform=v=>{const d=S.draft;const g=S.book==='gst';v.title=d.editId?'Edit '+d
   <button class="btn ghost" onclick="A.itemSheet(-1)" style="border-style:dashed;margin-bottom:12px">${T('additem')}</button>
   ${d.file?`<div class="small mute" style="margin:-4px 0 10px">Bill file: ${esc(d.file)}</div>`:''}${g&&d.type==='purchase'?`<label class="f"><span>Vendor invoice no.</span><input class="inp" value="${esc(d.vinv||'')}" oninput="S_.draft.vinv=this.value"></label>`:''}
   <div class="g2"><label class="f"><span>${T('transport')}</span><input class="inp" inputmode="numeric" value="${d.transport||''}" placeholder="0" oninput="S_.draft.transport=+this.value||0"></label>
-  <label class="f"><span>${T('paid')}</span><input class="inp" inputmode="numeric" id="paidnow" value="${d.paid||''}" placeholder="0" oninput="S_.draft.paid=+this.value||0"></label></div>
-  <div class="seg">${['cash','upi','cheque'].map(m=>`<button class="${d.mode===m?'on':''}" onclick="A.dmode('${m}')">${m==='upi'?'UPI':m[0].toUpperCase()+m.slice(1)}</button>`).join('')}</div>
-  <div class="card"><table class="t"><tbody>${g?`<tr><td>Taxable</td><td class="r num">${inr2(tt.sub)}</td></tr><tr><td>${tt.igst?'IGST':'CGST + SGST'}</td><td class="r num">${inr2(tt.tax)}</td></tr>`:''}<tr><td><b>${T('total')}</b></td><td class="r num" style="font-size:22px"><b>${inr(tt.grand)}</b></td></tr></tbody></table>
-  <button class="btn ghost sm" style="margin-top:8px" onclick="A.fullPaid(${tt.grand})">Full amount paid</button></div>
-  ${g&&d.type==='sale'?`<div class="btns"><button class="btn ghost" onclick="A.saveBill('draft')">Save draft</button><button class="btn green" onclick="A.saveBill('issued')">Issue bill</button></div><div class="small mute" style="margin-top:6px">Drafts can be changed. Issued bills are locked.</div>`:`<button class="btn green" style="margin-top:4px" onclick="A.saveBill('${g?'issued':'saved'}')">${T('save')} bill</button>`}`};
-let IT=null;
-function itemSheet(k){const d=S.draft;if(k>=0){const i=d.items[k];const pp=ppcOf(i);const pr=perPc(i);IT={k,step:'q',pid:VAR[i.vid].pid,vid:i.vid,rt:i.rt||'wholesale',ppc:pp,ctn:i.unit==='ctn'?i.qty:0,pc:i.unit==='pcs'?i.qty:0,rate:i.unit==='ctn'?i.rate:Math.round(pr*pp),prate:i.unit==='pcs'?i.rate:Math.round(pr*100)/100}}else IT={k:-1,step:'p',q:'',rt:'wholesale',ctn:1,pc:0};drawItem()}

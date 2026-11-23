@@ -1,3 +1,9 @@
+ hi:['बस बोलिए','ऊपर माइक दबाइए और हिंदी, अंग्रेज़ी या हिंग्लिश में बोलिए। जैसे: शर्मा को 2 पेटी सर्फ 1 किलो 3300 रुपये। या पूछिए: शर्मा का कितना बाकी है? ऐप एंट्री भर देता है या बोलकर जवाब देता है। जाँच के बिना कुछ सेव नहीं होता।','काउंटर पर हाथ व्यस्त हों तब भी एंट्री, और बिना ढूँढे जवाब।']},
+{ic:'settings',c:'#5a5550',go:"A.go('settings')",
+ en:['Safe and backed up','The app opens only with your PIN or fingerprint. Every entry is saved on the phone instantly and works without internet. From Settings, save a backup file to Google Drive, WhatsApp or your computer, and restore it on any phone.','If you keep your backup file safe, your full business record is safe even if the phone is lost or broken.'],
+ hi:['सुरक्षित और बैकअप','ऐप सिर्फ़ आपके PIN या फ़िंगरप्रिंट से खुलता है। हर एंट्री तुरंत फ़ोन में सेव होती है और बिना इंटरनेट चलती है। सेटिंग से बैकअप फ़ाइल Google Drive, WhatsApp या कंप्यूटर में सेव कीजिए और किसी भी फ़ोन पर वापस लाइए।','बैकअप फ़ाइल संभाल कर रखें, तो फ़ोन खो जाए या टूट जाए तब भी पूरा हिसाब सुरक्षित।']},
+{ic:'attendance',c:'#8a6a1f',go:"A.tab('home')",
+ en:['Your daily routine','Morning: open Home, read the summary, mark attendance. During the day: make bills by tap or voice, record payments. Evening: confirm deliveries, check the day’s profit, send reminders. Month end: pay salaries, clear the daily book, send the GST export to your CA.','About 15 minutes of phone work a day replaces hours of diary work, and you always know where your business stands.'],
  hi:['आपकी रोज़ की दिनचर्या','सुबह: होम खोलिए, सारांश पढ़िए, हाज़िरी लगाइए। दिन में: टच या आवाज़ से बिल बनाइए, पेमेंट डालिए। शाम को: डिलीवरी पक्की कीजिए, दिन का मुनाफ़ा देखिए, याद दिलाने के संदेश भेजिए। महीने के अंत में: तनख्वाह दीजिए, रोज़ का खाता साफ़ कीजिए, GST एक्सपोर्ट CA को भेजिए।','रोज़ करीब 15 मिनट का फ़ोन का काम घंटों के डायरी काम की जगह लेता है, और कारोबार की पूरी तस्वीर हमेशा सामने।']}
 ];
 const GIC={bills:'expense'};
@@ -194,7 +200,7 @@ const _onHome=V.home;V.home=v=>{let h=_onHome(v);if(ONL.on){const n=ONL.reqs.len
   if(al)h=h.replace('<div class="stats">',al+'<div class="stats">')}return h};
 /* more menu entry */
 const _onMore=V.more;V.more=v=>{const h=_onMore(v);const i=h.indexOf('<div class="li"');if(i<0)return h;
-  return h.slice(0,i)+`<div class="li" onclick="A.go('online')">${icT('upload','#1f6b52')}<div class="sp"><div class="t">Online orders · link & QR</div><div class="s">${S.online?(ONL.reqs.length?ONL.reqs.length+' waiting · ':'')+ONL.orders.filter(o=>o.status==='placed').length+' new':'Retail & wholesale price list for customers'}</div></div><span class="chev">›</span></div>`+h.slice(i)};
+  return h.slice(0,i)+`<div class="li" onclick="A.go('online')">${icT('upload','#157a46')}<div class="sp"><div class="t">Online orders · link & QR</div><div class="s">${S.online?(ONL.reqs.length?ONL.reqs.length+' waiting · ':'')+ONL.orders.filter(o=>o.status==='placed').length+' new':'Retail & wholesale price list for customers'}</div></div><span class="chev">›</span></div>`+h.slice(i)};
 
 /* ---------- boot ---------- */
 try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
