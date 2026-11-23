@@ -66,7 +66,16 @@ function onListen(){ONL.unsub.forEach(u=>{try{u()}catch(e){}});ONL.unsub=[];
   ONL.unsub.push(onCol('orders').onSnapshot(q=>{ONL.orders=q.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>onTs(b.createdAt)-onTs(a.createdAt));
     const fresh=ONL.orders.filter(o=>o.status==='placed'&&!ONL.seenOrd[o.id]);ONL.orders.forEach(o=>ONL.seenOrd[o.id]=1);if(fresh.length&&!ONL.first)onAlert(fresh.length+' new online order'+(fresh.length>1?'s':''));
     ONL.orders.forEach(onSyncFromOrder);ONL.first=false;onRerender()},e=>{ONL.err=errMsg(e);onRerender()}))}
-let onRT=null;function onRerender(){clearTimeout(onRT);onRT=setTimeout(()=>{if(['online','onorder','home'].includes(S.view.n)&&!$('#layer').innerHTML)render()},150)}
+let onRT=null,onDirty=false;
+function onPaint(){onDirty=false;if(['online','onorder','home','more'].includes(S.view.n)&&!$('#layer').innerHTML)render();else onDirty=true}
+function onRerender(){clearTimeout(onRT);if(document.hidden){onDirty=true;return}onRT=setTimeout(onPaint,150)}
+/* fresh look at waiting customers and orders (in case a live update was missed while the phone slept or the tab was in the background) */
+async function onRefresh(){if(!ONL.on)return;try{const [q1,q2]=await Promise.all([onCol('sessions').where('status','==','pending').get(),onCol('orders').get()]);
+  ONL.reqs=q1.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>onTs(a.requestedAt)-onTs(b.requestedAt));
+  ONL.orders=q2.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>onTs(b.createdAt)-onTs(a.createdAt));onRerender()}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden||!ONL.on)return;onRefresh();if(onDirty)onPaint()});
+window.addEventListener('focus',()=>{if(ONL.on&&onDirty)onPaint()});
+setInterval(()=>{if(ONL.on&&!document.hidden&&['online','home'].includes(S.view.n))onRefresh()},30000);
 function onAlert(msg){toast(msg);try{navigator.vibrate&&navigator.vibrate([120,80,120])}catch(e){}
   try{const c=new (window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator();const g=c.createGain();o.frequency.value=880;g.gain.value=.08;o.connect(g);g.connect(c.destination);o.start();setTimeout(()=>{o.frequency.value=1320},140);setTimeout(()=>{o.stop();c.close()},300)}catch(e){}}
 
