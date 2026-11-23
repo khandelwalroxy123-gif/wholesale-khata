@@ -87,7 +87,7 @@ async function boot(){
   try{
     const app=firebase.apps.length?firebase.app():firebase.initializeApp(window.WK_FIREBASE);
     const au=firebase.auth();await new Promise(r=>{const u=au.onAuthStateChanged(x=>{u();r(x)})});if(!au.currentUser)await au.signInAnonymously();
-    St.uid=au.currentUser.uid;St.db=firebase.firestore();
+    St.uid=au.currentUser.uid;St.db=firebase.firestore();try{await St.db.enablePersistence({synchronizeTabs:true})}catch(e){}
     const sd=await St.db.doc('shops/'+SHOP).get();if(!sd.exists)return fail('This shop link no longer works. Ask the shop for a new link.');
     St.shop=sd.data();$('#sname').textContent=St.shop.name||'Order online';document.title=(St.shop.name||'Shop')+' · Order online';
     $('#ssub').textContent=(WANT==='wholesale'?'Wholesale order · होलसेल':'Order · ऑर्डर')+(St.shop.open===false?' · closed now':'');
@@ -185,5 +185,6 @@ window.W={
 boot();
 })();
 </script>
+<script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))</script>
 </body>
 </html>

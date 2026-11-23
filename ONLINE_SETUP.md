@@ -1,4 +1,4 @@
-# Switching on Online orders (Firebase, free plan)
+# Firebase setup: accounts, plans and online orders (free plan)
 
 Online orders let customers open a **Retail** or **Wholesale** link / QR, ask the shop for permission, order from the price list, pay cash or by UPI, and track the order live. When the shop accepts, the bill is made in the shop's book automatically.
 
@@ -8,9 +8,10 @@ The orders need a small online database. It runs on Google Firebase's free **Spa
 1. Open <https://console.firebase.google.com> with the Google account that will own the app.
 2. **Create a project** → name it `wholesale-khata` → Google Analytics: **off** → Create.
 
-## 2. Turn on anonymous sign-in
-**Build → Authentication → Get started → Sign-in method → Anonymous → Enable → Save.**
-(Customers and the shop get a random ID; nobody types an e-mail or password.)
+## 2. Turn on sign-in
+**Build → Authentication → Get started → Sign-in method:**
+- **Email/Password → Enable → Save.** Shop owners log in with email and password (needed for the trial, plans and admin).
+- **Anonymous → Enable → Save.** Customers on order links get a random ID; they never type a password.
 
 ## 3. Create the database
 **Build → Firestore Database → Create database** → location **asia-south1 (Mumbai)** → start in **production mode** → Create.
@@ -63,3 +64,17 @@ In the app: **More → Online orders · link & QR** → enter your UPI ID → **
 - The online shop belongs to the phone that started it. On a new phone, use **Make a new shop link** and share the new link/QR.
 - Free plan limits (50,000 reads and 20,000 writes a day) are far above what one shop uses.
 - To remove everything online: **Online orders → Delete online shop**.
+
+## Accounts, trial and plans
+- Every shop owner signs in with email + password when the app first opens. The trial (30 days) starts from the server's clock when the account is made, so it cannot be faked by changing the phone date.
+- **Admin:** the account `rahulg.aice@gmail.com` (set in `firestore.rules` → `isAdmin()` and in the app → `ADMIN_EMAILS`). Create that account first, then open the verification email. In the app: **Settings → Account & plan → Admin** shows all accounts and plans, lets you add trial days, give a month or a 5-Year Plan (for cash/bank payments) and put an account on hold. It never shows a shop's books.
+- **Google Play products** to create in Play Console → Monetize (after the first upload):
+  - Subscription `wk_monthly`, base plan `monthly-499`, auto-renewing monthly, ₹499.
+  - One-time product `wk_5year`, ₹20,000 (valid 5 years – the app counts it from the purchase date).
+- Purchases are confirmed by Google Play on the phone and listed under **Admin → new purchases** to match with Play Console → Order management.
+
+## What waits for the Blaze (pay-as-you-go) plan
+Everything above runs on the free Spark plan. These need Blaze, and are ready to switch on later:
+- **Phone OTP login** (Firebase SMS sign-in requires Blaze; first 10 SMS a day are free).
+- **Push to a closed phone:** `functions/index.js` sends a push when a customer asks or orders even if the app is closed. To switch on: upgrade to Blaze → add an Android app `com.wholesalekhata.app` in Firebase and put its `google-services.json` in the build → add `@capacitor/push-notifications` and save each phone's token in `users/{uid}.fcm` (and allow `fcm` in the users rule) → `firebase deploy --only functions`. Until then, the app shows phone notifications while it is open or recently used.
+- **Server check of Google Play purchases** (optional extra safety on top of the phone's check).

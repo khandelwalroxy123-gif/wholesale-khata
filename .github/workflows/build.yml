@@ -44,12 +44,15 @@ jobs:
       - name: App icon and splash screen
         run: npx capacitor-assets generate --android
 
-      - name: Manifest – microphone for voice entry, no cloud auto-backup
+      - name: Manifest – microphone for voice entry, no cloud auto-backup, no exact alarms
         run: |
           M=android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.RECORD_AUDIO' "$M" || sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <application#' "$M"
           sed -i 's#<application#<queries>\n        <intent><action android:name="android.speech.RecognitionService" /></intent>\n        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>\n    </queries>\n    <application#' "$M"
           sed -i 's#android:allowBackup="true"#android:allowBackup="false"#' "$M"
+          # notifications are shown at once; the plugin's exact-alarm permission is not needed (Play restricts it)
+          grep -q 'xmlns:tools' "$M" || sed -i 's#<manifest xmlns:android="http://schemas.android.com/apk/res/android"#<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"#' "$M"
+          sed -i 's#<application#<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />\n    <application#' "$M"
           cat "$M"
 
       - name: Version number (must go up for every Play upload)

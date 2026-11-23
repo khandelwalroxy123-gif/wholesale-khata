@@ -1,3 +1,31 @@
+const sheet=h=>{$('#layer').innerHTML='<div class="sheetbg" onclick="if(event.target===this)A.closeSheet()"><div class="sheet"><div class="grab"></div>'+h+'</div></div>'};
+const closeSheet=()=>$('#layer').innerHTML='';
+let askFn=null;
+const ask=(title,msg,ok,fn,danger)=>{askFn=fn;sheet(`<h2>${esc(title)}</h2><p class="mute">${msg}</p><div class="btns"><button class="btn ghost" onclick="A.closeSheet()">${T('cancel')}</button><button class="btn ${danger?'danger':''}" onclick="A.closeSheet();A.askOk()">${esc(ok)}</button></div>`)};
+const wa=(phone,text)=>'https://wa.me/91'+phone+'?text='+encodeURIComponent(text);
+const waBtn=(phone,text,label)=>`<a class="btn green" style="display:grid;place-items:center;text-decoration:none" href="${wa(phone,text)}" target="_blank" rel="noopener">${label||'Send on WhatsApp'}</a>`;
+function save(){try{localStorage.setItem('wk_lang',S.lang);localStorage.setItem('wk_book',S.book)}catch(e){}}
+
+const TITLES={home:()=>S.shop.name,bills:()=>T('bills'),khata:()=>T('khata'),more:()=>T('more'),history:()=>'History',billform:()=>S.view.title||'Bill',expenses:()=>T('expense'),staffd:()=>S.view.title||T('staff')};
+function render(top){
+  const app=$('#app');app.classList.toggle('gst',S.book==='gst');
+  if(ACC.need){$('#hdr').innerHTML='';$('#nav').innerHTML='';$('#main').innerHTML='';acScreen();return}
+  if(S.locked){$('#hdr').innerHTML='';$('#nav').innerHTML='';$('#main').innerHTML='';lockScreen();return}
+  const v=S.view;const fn=V[v.n]||V.home;
+  $('#main').innerHTML=fn(v);
+  $('#hdr').innerHTML=`<div class="toprow"><h1>${esc((TITLES[v.n]||(()=>v.title||T(v.n)))())}<div class="sub">${S.book==='gst'?T('gst'):T('daily')} · ${dow(NOW.getDay())}, ${fdy(NOW)}</div></h1><button class="ib" onclick="A.voiceGo()" aria-label="Voice assistant"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button><button class="ib" onclick="A.lang()" aria-label="Language">${S.lang==='hi'?'EN':'हिं'}</button><button class="ib" onclick="A.lock()" aria-label="Lock app"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-3px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></button></div>
+  <div class="booksw"><button class="${S.book==='daily'?'on':''}" onclick="A.setBook('daily')">${T('daily')}</button><button class="${S.book==='gst'?'on':''}" onclick="A.setBook('gst')">${T('gst')}</button></div>`;
+  const nb=(n,l)=>`<button class="${S.tab===n?'on':''}" onclick="A.tab('${n}')">${ICON[n]}<span>${l}</span></button>`;
+  $('#nav').innerHTML=nb('home',T('home'))+nb('bills',T('bills'))+`<button onclick="A.addMenu()" aria-label="Add new"><span class="plus" style="display:grid;place-items:center">+</span></button>`+nb('khata',T('khata'))+nb('more',T('more'));
+  if(top)$('#main').scrollTop=0;
+  save();
+  try{window.__afterRender&&window.__afterRender()}catch(e){}
+}
+const backBtn=()=>`<button class="back" onclick="A.back()">${T('back')}</button>`;
+
+/* ---------- lock ---------- */
+let pinIn='';
+function lockScreen(){
   $('#layer').innerHTML=`<div class="lockscr"><div class="mono">${esc(S.shop.name.split(' ').map(w=>w[0]).slice(0,2).join(''))}</div><div style="font-size:22px;font-weight:700;font-family:var(--serif)">${esc(S.shop.name)}</div><div style="opacity:.85">Enter PIN to open</div><div class="dots">${[0,1,2,3].map(i=>`<i class="${i<pinIn.length?'f':''}"></i>`).join('')}</div>
   <div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="A.pin('${n}')">${n}</button>`).join('')}<button onclick="A.pin('fp')" style="font-size:14px" aria-label="Fingerprint">${fingerOn()?'Finger':''}</button><button onclick="A.pin('0')">0</button><button onclick="A.pin('del')" style="font-size:20px" aria-label="Delete">⌫</button></div>
   ${S.pin==='1234'?'<div style="margin-top:22px;opacity:.8;font-size:14px">Sample PIN: 1234 · change it in Settings</div>':''}</div>`;
@@ -25,24 +53,24 @@ V.home=()=>{
   const pend=b.bills.filter(x=>live(x)&&x.del!=='received');
   const drafts=b.bills.filter(x=>x.status==='draft');
   const q=S.view.q||'';
-  const sp=[];for(let d=6;d>=0;d--){const a=today0-d*DAY;sp.push({l:d?DOW[new Date(a).getDay()][0]:'T',v:b.bills.filter(x=>live(x)&&x.type==='sale'&&x.date>=a&&x.date<a+DAY).reduce((s,x)=>s+billTotal(x).grand,0)})}const spm=Math.max(1,...sp.map(o=>o.v));
+  const sp=[];for(let d=6;d>=0;d--){const a=today0-d*DAY;sp.push({l:d?(S.lang==='hi'?['र','सो','मं','बु','गु','शु','श'][new Date(a).getDay()]:DOW[new Date(a).getDay()][0]):(S.lang==='hi'?'आज':'T'),v:b.bills.filter(x=>live(x)&&x.type==='sale'&&x.date>=a&&x.date<a+DAY).reduce((s,x)=>s+billTotal(x).grand,0)})}const spm=Math.max(1,...sp.map(o=>o.v));
   const qa=[['sale','S','#157a46',"A.newBill('sale')"],['purchase','P','#c0362c',"A.newBill('purchase')"],['payment','₹','#2559a6','A.payForm()'],['expense','E','#c0362c','A.expForm()'],['attendance','H','#2559a6',"A.go('staff')"],['stock','St','#5f5f5a',"A.go('stock')"],[S.book==='gst'?'upload':'voice',S.book==='gst'?'Up':'Mic','#173a6b',S.book==='gst'?'A.upload()':"A.go('voice')"],['reports','R','#2559a6',"A.go('reports')"]];
   return `<div class="search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--mute)"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="ps" placeholder="${esc(T('searchp'))}" value="${esc(q)}" oninput="A.psearch(this.value)" autocomplete="off"></div>
   <div id="sres">${q?searchRes(q):''}</div>
   <div id="homebody" style="${q?'display:none':''}">
   <div class="hero"><div class="g">${T('morning')} · ${T('todaysale')}</div><div class="amt num">${inr(sum(tb,'sale'))}</div><span class="pr">${T('profit')} <b class="num">${inr(prof(tb))}</b></span>
   <div class="spark">${sp.map((o,k)=>`<div><i class="${k===6?'t':''}" style="height:${Math.max(4,o.v/spm*100)}%"></i><span>${o.l}</span></div>`).join('')}</div>
-  <div class="note">Yesterday ${inr(sum(yb,'sale'))} sale, ${inr(prof(yb))} profit.${chq.length?` ${chq.length} cheque${chq.length>1?'s':''} due soon.`:''}</div></div>
+  <div class="note">${S.lang==='hi'?`कल ${inr(sum(yb,'sale'))} बिक्री, ${inr(prof(yb))} मुनाफ़ा।${chq.length?` ${chq.length} चेक जल्द आने वाले।`:''}`:`Yesterday ${inr(sum(yb,'sale'))} sale, ${inr(prof(yb))} profit.${chq.length?` ${chq.length} cheque${chq.length>1?'s':''} due soon.`:''}`}</div></div>
   <div class="stats"><div class="stat"><div class="l">${T('todaypur')}</div><div class="big num">${inr(sum(tb,'purchase'))}</div></div><div class="stat"><div class="l">${T('cashin')}</div><div class="big num in">${inr(cashIn)}</div></div></div>
   ${low.length?`<div class="alert" onclick="A.go('stock',{f:'low'})"><b>${T('lowstock')}:</b> ${low.slice(0,2).map(v=>esc(vname(v))).join(', ')}${low.length>2?' +'+(low.length-2):''}<span class="sp"></span>›</div>`:''}
-  ${over.length?`<div class="alert" onclick="A.tab('khata')"><b>${over.length} ${over.length>1?'parties':'party'}</b> ${over.length>1?'owe':'owes'} money for 30+ days<span class="sp"></span>›</div>`:''}
-  ${chq.length?`<div class="alert" onclick="A.go('cheques')"><b>Cheques:</b> ${chq.map(p=>esc(cOf(p.cid).name.split(' ')[0])+' '+inr(p.amt)+' on '+fd(p.chq.due)).join(', ')}<span class="sp"></span>›</div>`:''}
-  ${pend.length?`<div class="alert" onclick="A.go('delivery')"><b>${pend.length} ${pend.length>1?'deliveries':'delivery'}</b> not yet confirmed<span class="sp"></span>›</div>`:''}
-  ${drafts.length?`<div class="alert" onclick="A.tab('bills')"><b>${drafts.length} draft GST bill${drafts.length>1?'s':''}</b> waiting to be issued<span class="sp"></span>›</div>`:''}
+  ${over.length?`<div class="alert" onclick="A.tab('khata')">${S.lang==='hi'?`<b>${over.length} पार्टी</b> पर 30+ दिन से पैसा बाकी`:`<b>${over.length} ${over.length>1?'parties':'party'}</b> ${over.length>1?'owe':'owes'} money for 30+ days`}<span class="sp"></span>›</div>`:''}
+  ${chq.length?`<div class="alert" onclick="A.go('cheques')"><b>${S.lang==='hi'?'चेक:':'Cheques:'}</b> ${chq.map(p=>esc(cOf(p.cid).name.split(' ')[0])+' '+inr(p.amt)+(S.lang==='hi'?' – ':' on ')+fd(p.chq.due)).join(', ')}<span class="sp"></span>›</div>`:''}
+  ${pend.length?`<div class="alert" onclick="A.go('delivery')">${S.lang==='hi'?`<b>${pend.length} डिलीवरी</b> की पुष्टि बाकी`:`<b>${pend.length} ${pend.length>1?'deliveries':'delivery'}</b> not yet confirmed`}<span class="sp"></span>›</div>`:''}
+  ${drafts.length?`<div class="alert" onclick="A.tab('bills')">${S.lang==='hi'?`<b>${drafts.length} ड्राफ़्ट GST बिल</b> जारी होने बाकी`:`<b>${drafts.length} draft GST bill${drafts.length>1?'s':''}</b> waiting to be issued`}<span class="sp"></span>›</div>`:''}
   <h3>${T('quick')}</h3>
   <div class="qa">${qa.map(a=>`<button onclick="${a[3]}">${icT(a[0],a[2])}${T(a[0])}</button>`).join('')}</div>
   <h3>${T('recent')}</h3><div class="card">${b.bills.slice(-6).reverse().map(billLi).join('')}</div>
-  <div class="sample">All names, numbers and bills here are sample data.</div></div>`;
+  <div class="sample">${S.lang==='hi'?'यहाँ के सभी नाम, नंबर और बिल नमूना (सैंपल) डेटा हैं।':'All names, numbers and bills here are sample data.'}</div></div>`;
 };
 function searchRes(q){
   q=q.toLowerCase().trim();const r=products.filter(p=>(p.name+' '+p.cat).toLowerCase().includes(q)||p.v.some(v=>v.size.toLowerCase().includes(q)));
@@ -52,7 +80,7 @@ function searchRes(q){
 const psearch=v=>{S.view.q=v;$('#sres').innerHTML=v?searchRes(v):'';$('#homebody').style.display=v?'none':''};
 function billLi(x){
   const g=billTotal(x).grand;const c=cOf(x.cid);
-  const st=x.status==='draft'?'<span class="pill amber">Draft</span>':x.status==='cancelled'?'<span class="pill red">Cancelled</span>':x.del!=='received'?`<span class="pill">${x.del}</span>`:'';
+  const DH={pending:'बाकी',dispatched:'भेजा',delivered:'पहुँचा'};const hi=S.lang==='hi';const st=x.status==='draft'?`<span class="pill amber">${hi?'ड्राफ़्ट':'Draft'}</span>`:x.status==='cancelled'?`<span class="pill red">${hi?'रद्द':'Cancelled'}</span>`:x.del!=='received'?`<span class="pill">${hi&&DH[x.del]||x.del}</span>`:'';
   return `<div class="li" onclick="A.go('bill',{id:'${x.id}'})"><div class="av" style="background:color-mix(in srgb,${x.type==='sale'?'var(--in)':'var(--out)'} 12%,transparent);color:${x.type==='sale'?'var(--in)':'var(--out)'}">${svg(x.type==='sale'?'up':'down',22)}</div><div class="sp"><div class="t">${esc(c.name)}</div><div class="s">${esc(x.no)} · ${fd(x.date)} ${ft(x.date)} ${st}</div></div><div class="num" style="font-weight:600">${inr(g)}</div></div>`;
 }
 V.product=v=>{
@@ -218,8 +246,8 @@ V.reports=v=>{v.title=T('reports');const p=v.p||'day';const b=B();
   <h3>Purchase by vendor</h3><div class="card">${Object.entries(byVd).map(([k,o])=>{const d=o.diff/o.n*100;return `<div class="li" style="padding:9px 2px"><div class="sp"><div class="t">${esc(cOf(k).name)}</div><div class="s">${d<=0?'<span class="in">'+Math.abs(d).toFixed(1)+'% cheaper</span>':'<span class="out">'+d.toFixed(1)+'% costlier</span>'} than your average rate</div></div><b class="num">${inr(o.amt)}</b></div>`}).join('')||'<div class="mute small">No purchases in this period.</div>'}</div>
   <div class="btns"><button class="btn" onclick="A.printBill()">Print / PDF</button>${waBtn(S.shop.phone,summ,'Send to my WhatsApp')}</div>`};
 /* ---------- more & settings ---------- */
-V.more=()=>{const items=[['stock','Stock & low items',"A.go('stock')",'#5f5f5a'],['reports','Profit / loss reports',"A.go('reports')",'#2559a6'],['staff','Staff attendance & salary',"A.go('staff')",'#2559a6'],['expense','Expenses',"A.go('expenses')",'#c0362c'],['delivery','Delivery status',"A.go('delivery')",'#b7791f'],['cheques','Cheques',"A.go('cheques')",'#b7791f'],['voice','Speak an entry',"A.go('voice')",'#2559a6'],['upload','GST purchase bill','A.upload()','#c0362c'],['settings','Settings, backup, PIN',"A.go('settings')",'#5f5f5a']];
-  return `<div class="card">${items.map(i=>`<div class="li" onclick="${i[2]}">${icT(i[0],i[3])}<div class="sp t">${i[1]}</div><span class="chev">›</span></div>`).join('')}</div><div class="sample">Sample data · preview of the Android app</div>`};
+V.more=()=>{const H=S.lang==='hi';const items=[['stock',H?'स्टॉक और कम माल':'Stock & low items',"A.go('stock')",'#5f5f5a'],['reports',H?'मुनाफ़ा / घाटा रिपोर्ट':'Profit / loss reports',"A.go('reports')",'#2559a6'],['staff',H?'स्टाफ़ हाज़िरी और तनख़्वाह':'Staff attendance & salary',"A.go('staff')",'#2559a6'],['expense',H?'खर्चे':'Expenses',"A.go('expenses')",'#c0362c'],['delivery',H?'डिलीवरी स्थिति':'Delivery status',"A.go('delivery')",'#b7791f'],['cheques',H?'चेक':'Cheques',"A.go('cheques')",'#b7791f'],['voice',H?'बोलकर एंट्री':'Speak an entry',"A.go('voice')",'#2559a6'],['upload',H?'GST खरीद बिल':'GST purchase bill','A.upload()','#c0362c'],['settings',H?'सेटिंग, बैकअप, PIN':'Settings, backup, PIN',"A.go('settings')",'#5f5f5a']];
+  return `<div class="card">${items.map(i=>`<div class="li" onclick="${i[2]}">${icT(i[0],i[3])}<div class="sp t">${i[1]}</div><span class="chev">›</span></div>`).join('')}</div><div class="sample">${S.lang==='hi'?'नमूना डेटा · Android ऐप की झलक':'Sample data · preview of the Android app'}</div>`};
 V.settings=v=>{v.title=T('settings');const months=[];const b=S.books.daily;const m0=new Date(NOW.getFullYear(),NOW.getMonth(),1).getTime();
   const byM={};[...b.bills,...b.pays,...b.exps].forEach(o=>{if(o.date<m0){const d=new Date(o.date);const k=d.getFullYear()+'-'+d.getMonth();byM[k]=(byM[k]||0)+1}});
   return backBtn()+`<h2>Settings</h2>
@@ -229,39 +257,3 @@ V.settings=v=>{v.title=T('settings');const months=[];const b=S.books.daily;const
   <div class="card"><b>Clear a finished month (daily book only)</b><div class="small mute">Deletes that month's daily bills, payments and expenses. Balances and stock are carried forward, so nothing goes wrong. GST book is never cleared.</div>
   ${Object.entries(byM).map(([k,n])=>{const [y,m]=k.split('-').map(Number);return `<div class="li" style="padding:8px 2px"><div class="sp"><div class="t">${MON[m]} ${y}</div><div class="s">${n} records</div></div><button class="btn danger sm" onclick="A.clearMonth(${y},${m})">Clear</button></div>`}).join('')||'<div class="mute small" style="margin-top:6px">No finished month to clear.</div>'}
   ${b.cleared.length?`<div class="small mute" style="margin-top:6px">Cleared: ${b.cleared.join(', ')}</div>`:''}</div>
-  <div class="card"><b>GST export for CA</b><div class="small mute">Sale and purchase register of this month as a table to paste in Excel or Tally.</div><button class="btn ghost" style="margin-top:8px" onclick="A.exportCA()">Make export</button></div>
-  <div class="card"><b>Shop details (printed on bills)</b>
-  <label class="f"><span>Shop name</span><input class="inp" id="sh_n" value="${esc(S.shop.name)}"></label><label class="f"><span>Address</span><input class="inp" id="sh_a" value="${esc(S.shop.addr)}"></label><div class="g2"><label class="f"><span>Phone</span><input class="inp" id="sh_p" value="${esc(S.shop.phone)}" inputmode="tel"></label><label class="f"><span>GSTIN</span><input class="inp" id="sh_g" value="${esc(S.shop.gstin)}"></label></div><button class="btn" onclick="A.saveShop()">${T('save')}</button></div>`};
-/* ---------- voice ---------- */
-V.voice=v=>{v.title=T('voice');const r=v.r;
-  return backBtn()+`<h2>Speak or type an entry</h2><div class="small mute" style="margin:-6px 0 8px">Say it like you talk: quantity, product, rate, party.</div>
-  <button class="mic" id="micb" onclick="A.mic()">Speak</button>
-  <label class="f"><span>What you said</span><textarea class="inp" id="vtxt" placeholder="e.g. 2 peti Surf 1 kg 3300 rupees Sharma">${esc(v.txt||'')}</textarea></label>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${['2 peti Surf 1 kg 3300 rupees Sharma','24 piece Clinic Plus 175 ml 99 Gupta','5 carton Parle-G 250 g 1030 Jain'].map(s=>`<button class="pill" style="border:0;cursor:pointer;padding:6px 10px" onclick="document.getElementById('vtxt').value='${s}'">${s}</button>`).join('')}</div>
-  <button class="btn" onclick="A.parseVoice()">Understand</button>
-  ${r?`<div class="card" style="margin-top:12px">${r.vid?`<div class="small mute">I understood</div><div style="font-size:18px;font-weight:600;margin:2px 0">${r.qty} ${r.unit==='ctn'?'carton':'piece'} · ${esc(vname(r.vid))}</div><div>Rate <b class="num">${inr2(r.rate)}</b>/${r.unit} · Party <b>${r.cid?esc(cOf(r.cid).name):'not found'}</b></div><div class="btns"><button class="btn green" onclick="A.voiceBill()">Make sale bill</button><button class="btn ghost" onclick="A.setv('r',null)">Try again</button></div>`:'<div class="out">Could not find the product. Try saying the brand name, like “Surf” or “Colgate”.</div>'}</div>`:''}`};
-function parseVoice(txt){
-  const t=' '+txt.toLowerCase().replace(/[,.]/g,' ')+' ';const nums=(t.match(/\d+(\.\d+)?/g)||[]).map(Number);
-  const unit=/(peti|पेटी|carton|ctn|box|डिब्बा)/.test(t)?'ctn':'pcs';
-  let best=null,bs=0;products.forEach(p=>{const w=p.name.toLowerCase().split(/[\s&-]+/).filter(x=>x.length>2);let sc=w.filter(x=>t.includes(' '+x)).length;if(sc>bs){bs=sc;best=p}});
-  if(!best)return {};
-  let V_=best.v[0];best.v.forEach(v=>{const sz=v.size.toLowerCase().match(/\d+\s?(g|kg|ml|l)/);if(sz&&t.replace(/\s/g,'').includes(sz[0].replace(/\s/g,'')))V_=v});
-  const sizeN=(V_.size.match(/\d+/)||[''])[0];const rest=nums.filter(n=>String(n)!==sizeN);
-  const qty=rest[0]||1;let rate=rest[1];const party=contacts.find(c=>c.type==='party'&&t.includes(' '+c.name.toLowerCase().split(' ')[0]));
-  if(!rate)rate=defRate(V_.id,'sale',unit,'wholesale');
-  return {vid:V_.id,qty,unit,rate,cid:party?party.id:null};
-}
-/* ---------- add menu ---------- */
-function addMenu(){const g=S.book==='gst';sheet(`<h2>Add new · ${g?'GST book':'Daily book'}</h2><div class="addgrid">
-  ${[['sale','Sale bill',"A.newBill('sale')",'#157a46'],['purchase','Purchase bill',"A.newBill('purchase')",'#c0362c'],['payment','Payment','A.payForm()','#2559a6'],['expense','Expense','A.expForm()','#c0362c'],['attendance','Attendance',"A.go('staff')",'#2559a6'],[g?'upload':'voice',g?'Upload GST bill':'Speak entry',g?'A.upload()':"A.go('voice')",'#173a6b']].map(x=>`<button onclick="A.closeSheet();${x[2]}">${icT(x[0],x[3])}${x[1]}</button>`).join('')}</div>`)}
-
-/* ---------- bill form ---------- */
-function nextNo(type){const b=B();const g=S.book==='gst';const xs=b.bills.filter(x=>x.type===type);
-  if(g){const n=xs.length+1;return type==='sale'?'GST/26-27/'+String(n).padStart(4,'0'):'PUR/'+(n)}
-  const mx=Math.max(type==='sale'?100:500,...xs.map(x=>parseInt(x.no.split('-')[1])||0));return (type==='sale'?'S-':'P-')+(mx+1)}
-function newBill(type,cid){S.draft={type,cid:cid||null,items:[],transport:0,paid:0,mode:'cash',date:Date.now(),vinv:''};go('billform')}
-function editBill(id){const x=B().bills.find(b=>b.id===id);S.draft=JSON.parse(JSON.stringify({...x,editId:id,paid:0,mode:'cash'}));go('billform')}
-V.billform=v=>{const d=S.draft;const g=S.book==='gst';v.title=d.editId?'Edit '+d.no:(d.type==='sale'?T('newsale'):T('newpur'));
-  const c=d.cid?cOf(d.cid):null;const tt=billTotal(d);const bal=c?balance(c.id):0;
-  return backBtn()+`<h2>${esc(v.title)}</h2><div class="small mute" style="margin:-6px 0 10px">${g?'GST book':'Daily book'} · ${fdy(d.date)}, ${ft(d.date)}</div>
-  <div class="card" onclick="A.pickContact('bill','${d.type==='sale'?'party':'vendor'}')" style="cursor:pointer"><div class="row"><div class="av">${c?esc(c.name[0]):'+'}</div><div class="sp"><div class="small mute">${d.type==='sale'?T('party'):T('vendor')}</div><div style="font-weight:600;font-size:18px">${c?esc(c.name):'Tap to choose'}</div>${c?`<div class="small ${d.type==='sale'?'in':'out'}">Old balance ${inr(bal)}${c.limit&&bal+tt.grand>c.limit?' · <span class="out">will cross credit limit '+inr(c.limit)+'</span>':''}</div>`:''}</div><span class="chev">›</span></div></div>

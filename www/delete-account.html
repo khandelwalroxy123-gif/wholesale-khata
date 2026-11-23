@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Delete your account · Wholesale Khata</title>
+<link href="fonts/fonts.css" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--ink:light-dark(#1f1d1a,#f2efe9);--mute:light-dark(#5f5f5a,#b3aea6);--line:light-dark(#e6e3dd,#2c2a27);--book:#8a1c2b}
+body{margin:0;font:17px/1.6 Hind,system-ui,sans-serif;background:light-dark(#fff,#121110);color:var(--ink)}
+header{border-top:4px solid var(--book);border-bottom:1px solid var(--line);padding:calc(14px + env(safe-area-inset-top,0px)) 20px 14px}
+header a{color:light-dark(#2559a6,#8fb4ee);text-decoration:none;font-weight:600}
+h1{font-family:"Playfair Display",Georgia,serif;font-size:27px;margin:8px 0 2px}
+main{max-width:760px;margin:0 auto;padding:4px 20px calc(40px + env(safe-area-inset-bottom,0px))}
+h2{font-family:"Playfair Display",Georgia,serif;font-size:20px;margin:26px 0 6px}
+.mute{color:var(--mute);font-size:15px}
+.hi{border-top:1px solid var(--line);margin-top:36px;padding-top:8px}
+.box{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:14px 0}
+li{margin:4px 0}
+input,button{font:inherit}
+.inp{width:100%;box-sizing:border-box;height:48px;border:1.5px solid var(--line);border-radius:12px;padding:0 12px;background:transparent;color:var(--ink);margin:4px 0 10px}
+.btn{width:100%;height:48px;border:0;border-radius:12px;background:#c0362c;color:#fff;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.6}
+.msg{border-radius:12px;padding:10px 12px;margin:10px 0;display:none}
+</style>
+</head>
+<body>
+<header><a href="index.html">‹ Back to the app</a><h1>Delete your account</h1><div class="mute">Wholesale Khata · Effective 23 November 2026</div></header>
+<script>if(self!==top)document.querySelector('header a').remove()</script>
+<main>
+<p>You can delete your Wholesale Khata account here, or in the app: <b>Settings → Account &amp; plan → Delete account</b>.</p>
+<div class="box"><b>What is deleted:</b> your login, your account record (name, shop name, mobile, email, trial and plan dates) and your online shop with its price lists, customer requests and orders — straight away.<br>
+<b>What is kept:</b> Google Play purchase records (order number, product, date) for up to 8 years, as tax law requires.<br>
+<b>Not affected:</b> the bills and khata on your phone (erase them in the app or by uninstalling it), and a Google Play subscription — cancel that in Google Play → Payments &amp; subscriptions.</div>
+<label>Email<input class="inp" id="e" type="email" autocomplete="email"></label>
+<label>Password<input class="inp" id="w" type="password" autocomplete="current-password"></label>
+<button class="btn" id="go">Delete my account</button>
+<div class="msg" id="m"></div>
+<p class="mute">Forgot your password? Use "Forgot password?" on the app's sign-in screen, or email <a href="mailto:rahulg.aice@gmail.com?subject=Delete%20my%20Wholesale%20Khata%20account">rahulg.aice@gmail.com</a> from your account email and we will delete it within 7 days.</p>
+<div class="hi" lang="hi"><h2>खाता हटाएँ (हिंदी)</h2><p>ऊपर अपना ईमेल और पासवर्ड डालकर "Delete my account" दबाएँ। आपका लॉगिन, खाता रिकॉर्ड और ऑनलाइन दुकान व ऑर्डर तुरंत हट जाएँगे। भुगतान के रिकॉर्ड टैक्स कानून के लिए 8 साल रखे जाते हैं। फ़ोन की बही और Google Play सब्सक्रिप्शन पर असर नहीं होता — सब्सक्रिप्शन Google Play में रद्द करें।</p></div>
+<script src="firebase-config.js"></script>
+<script src="vendor/firebase-app-compat.js"></script><script src="vendor/firebase-auth-compat.js"></script><script src="vendor/firebase-firestore-compat.js"></script>
+<script>
+(function(){const $=id=>document.getElementById(id),m=$('m');
+const say=(t,ok)=>{m.textContent=t;m.style.display='block';m.style.background=ok?'rgba(21,122,70,.1)':'rgba(192,54,44,.1)';m.style.color=ok?'#157a46':'#c0362c'};
+$('go').onclick=async()=>{const e=$('e').value.trim().toLowerCase(),w=$('w').value;if(!e||!w)return say('Enter your email and password.');
+  if(!confirm('Delete this account permanently? This cannot be undone.'))return;
+  const b=$('go');b.disabled=true;b.textContent='Deleting…';
+  try{const fb=firebase;if(!fb.apps.length)fb.initializeApp(window.WK_FIREBASE);const au=fb.auth(),db=fb.firestore();
+    const c=await au.signInWithEmailAndPassword(e,w);const uid=c.user.uid;
+    const shops=await db.collection('shops').where('ownerUid','==',uid).get();
+    for(const s of shops.docs){for(const sub of ['orders','sessions']){const q=await db.collection('shops/'+s.id+'/'+sub).get();for(const d of q.docs)await d.ref.delete().catch(()=>{})}
+      for(const t of ['retail','wholesale'])await db.doc('shops/'+s.id+'/catalog/'+t).delete().catch(()=>{});await s.ref.delete().catch(()=>{})}
+    await db.doc('users/'+uid).delete().catch(()=>{});await c.user.delete();
+    say('Your account has been deleted.',true);b.textContent='Deleted'}
+  catch(x){const k=x&&x.code;say(k==='auth/invalid-credential'||k==='auth/wrong-password'||k==='auth/user-not-found'?'Email or password is wrong.':k==='auth/too-many-requests'?'Too many tries. Wait a few minutes.':k==='auth/network-request-failed'?'No internet. Please try again.':'Could not delete: '+((x&&x.message)||x));b.disabled=false;b.textContent='Delete my account'}}})();
+</script>
+</main>
+</body>
+</html>

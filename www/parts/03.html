@@ -1,3 +1,39 @@
+  <div class="card"><b>GST export for CA</b><div class="small mute">Sale and purchase register of this month as a table to paste in Excel or Tally.</div><button class="btn ghost" style="margin-top:8px" onclick="A.exportCA()">Make export</button></div>
+  <div class="card"><b>Shop details (printed on bills)</b>
+  <label class="f"><span>Shop name</span><input class="inp" id="sh_n" value="${esc(S.shop.name)}"></label><label class="f"><span>Address</span><input class="inp" id="sh_a" value="${esc(S.shop.addr)}"></label><div class="g2"><label class="f"><span>Phone</span><input class="inp" id="sh_p" value="${esc(S.shop.phone)}" inputmode="tel"></label><label class="f"><span>GSTIN</span><input class="inp" id="sh_g" value="${esc(S.shop.gstin)}"></label></div><button class="btn" onclick="A.saveShop()">${T('save')}</button></div>`};
+/* ---------- voice ---------- */
+V.voice=v=>{v.title=T('voice');const r=v.r;
+  return backBtn()+`<h2>Speak or type an entry</h2><div class="small mute" style="margin:-6px 0 8px">Say it like you talk: quantity, product, rate, party.</div>
+  <button class="mic" id="micb" onclick="A.mic()">Speak</button>
+  <label class="f"><span>What you said</span><textarea class="inp" id="vtxt" placeholder="e.g. 2 peti Surf 1 kg 3300 rupees Sharma">${esc(v.txt||'')}</textarea></label>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${['2 peti Surf 1 kg 3300 rupees Sharma','24 piece Clinic Plus 175 ml 99 Gupta','5 carton Parle-G 250 g 1030 Jain'].map(s=>`<button class="pill" style="border:0;cursor:pointer;padding:6px 10px" onclick="document.getElementById('vtxt').value='${s}'">${s}</button>`).join('')}</div>
+  <button class="btn" onclick="A.parseVoice()">Understand</button>
+  ${r?`<div class="card" style="margin-top:12px">${r.vid?`<div class="small mute">I understood</div><div style="font-size:18px;font-weight:600;margin:2px 0">${r.qty} ${r.unit==='ctn'?'carton':'piece'} · ${esc(vname(r.vid))}</div><div>Rate <b class="num">${inr2(r.rate)}</b>/${r.unit} · Party <b>${r.cid?esc(cOf(r.cid).name):'not found'}</b></div><div class="btns"><button class="btn green" onclick="A.voiceBill()">Make sale bill</button><button class="btn ghost" onclick="A.setv('r',null)">Try again</button></div>`:'<div class="out">Could not find the product. Try saying the brand name, like “Surf” or “Colgate”.</div>'}</div>`:''}`};
+function parseVoice(txt){
+  const t=' '+txt.toLowerCase().replace(/[,.]/g,' ')+' ';const nums=(t.match(/\d+(\.\d+)?/g)||[]).map(Number);
+  const unit=/(peti|पेटी|carton|ctn|box|डिब्बा)/.test(t)?'ctn':'pcs';
+  let best=null,bs=0;products.forEach(p=>{const w=p.name.toLowerCase().split(/[\s&-]+/).filter(x=>x.length>2);let sc=w.filter(x=>t.includes(' '+x)).length;if(sc>bs){bs=sc;best=p}});
+  if(!best)return {};
+  let V_=best.v[0];best.v.forEach(v=>{const sz=v.size.toLowerCase().match(/\d+\s?(g|kg|ml|l)/);if(sz&&t.replace(/\s/g,'').includes(sz[0].replace(/\s/g,'')))V_=v});
+  const sizeN=(V_.size.match(/\d+/)||[''])[0];const rest=nums.filter(n=>String(n)!==sizeN);
+  const qty=rest[0]||1;let rate=rest[1];const party=contacts.find(c=>c.type==='party'&&t.includes(' '+c.name.toLowerCase().split(' ')[0]));
+  if(!rate)rate=defRate(V_.id,'sale',unit,'wholesale');
+  return {vid:V_.id,qty,unit,rate,cid:party?party.id:null};
+}
+/* ---------- add menu ---------- */
+function addMenu(){const g=S.book==='gst';sheet(`<h2>Add new · ${g?'GST book':'Daily book'}</h2><div class="addgrid">
+  ${[['sale','Sale bill',"A.newBill('sale')",'#157a46'],['purchase','Purchase bill',"A.newBill('purchase')",'#c0362c'],['payment','Payment','A.payForm()','#2559a6'],['expense','Expense','A.expForm()','#c0362c'],['attendance','Attendance',"A.go('staff')",'#2559a6'],[g?'upload':'voice',g?'Upload GST bill':'Speak entry',g?'A.upload()':"A.go('voice')",'#173a6b']].map(x=>`<button onclick="A.closeSheet();${x[2]}">${icT(x[0],x[3])}${x[1]}</button>`).join('')}</div>`)}
+
+/* ---------- bill form ---------- */
+function nextNo(type){const b=B();const g=S.book==='gst';const xs=b.bills.filter(x=>x.type===type);
+  if(g){const n=xs.length+1;return type==='sale'?'GST/26-27/'+String(n).padStart(4,'0'):'PUR/'+(n)}
+  const mx=Math.max(type==='sale'?100:500,...xs.map(x=>parseInt(x.no.split('-')[1])||0));return (type==='sale'?'S-':'P-')+(mx+1)}
+function newBill(type,cid){S.draft={type,cid:cid||null,items:[],transport:0,paid:0,mode:'cash',date:Date.now(),vinv:''};go('billform')}
+function editBill(id){const x=B().bills.find(b=>b.id===id);S.draft=JSON.parse(JSON.stringify({...x,editId:id,paid:0,mode:'cash'}));go('billform')}
+V.billform=v=>{const d=S.draft;const g=S.book==='gst';v.title=d.editId?'Edit '+d.no:(d.type==='sale'?T('newsale'):T('newpur'));
+  const c=d.cid?cOf(d.cid):null;const tt=billTotal(d);const bal=c?balance(c.id):0;
+  return backBtn()+`<h2>${esc(v.title)}</h2><div class="small mute" style="margin:-6px 0 10px">${g?'GST book':'Daily book'} · ${fdy(d.date)}, ${ft(d.date)}</div>
+  <div class="card" onclick="A.pickContact('bill','${d.type==='sale'?'party':'vendor'}')" style="cursor:pointer"><div class="row"><div class="av">${c?esc(c.name[0]):'+'}</div><div class="sp"><div class="small mute">${d.type==='sale'?T('party'):T('vendor')}</div><div style="font-weight:600;font-size:18px">${c?esc(c.name):'Tap to choose'}</div>${c?`<div class="small ${d.type==='sale'?'in':'out'}">Old balance ${inr(bal)}${c.limit&&bal+tt.grand>c.limit?' · <span class="out">will cross credit limit '+inr(c.limit)+'</span>':''}</div>`:''}</div><span class="chev">›</span></div></div>
   ${d.items.map((i,k)=>{const below=d.type==='sale'&&perPc(i)<avgCost(i.vid);const short=d.type==='sale'&&pcs(i)>stockOf(i.vid);return `<div class="card" onclick="A.itemSheet(${k})" style="cursor:pointer"><div class="row"><div class="sp"><b>${esc(vname(i.vid))}</b><div class="small mute">${i.qty} ${i.unit==='ctn'?T('ctn').toLowerCase():T('pcs').toLowerCase()} × ${inr2(i.rate)}${i.rt==='retail'?' · retail':''}${g?' · GST '+prodOf(i.vid).gst+'%':''}</div></div><b class="num">${inr2(i.qty*i.rate)}</b></div>${below?`<div class="warnbox">Below your cost (${inr2(avgCost(i.vid))}/pc). You lose money on this.</div>`:''}${short?`<div class="warnbox">Only ${fq(stockOf(i.vid),i.vid)} in stock.</div>`:''}</div>`}).join('')}
   <button class="btn ghost" onclick="A.itemSheet(-1)" style="border-style:dashed;margin-bottom:12px">${T('additem')}</button>
   ${d.file?`<div class="small mute" style="margin:-4px 0 10px">Bill file: ${esc(d.file)}</div>`:''}${g&&d.type==='purchase'?`<label class="f"><span>Vendor invoice no.</span><input class="inp" value="${esc(d.vinv||'')}" oninput="S_.draft.vinv=this.value"></label>`:''}
@@ -189,51 +225,6 @@ const A=window.A={go,back,tab,setBook,closeSheet,addMenu,psearch,newBill,editBil
 /* ---------- native Android (Capacitor) speech ---------- */
 const IS_APP=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 let NSR=null,NTTS=null,BIO=null,PRN=null,NFS=null,NSH=null;if(IS_APP){const rp=n=>{try{return window.Capacitor.registerPlugin(n)}catch(e){return null}};NSR=rp('SpeechRecognition');NTTS=rp('TextToSpeech');BIO=rp('NativeBiometric');PRN=rp('Printer');NFS=rp('Filesystem');NSH=rp('Share')}
-const APP_VERSION='1.1.0';
+const APP_VERSION='1.2.0';
 async function nativeSpeak(text){if(!NTTS)return false;try{await NTTS.stop().catch(()=>{});await NTTS.speak({text:text.slice(0,3900),lang:S.lang==='hi'?'hi-IN':'en-IN',rate:0.95,pitch:1,volume:1,category:'playback'});return true}catch(e){return false}}
 async function nativeListen(){if(!NSR)return false;try{const a=await NSR.available();if(a&&a.available===false){toast('Speech recognition not available on this phone');return true}const p=await NSR.requestPermissions();if(p&&p.speechRecognition&&p.speechRecognition!=='granted'){toast('Microphone permission was not given');return true}
-  vMicState(true);const r=await NSR.start({language:S.lang==='hi'?'hi-IN':'en-IN',maxResults:1,prompt:S.lang==='hi'?'बोलिए…':'Speak now…',partialResults:false,popup:true});S.vlisten=false;vMicState(false);const t=r&&r.matches&&r.matches[0];if(t){const e=$('#vtxt');if(e)e.value=t;A.vrun()}}catch(e){S.vlisten=false;vMicState(false);toast('Did not catch that. Try again.')}return true}
-
-let DICT=null,TTSO=null,SAMP=null;
-try{if(window.claude&&window.claude.use){window.claude.use('dictation').then(d=>{DICT=d;if(d){d.onPartial(({text})=>vLive(text,false));d.onFinal(({text})=>vLive(text,true));d.onState(({state})=>vMicState(state==='listening'))}}).catch(()=>{});window.claude.use('tts').then(t=>TTSO=t).catch(()=>{});window.claude.use('sample').then(s=>{SAMP=s;if(S.view.n==='voice')render()}).catch(()=>{})}}catch(e){}
-S.vmode='offline';S.vspeak=true;let VFIN='';
-const ALIAS={p0:['surf','सर्फ'],p1:['tide','टाइड'],p2:['rin','रिन'],p3:['clinic','क्लिनिक'],p4:['head','shoulder','शोल्डर','हेड'],p5:['colgate','कोलगेट'],p6:['lifebuoy','लाइफबॉय','लाइफबॉय'],p7:['dettol','डेटॉल'],p8:['vim','विम'],p9:['parle','पारले','parleg'],p10:['salt','namak','नमक'],p11:['harpic','हार्पिक']};
-const NUMW={ek:1,do:2,teen:3,tin:3,char:4,chaar:4,panch:5,paanch:5,chhe:6,che:6,saat:7,sat:7,aath:8,nau:9,das:10,gyarah:11,barah:12,baarah:12,pandrah:15,bees:20,pachas:50,sau:100,'एक':1,'दो':2,'तीन':3,'चार':4,'पांच':5,'पाँच':5,'छह':6,'सात':7,'आठ':8,'नौ':9,'दस':10,'बारह':12,'बीस':20,'पचास':50,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,twelve:12,twenty:20};
-const has=(t,arr)=>arr.some(w=>t.includes(w));
-function vnorm(s){let t=' '+String(s).toLowerCase().replace(/[०-९]/g,d=>'०१२३४५६७८९'.indexOf(d)).replace(/₹\s?/g,' rs ').replace(/[,।.!?]/g,' $& ').replace(/(\d)\s*(kg|g|gm|ml|l|ltr)\b/g,'$1 $2')+' ';
-  t=t.replace(/\s(\S+)\s/g,(m,w)=>NUMW[w]!==undefined&&!/\d/.test(w)?' '+NUMW[w]+' ':m);t=t.replace(/\s(\S+)\s/g,(m,w)=>NUMW[w]!==undefined&&!/\d/.test(w)?' '+NUMW[w]+' ':m);return t.replace(/\s+/g,' ')}
-const CAL={v1:'गणेश',v2:'अग्रवाल',v3:'महालक्ष्मी',v4:'ओम साई',c1:'शर्मा',c2:'गुप्ता',c3:'जैन',c4:'पटेल',c5:'वर्मा',c6:'बालाजी',c7:'खान',c8:'सिंह',s0:'रमेश',s1:'सुरेश',s2:'राजू',s3:'पिंकी'};
-function findParty(t,types){const d=contacts.find(c=>types.includes(c.type)&&CAL[c.id]&&t.includes(CAL[c.id]));if(d)return d;let best=null,bl=0;contacts.filter(c=>types.includes(c.type)).forEach(c=>{const w=c.name.toLowerCase().split(/\s+/).filter(x=>x.length>2&&!['store','stores','general','traders','enterprises','agencies','brothers','mart','provision','departmental','distributors','super','medical','new','kirana','shree'].includes(x));w.forEach(x=>{if(t.includes(' '+x)&&x.length>bl){bl=x.length;best=c}})});return best}
-function findStaff(t){return S.staff.filter(s=>t.includes(' '+s.name.toLowerCase().split(' ')[0])||(CAL[s.id]&&t.includes(CAL[s.id])))}
-function findProd(seg){let best=null,bs=0;products.forEach(p=>{const al=ALIAS[p.id]||p.name.toLowerCase().split(/[\s&-]+/).filter(x=>x.length>2);const sc=al.filter(a=>seg.includes(a)).length;if(sc>bs){bs=sc;best=p}});return best}
-function findSize(p,seg){let v=null;p.v.forEach(x=>{const m=x.size.toLowerCase().match(/(\d+)\s?(g|kg|ml|l)\b/);if(m){const re=new RegExp('\\b'+m[1]+'\\s?'+(m[2]==='g'?'(g|gm|gram)':m[2]==='l'?'(l|ltr|litre)':m[2])+'\\b');if(re.test(seg))v=x}});return v}
-function parseItems(t,cid,type){
-  const segs=t.split(/ , | aur | and | और | तथा /).filter(s=>s.trim());const items=[];
-  segs.forEach(seg=>{const p=findProd(seg);if(!p)return;const V_=findSize(p,seg)||p.v[0];
-    let s2=seg;const sz=V_.size.toLowerCase().match(/(\d+)\s?(g|kg|ml|l)\b/);if(sz)s2=s2.replace(new RegExp('\\b'+sz[1]+'\\s?\\w*'),' ');
-    const unit=/(peti|pet[iy]|पेटी|carton|cartoon|ctn|box|डिब्बा|daba|dabba)/.test(s2)?'ctn':'pcs';
-    let rate=null;const rm=s2.match(/(\d+(?:\.\d+)?)\s*(rs|rupees?|rupay[ae]?|रुपये|रुपए|ka rate|wala|वाला)/)||s2.match(/(?:rate|bhav|भाव|@|rs)\s*(\d+(?:\.\d+)?)/);if(rm)rate=+rm[1];
-    const nums=(s2.match(/\d+(\.\d+)?/g)||[]).map(Number);const q=nums.find(n=>n!==rate);const qty=q||1;
-    if(!rate)rate=(cid&&lastRateFor(V_.id,cid,type,unit))||defRate(V_.id,type,unit,'wholesale');
-    items.push({vid:V_.id,unit,qty,rate,rt:'wholesale',ppc:V_.ppc})});
-  return items;
-}
-function vOffline(raw){
-  const t=vnorm(raw);const acts=[];const amt=()=>{const m=t.match(/\d+(\.\d+)?/g);return m?Math.max(...m.map(Number)):0};
-  const isQ=has(t,['?','kitna','kitni','kitne','kya hai','batao','bata','how much','what is','कितना','कितनी','बताओ','show ']);
-  if(isQ){
-    const c=findParty(t,['party','vendor']);const p=findProd(t);const per=has(t,[' kal ','yesterday','कल'])?'yesterday':has(t,['mahina','mahine','month','महीने'])?'month':has(t,['hafta','week','हफ्ते'])?'week':'today';
-    if(c&&has(t,['baaki','baki','balance','due','udhaar','udhar','lena','dena','बाकी','उधार']))acts.push({kind:'query',q:'balance',cid:c.id});
-    else if(c)acts.push({kind:'query',q:'balance',cid:c.id});
-    else if(p&&has(t,['stock','maal','स्टॉक','माल','bacha','बचा']))acts.push({kind:'query',q:'stock',vid:(findSize(p,t)||p.v[0]).id,pid:p.id});
-    else if(p)acts.push({kind:'query',q:'stock',vid:(findSize(p,t)||p.v[0]).id,pid:p.id});
-    else if(has(t,['kam','low','khatam','कम','ख़त्म']))acts.push({kind:'query',q:'lowstock'});
-    else if(has(t,['profit','munafa','fayda','मुनाफा','मुनाफ़ा','फायदा']))acts.push({kind:'query',q:'profit',per});
-    else if(has(t,['kharcha','expense','खर्चा']))acts.push({kind:'query',q:'expense',per:per==='today'?'month':per});
-    else if(has(t,['kharid','purchase','खरीद']))acts.push({kind:'query',q:'purchase',per});
-    else if(has(t,['cash','paisa','paise','पैसा','received','aaya']))acts.push({kind:'query',q:'cash',per});
-    else if(has(t,['lena','baaki','udhaar','बाकी','उधार']))acts.push({kind:'query',q:'receivable'});
-    else acts.push({kind:'query',q:'sale',per});
-    return acts;
-  }
-  const st=findStaff(t);

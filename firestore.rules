@@ -1,10 +1,17 @@
 rules_version = '2';
-// Wholesale Khata – online orders.
+// Wholesale Khata – accounts, plans and online orders.
 // Paste this whole file in Firebase console → Firestore Database → Rules → Publish.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
+    // Shop owners log in with email; customers on the order page stay anonymous.
+    function member() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+    // The admin: only this email, and only after it is verified (link sent on sign-up).
+    function isAdmin() {
+      return signedIn() && request.auth.token.email == 'rahulg.aice@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
     function shopDoc(s) { return get(/databases/$(database)/documents/shops/$(s)).data; }
     function isOwner(s) { return signedIn() && shopDoc(s).ownerUid == request.auth.uid; }
     function sessPath(s) { return /databases/$(database)/documents/shops/$(s)/sessions/$(request.auth.uid); }
@@ -19,7 +26,7 @@ service cloud.firestore {
     match /shops/{s} {
       // Shop name, phone, UPI ID and open/closed are public so the link page can show them.
       allow read: if true;
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow create: if member() && request.resource.data.ownerUid == request.auth.uid;
       allow update: if isOwner(s) && request.resource.data.ownerUid == resource.data.ownerUid;
       allow delete: if isOwner(s);
 
@@ -93,6 +100,29 @@ service cloud.firestore {
           ));
         allow delete: if isOwner(s);
       }
+    }
+
+    // Accounts: each owner sees only their own; the admin sees all. Trial start is the server's clock.
+    // Only the admin can change plan, end date, extra trial days, hold and notes.
+    match /users/{uid} {
+      allow read: if (member() && request.auth.uid == uid) || isAdmin();
+      allow create: if member() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['email','name','shop','phone','createdAt','lastSeen','appVersion','platform'])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() || (member() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','shop','phone','lastSeen','appVersion','platform','lastPurchase'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastSeen']) || request.resource.data.lastSeen == request.time));
+      allow delete: if (member() && request.auth.uid == uid) || isAdmin();
+    }
+
+    // Google Play purchases reported by the app, for the admin to match with Play Console.
+    match /purchases/{id} {
+      allow create: if member() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid','email','product','orderId','purchaseToken','purchaseDate','status','createdAt'])
+        && request.resource.data.status == 'new' && request.resource.data.createdAt == request.time;
+      allow read: if isAdmin() || (member() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
   }
 }

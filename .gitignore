@@ -6,3 +6,4 @@ android/
 *.keystore
 www/index.html
 .DS_Store
+www/qa.html

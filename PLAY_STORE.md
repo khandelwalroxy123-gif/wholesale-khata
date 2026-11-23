@@ -68,12 +68,13 @@ Wholesale Khata is a simple billing and accounts app for wholesalers of daily-us
 • Print or save bills as PDF, share on WhatsApp
 • PIN and fingerprint lock; save a backup file to Drive or WhatsApp and restore on any phone
 • Online orders: share a Retail and a Wholesale link or QR; you allow each visit, customers order, pay cash or UPI and track live; bills are made automatically
-• Your books stay on your phone – no account, no ads
+• Sign in with email; your books stay on your phone – no ads
+• 30 days free, then ₹499/month or the 5-Year Plan (₹20,000, valid 5 years)
 
-The app starts with a sample shop so you can try it. Go to More → Settings → Start fresh to begin with your own data.
+Create a free account to start your 30-day trial. The app can start with a sample shop so you can try it; choose Start fresh to begin with your own data.
 
 **Hindi (add as a translation, hi-IN):**
-होलसेल खाता – रोज़मर्रा का पैक्ड सामान बेचने वाले होलसेलर के लिए बिलिंग, स्टॉक, खाता, स्टाफ़ और मुनाफ़ा का आसान ऐप। बिना इंटरनेट और हिंदी में चलता है। दैनिक बही और GST बही अलग, कार्टन + खुले पीस में बिल, हर पार्टी के पुराने रेट, बकाया कितने दिन से, चेक, डिलीवरी, खर्चे, स्टाफ़ हाज़िरी और वेतन, मुनाफ़ा-नुकसान रिपोर्ट, आवाज़ से एंट्री, PIN/फ़िंगरप्रिंट लॉक। आपका डेटा सिर्फ़ आपके फ़ोन में रहता है।
+होलसेल खाता – रोज़मर्रा का पैक्ड सामान बेचने वाले होलसेलर के लिए बिलिंग, स्टॉक, खाता, स्टाफ़ और मुनाफ़ा का आसान ऐप। बिना इंटरनेट और हिंदी में चलता है। दैनिक बही और GST बही अलग, कार्टन + खुले पीस में बिल, हर पार्टी के पुराने रेट, बकाया कितने दिन से, चेक, डिलीवरी, खर्चे, स्टाफ़ हाज़िरी और वेतन, मुनाफ़ा-नुकसान रिपोर्ट, आवाज़ से एंट्री, PIN/फ़िंगरप्रिंट लॉक। 30 दिन फ्री, फिर ₹499/महीना या 5 साल का प्लान ₹20,000। आपकी बही सिर्फ़ आपके फ़ोन में रहती है।
 
 **Graphics (in `store/`):** `icon-512.png`, `feature-graphic-1024x500.png`, phone screenshots `screenshot-1…8.png` (1080×1920).
 
@@ -84,7 +85,7 @@ The app starts with a sample shop so you can try it. Go to More → Settings →
 | Section | Answer |
 |---|---|
 | Privacy policy | `https://khandelwalroxy123-gif.github.io/wholesale-khata/privacy.html` |
-| App access | "All functionality is available without special access"? **No** – the app opens with a PIN. Add instructions: *PIN: 1234 (sample data). Fingerprint is optional.* |
+| App access | **All or some functionality is restricted** → add a reviewer login: create a test account in the app (e.g. `playreview@…` with a password), then in Admin give it a 5-Year Plan so nothing is locked. Enter that email + password here, and note: *After sign-in the app opens directly; if a PIN is asked, it is 1234. Fingerprint is optional.* |
 | Ads | No ads |
 | Content rating | Questionnaire category **Utility, Productivity, Communication or Other**; answer No to all content questions → rated 3+/Everyone |
 | Target audience | 18 and over (not designed for children) |
@@ -92,26 +93,31 @@ The app starts with a sample shop so you can try it. Go to More → Settings →
 | COVID-19 / Health | No |
 | Government app | No |
 | Financial features | Bookkeeping and ordering; payments are made in the customer's own UPI app → "My app doesn't provide any financial features" |
+| Subscriptions / in-app products | Create `wk_monthly` (base plan `monthly-499`, ₹499/month) and `wk_5year` (one-time ₹20,000) in Monetize. Plans are bought only through Google Play Billing inside the app. |
 | Data safety | See below |
-| Permissions declarations | None needed (no restricted permissions) |
+| Permissions declarations | None needed. Notifications (Android 13+) are asked for only when Online orders are on. The exact-alarm permission is removed in the build. |
 
 ### Data safety form
 
-The books stay on the device. The optional **Online orders** feature stores data in Google Firebase (our service provider), so it must be declared. Answer:
+The books stay on the device. **Accounts** (email login, trial and plan) and the optional **Online orders** feature store data in Google Firebase (our service provider), so they must be declared. Answer:
 
 - **Does your app collect or share any of the required user data types?** → **Yes**
 - **Is all of the user data collected by your app encrypted in transit?** → **Yes** (Firebase uses HTTPS)
-- **Do you provide a way for users to request that their data is deleted?** → **Yes** – shops: Online orders → Delete online shop; customers: request by e-mail (privacy policy). Add the privacy policy URL as the deletion web link.
+- **Do you provide a way for users to request that their data is deleted?** → **Yes** – in the app: Settings → Account & plan → Delete account. **Delete account URL** (required for apps with accounts): `https://khandelwalroxy123-gif.github.io/wholesale-khata/delete-account.html`
+- **Can users create an account?** → Yes, with email and password. Account deletion is offered in the app and on the web page above.
 
 | Data type | Collected | Shared | Processed ephemerally | Required or optional | Purpose |
 |---|---|---|---|---|---|
-| Personal info → Name | Yes | No | No | Optional (only for online orders) | App functionality |
-| Personal info → Phone number | Yes | No | No | Optional | App functionality |
-| Personal info → Address | Yes | No | No | Optional | App functionality |
-| Financial info → Purchase history | Yes | No | No | Optional | App functionality |
-| Device or other IDs (Firebase anonymous ID) | Yes | No | No | Optional | App functionality |
+| Personal info → Name | Yes | No | No | Required (account) | App functionality, Account management |
+| Personal info → Email address | Yes | No | No | Required (account) | App functionality, Account management |
+| Personal info → User IDs | Yes | No | No | Required (account) | App functionality, Account management |
+| Personal info → Phone number | Yes | No | No | Required (account) | App functionality, Account management |
+| Personal info → Address | Yes | No | No | Optional (online orders) | App functionality |
+| Financial info → Purchase history | Yes | No | No | Required (plans) / Optional (online orders) | App functionality, Account management |
+| App activity → Other actions (last opened, app version) | Yes | No | No | Required | Account management |
+| Device or other IDs (Firebase anonymous ID for customers) | Yes | No | No | Optional | App functionality |
 
-Not collected: location, contacts, photos, files, audio, health, messages, app activity, crash logs, analytics.
+Not collected: location, contacts, photos, files, audio, health, messages, crash logs, analytics. Card/UPI details are handled by Google Play, not the app.
 Voice entry uses the phone's own speech recognition service (handled by Android/Google, not by the app); the app receives only the text and keeps no audio.
 User-initiated sharing (WhatsApp messages, backup file through the share menu, printing) is exempt.
 

@@ -1,3 +1,48 @@
+  vMicState(true);const r=await NSR.start({language:S.lang==='hi'?'hi-IN':'en-IN',maxResults:1,prompt:S.lang==='hi'?'बोलिए…':'Speak now…',partialResults:false,popup:true});S.vlisten=false;vMicState(false);const t=r&&r.matches&&r.matches[0];if(t){const e=$('#vtxt');if(e)e.value=t;A.vrun()}}catch(e){S.vlisten=false;vMicState(false);toast('Did not catch that. Try again.')}return true}
+
+let DICT=null,TTSO=null,SAMP=null;
+try{if(window.claude&&window.claude.use){window.claude.use('dictation').then(d=>{DICT=d;if(d){d.onPartial(({text})=>vLive(text,false));d.onFinal(({text})=>vLive(text,true));d.onState(({state})=>vMicState(state==='listening'))}}).catch(()=>{});window.claude.use('tts').then(t=>TTSO=t).catch(()=>{});window.claude.use('sample').then(s=>{SAMP=s;if(S.view.n==='voice')render()}).catch(()=>{})}}catch(e){}
+S.vmode='offline';S.vspeak=true;let VFIN='';
+const ALIAS={p0:['surf','सर्फ'],p1:['tide','टाइड'],p2:['rin','रिन'],p3:['clinic','क्लिनिक'],p4:['head','shoulder','शोल्डर','हेड'],p5:['colgate','कोलगेट'],p6:['lifebuoy','लाइफबॉय','लाइफबॉय'],p7:['dettol','डेटॉल'],p8:['vim','विम'],p9:['parle','पारले','parleg'],p10:['salt','namak','नमक'],p11:['harpic','हार्पिक']};
+const NUMW={ek:1,do:2,teen:3,tin:3,char:4,chaar:4,panch:5,paanch:5,chhe:6,che:6,saat:7,sat:7,aath:8,nau:9,das:10,gyarah:11,barah:12,baarah:12,pandrah:15,bees:20,pachas:50,sau:100,'एक':1,'दो':2,'तीन':3,'चार':4,'पांच':5,'पाँच':5,'छह':6,'सात':7,'आठ':8,'नौ':9,'दस':10,'बारह':12,'बीस':20,'पचास':50,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,twelve:12,twenty:20};
+const has=(t,arr)=>arr.some(w=>t.includes(w));
+function vnorm(s){let t=' '+String(s).toLowerCase().replace(/[०-९]/g,d=>'०१२३४५६७८९'.indexOf(d)).replace(/₹\s?/g,' rs ').replace(/[,।.!?]/g,' $& ').replace(/(\d)\s*(kg|g|gm|ml|l|ltr)\b/g,'$1 $2')+' ';
+  t=t.replace(/\s(\S+)\s/g,(m,w)=>NUMW[w]!==undefined&&!/\d/.test(w)?' '+NUMW[w]+' ':m);t=t.replace(/\s(\S+)\s/g,(m,w)=>NUMW[w]!==undefined&&!/\d/.test(w)?' '+NUMW[w]+' ':m);return t.replace(/\s+/g,' ')}
+const CAL={v1:'गणेश',v2:'अग्रवाल',v3:'महालक्ष्मी',v4:'ओम साई',c1:'शर्मा',c2:'गुप्ता',c3:'जैन',c4:'पटेल',c5:'वर्मा',c6:'बालाजी',c7:'खान',c8:'सिंह',s0:'रमेश',s1:'सुरेश',s2:'राजू',s3:'पिंकी'};
+function findParty(t,types){const d=contacts.find(c=>types.includes(c.type)&&CAL[c.id]&&t.includes(CAL[c.id]));if(d)return d;let best=null,bl=0;contacts.filter(c=>types.includes(c.type)).forEach(c=>{const w=c.name.toLowerCase().split(/\s+/).filter(x=>x.length>2&&!['store','stores','general','traders','enterprises','agencies','brothers','mart','provision','departmental','distributors','super','medical','new','kirana','shree'].includes(x));w.forEach(x=>{if(t.includes(' '+x)&&x.length>bl){bl=x.length;best=c}})});return best}
+function findStaff(t){return S.staff.filter(s=>t.includes(' '+s.name.toLowerCase().split(' ')[0])||(CAL[s.id]&&t.includes(CAL[s.id])))}
+function findProd(seg){let best=null,bs=0;products.forEach(p=>{const al=ALIAS[p.id]||p.name.toLowerCase().split(/[\s&-]+/).filter(x=>x.length>2);const sc=al.filter(a=>seg.includes(a)).length;if(sc>bs){bs=sc;best=p}});return best}
+function findSize(p,seg){let v=null;p.v.forEach(x=>{const m=x.size.toLowerCase().match(/(\d+)\s?(g|kg|ml|l)\b/);if(m){const re=new RegExp('\\b'+m[1]+'\\s?'+(m[2]==='g'?'(g|gm|gram)':m[2]==='l'?'(l|ltr|litre)':m[2])+'\\b');if(re.test(seg))v=x}});return v}
+function parseItems(t,cid,type){
+  const segs=t.split(/ , | aur | and | और | तथा /).filter(s=>s.trim());const items=[];
+  segs.forEach(seg=>{const p=findProd(seg);if(!p)return;const V_=findSize(p,seg)||p.v[0];
+    let s2=seg;const sz=V_.size.toLowerCase().match(/(\d+)\s?(g|kg|ml|l)\b/);if(sz)s2=s2.replace(new RegExp('\\b'+sz[1]+'\\s?\\w*'),' ');
+    const unit=/(peti|pet[iy]|पेटी|carton|cartoon|ctn|box|डिब्बा|daba|dabba)/.test(s2)?'ctn':'pcs';
+    let rate=null;const rm=s2.match(/(\d+(?:\.\d+)?)\s*(rs|rupees?|rupay[ae]?|रुपये|रुपए|ka rate|wala|वाला)/)||s2.match(/(?:rate|bhav|भाव|@|rs)\s*(\d+(?:\.\d+)?)/);if(rm)rate=+rm[1];
+    const nums=(s2.match(/\d+(\.\d+)?/g)||[]).map(Number);const q=nums.find(n=>n!==rate);const qty=q||1;
+    if(!rate)rate=(cid&&lastRateFor(V_.id,cid,type,unit))||defRate(V_.id,type,unit,'wholesale');
+    items.push({vid:V_.id,unit,qty,rate,rt:'wholesale',ppc:V_.ppc})});
+  return items;
+}
+function vOffline(raw){
+  const t=vnorm(raw);const acts=[];const amt=()=>{const m=t.match(/\d+(\.\d+)?/g);return m?Math.max(...m.map(Number)):0};
+  const isQ=has(t,['?','kitna','kitni','kitne','kya hai','batao','bata','how much','what is','कितना','कितनी','बताओ','show ']);
+  if(isQ){
+    const c=findParty(t,['party','vendor']);const p=findProd(t);const per=has(t,[' kal ','yesterday','कल'])?'yesterday':has(t,['mahina','mahine','month','महीने'])?'month':has(t,['hafta','week','हफ्ते'])?'week':'today';
+    if(c&&has(t,['baaki','baki','balance','due','udhaar','udhar','lena','dena','बाकी','उधार']))acts.push({kind:'query',q:'balance',cid:c.id});
+    else if(c)acts.push({kind:'query',q:'balance',cid:c.id});
+    else if(p&&has(t,['stock','maal','स्टॉक','माल','bacha','बचा']))acts.push({kind:'query',q:'stock',vid:(findSize(p,t)||p.v[0]).id,pid:p.id});
+    else if(p)acts.push({kind:'query',q:'stock',vid:(findSize(p,t)||p.v[0]).id,pid:p.id});
+    else if(has(t,['kam','low','khatam','कम','ख़त्म']))acts.push({kind:'query',q:'lowstock'});
+    else if(has(t,['profit','munafa','fayda','मुनाफा','मुनाफ़ा','फायदा']))acts.push({kind:'query',q:'profit',per});
+    else if(has(t,['kharcha','expense','खर्चा']))acts.push({kind:'query',q:'expense',per:per==='today'?'month':per});
+    else if(has(t,['kharid','purchase','खरीद']))acts.push({kind:'query',q:'purchase',per});
+    else if(has(t,['cash','paisa','paise','पैसा','received','aaya']))acts.push({kind:'query',q:'cash',per});
+    else if(has(t,['lena','baaki','udhaar','बाकी','उधार']))acts.push({kind:'query',q:'receivable'});
+    else acts.push({kind:'query',q:'sale',per});
+    return acts;
+  }
+  const st=findStaff(t);
   if(st.length&&has(t,['advance','एडवांस','udhaar diya'])){st.forEach(s=>acts.push({kind:'advance',sid:s.id,amt:amt()}));return acts}
   if(st.length&&!findProd(t)){const stOf=x=>has(x,['absent','nahi aaya','nahin aaya','nahi aayi','gair','गैरहाजिर','नहीं आया'])?'A':has(x,['half','aadha','आधा','हाफ'])?'H':has(x,['chhutti','chutti','leave','छुट्टी'])?'L':'P';const seen={};t.split(/ , | \. | । /).forEach(seg=>{const ss=findStaff(' '+seg+' ');const a=stOf(seg);ss.forEach(s=>{if(!seen[s.id]){seen[s.id]=1;acts.push({kind:'attendance',sid:s.id,status:a})}})});return acts}
   const HM=[['Electricity bill',['bijli','electric','light bill','बिजली']],['Water bill',['paani','pani','water','पानी']],['Worker salary',['salary','tankhwah','पगार','तनख्वाह','majdoori','मजदूरी']],['Shop rent',['rent','kiraya','किराया']],['Tea & snacks',['chai','tea','nashta','नाश्ता','चाय']],['Transport',['transport','bhada','bhaada','tempo','भाड़ा','टेम्पो']],['Repair',['repair','marammat','मरम्मत']]];
@@ -189,7 +234,7 @@ Object.assign(A,{
 });
 /* settings view: put storage card first */
 const _settings=V.settings;V.settings=v=>{const h=_settings(v);const i=h.indexOf('<div class="card"><b>Backup to Google Drive</b>');if(i<0)return h;const j=h.indexOf('<div class="card"><b>App lock</b>');
-  return h.slice(0,i)+storageCard()+`<div class="card"><b>Privacy</b><div class="small mute">Your books stay on this phone. ${S.online?'Online orders, customer requests and your price list are kept in the app\'s online database so customers can order and track.':'Nothing is sent online unless you turn on Online orders.'} Version ${APP_VERSION}.</div><a class="btn ghost" style="display:grid;place-items:center;text-decoration:none;margin-top:8px" href="privacy.html">Read the privacy policy</a></div><div class="card"><b>Data on this phone</b><div class="small mute">Start using the app for real, or bring back the sample shop.</div><div class="btns"><button class="btn ghost" onclick="A.startFresh()">Start fresh</button><button class="btn ghost" onclick="A.resetSample()">Load sample data</button></div></div>`+h.slice(j)};
+  return h.slice(0,i)+storageCard()+`<div class="card"><b>Privacy</b><div class="small mute">Your books stay on this phone. ${S.online?'Online orders, customer requests and your price list are kept in the app\'s online database so customers can order and track.':'Your login and plan dates are kept online; nothing from your books is sent.'} Version ${APP_VERSION}.</div><button class="btn ghost" style="margin-top:8px" onclick="A.acDoc('privacy')">Read the privacy policy</button></div><div class="card"><b>Data on this phone</b><div class="small mute">Start using the app for real, or bring back the sample shop.</div><div class="btns"><button class="btn ghost" onclick="A.startFresh()">Start fresh</button><button class="btn ghost" onclick="A.resetSample()">Load sample data</button></div></div>`+h.slice(j)};
 /* backup file: works in the Android app and in any browser */
 function bkName(){const d=new Date();return 'WholesaleKhata-backup-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.json'}
 async function saveBackupFile(){const json=JSON.stringify(snapshot());const name=bkName();
@@ -215,24 +260,3 @@ const GUIDE=[
  hi:['कोई भी सामान खोजें, हर रेट देखें','सामान का नाम लिखिए, साइज़ चुनिए, और स्टॉक के साथ सारे बिक्री और खरीद के रेट दिखेंगे, नए से पुराने। हर वेंडर और हर पार्टी के आखिरी 5 रेट भी दिखते हैं, और नीचे पूरी हिस्ट्री।','पार्टी रेट पूछे तो सेकंडों में जवाब, और कभी लागत से कम रेट नहीं।']},
 {ic:'sale',c:'#1f7a4d',go:"A.newBill('sale','c1')",
  en:['Sale bill in 30 seconds','Tap plus, choose Sale, pick the party and add items. Enter cartons and loose pieces together. The rate fills in from the last rate given to that party. The app warns you if you sell below cost, have less stock, or the party crosses its credit limit. Print the bill as PDF or send it on WhatsApp.','Fast, correct bills with no calculation mistakes, and no loss-making sale goes out by accident.'],
- hi:['30 सेकंड में बिक्री बिल','प्लस दबाइए, बिक्री चुनिए, पार्टी चुनिए और सामान जोड़िए। पेटी और खुले पीस एक साथ डालिए। उस पार्टी का पिछला रेट अपने आप आ जाता है। लागत से कम रेट, कम स्टॉक या पार्टी की उधार सीमा पार होने पर ऐप चेतावनी देता है। बिल PDF में प्रिंट करें या WhatsApp पर भेजें।','तेज़ और सही बिल, हिसाब में गलती नहीं, और घाटे का सौदा गलती से नहीं होगा।']},
-{ic:'upload',c:'#173a6b',go:"A.upload()",
- en:['Purchase bills','Enter purchase bills like sale bills. In the GST book you can keep the vendor’s bill PDF or photo with the entry and lock the bill after saving. Automatic reading of bills is coming in a later version.','Almost no typing for purchases, stock goes up instantly, and your input tax credit papers are in order.'],
- hi:['खरीद बिल','खरीद बिल बिक्री की तरह डालिए। GST खाते में वेंडर के बिल की PDF या फ़ोटो एंट्री के साथ रखिए। बिल अपने आप पढ़ने की सुविधा अगले वर्ज़न में आएगी।','खरीद में लगभग कोई टाइपिंग नहीं, स्टॉक तुरंत बढ़ता है, और इनपुट टैक्स क्रेडिट के कागज़ सही रहते हैं।']},
-{ic:'stock',c:'#4b463f',go:"A.go('stock',{f:'low'})",
- en:['Live stock and smart ordering','Stock updates with every bill, shown in cartons and pieces. Set a minimum for each size. Low items are listed with the vendor who gave the best recent rate, and one tap sends the order on WhatsApp. Items not selling for 45 days are shown separately.','You never run out of fast items, you buy at the best rate, and your money does not stay stuck in slow stock.'],
- hi:['लाइव स्टॉक और समझदारी से ऑर्डर','हर बिल के साथ स्टॉक बदलता है, पेटी और पीस में। हर साइज़ का न्यूनतम स्टॉक तय कीजिए। कम सामान के साथ सबसे सस्ता रेट देने वाला वेंडर दिखता है, एक टच में WhatsApp पर ऑर्डर। 45 दिन से न बिकने वाला सामान अलग दिखता है।','चलने वाला माल कभी ख़त्म नहीं, सबसे अच्छे रेट पर खरीद, और पैसा धीमे माल में नहीं फँसता।']},
-{ic:'payment',c:'#5b3a8c',go:"A.tab('khata')",
- en:['Khata: who owes, who to pay','Khata shows every party’s balance and every vendor you have to pay. You see how old each due is: 0 to 30, 30 to 60, 60 to 90 and 90 plus days. Record cash, UPI or cheque payments, send a reminder on WhatsApp in one tap, and track cheque dates and bounces.','Money comes back faster, nothing is forgotten, and you know exactly whom to chase today.'],
- hi:['खाता: किससे लेना, किसे देना','खाते में हर पार्टी का बाकी और हर वेंडर को देना दिखता है। हर बाकी कितना पुराना है, 0 से 30, 30 से 60, 60 से 90 और 90 दिन से ज़्यादा, यह भी दिखता है। कैश, UPI या चेक पेमेंट डालिए, एक टच में WhatsApp पर याद दिलाइए, और चेक की तारीख़ व बाउंस का ध्यान रखिए।','पैसा जल्दी वापस आता है, कुछ भूलता नहीं, और पता रहता है आज किससे माँगना है।']},
-{ic:'delivery',c:'#2f5d7c',go:"A.go('delivery')",
- en:['Delivery and goods received','Every sale moves from pending to dispatched to delivered to received by the party. Every purchase is marked received only after you check the goods.','No arguments about delivery, and you never pay for goods that did not arrive.'],
- hi:['डिलीवरी और माल मिलना','हर बिक्री बाकी से भेजा, पहुँचा और पार्टी को मिला तक चलती है। हर खरीद तभी मिली मानी जाती है जब आप माल जाँच लें।','डिलीवरी पर कोई बहस नहीं, और बिना आए माल का पैसा नहीं जाता।']},
-{ic:'expense',c:'#a0701c',go:"A.go('expenses')",
- en:['Expenses by head','Write electricity, water, salary, rent, transport, tea and other expenses under their heads. See where money goes every month.','You see your real profit after all costs, not just the margin on goods.'],
- hi:['हर खर्चा उसके खाने में','बिजली, पानी, तनख्वाह, किराया, भाड़ा, चाय और बाकी खर्चे उनके खाने में डालिए। हर महीने पैसा कहाँ जा रहा है, साफ़ दिखेगा।','सब खर्चों के बाद असली मुनाफ़ा दिखता है, सिर्फ़ माल का मार्जिन नहीं।']},
-{ic:'attendance',c:'#1f6b6b',go:"A.go('staff')",
- en:['Staff attendance and salary','Mark present, half day, absent or leave in one tap each morning. The calendar shows the whole month. Advances and overtime are recorded, salary is calculated automatically, and the salary slip goes on WhatsApp.','No salary disputes, and you know exactly what each worker earned.'],
- hi:['स्टाफ़ हाज़िरी और तनख्वाह','सुबह एक टच में हाज़िर, आधा दिन, गैरहाज़िर या छुट्टी लगाइए। कैलेंडर में पूरा महीना दिखता है। एडवांस और ओवरटाइम दर्ज होता है, तनख्वाह अपने आप बनती है, और सैलरी स्लिप WhatsApp पर जाती है।','तनख्वाह पर कोई झगड़ा नहीं, और पता रहता है किसने कितना कमाया।']},
-{ic:'reports',c:'#a34a1f',go:"A.go('reports')",
- en:['Profit and loss, daily to monthly','Reports show sale, purchase, gross profit, transport, expenses and net profit for today, the week or the month, with charts. Profit is also shown by product, by party, and which vendor is cheaper.','You know which products and parties really earn money, and where to push or cut.'],
