@@ -1,3 +1,10 @@
+const prodRows=q=>{q=(q||'').toLowerCase();return products.filter(p=>!q||p.name.toLowerCase().includes(q)||p.cat.toLowerCase().includes(q)).map(p=>`<div class="li" onclick="A.ipick('${p.id}')"><div class="av" ${avs(p.cat)}>${esc(p.name[0])}</div><div class="sp"><div class="t">${esc(p.name)}</div><div class="s">${p.v.map(v=>esc(v.size)).join(' · ')}</div></div></div>`).join('')||'<div class="mute" style="padding:10px 2px">Not found. Add it as a new product.</div>'};
+function drawItem(){const d=S.draft;const it=IT;let h='';const unitL=u=>u==='ctn'?T('ctn').toLowerCase():T('pcs').toLowerCase();
+  if(it.step==='p'){h=`<h2>Choose product</h2><div class="search"><input id="isq" placeholder="${esc(T('searchp'))}" value="${esc(it.q)}" oninput="A.isq(this.value)" autocomplete="off"></div><button class="btn ghost" style="margin-bottom:8px" onclick="A.newProduct('bill')">+ New product</button><div id="isr">${prodRows(it.q)}</div>`}
+  else if(it.step==='v'){const p=products.find(p=>p.id===it.pid);h=`<button class="back" onclick="A.istep('p')">${T('back')}</button><h2>${esc(p.name)} · ${T('sizes')}</h2>${p.v.map(V_=>`<div class="li" onclick="A.ivar('${V_.id}')"><div class="sp"><div class="t" style="font-size:18px">${esc(V_.size)}</div><div class="s">${V_.ppc} pcs/carton · stock ${fq(stockOf(V_.id),V_.id)}</div></div><span class="chev">›</span></div>`).join('')}<button class="btn ghost" style="margin-top:10px" onclick="A.newSize('${p.id}','bill')">+ Add new size</button>`}
+  else{const last=d.cid?rateRows(it.vid,d.type).filter(o=>o.x.cid===d.cid).slice(0,5):[];
+    h=`${it.k<0?`<button class="back" onclick="A.istep('v')">${T('back')}</button>`:''}<h2>${esc(vname(it.vid))}</h2><div class="small mute" style="margin:-6px 0 10px">Stock ${fq(stockOf(it.vid),it.vid)} · your cost ${inr2(avgCost(it.vid))}/pc</div>
+    <div class="card" style="padding:10px 12px"><div class="row"><div class="sp"><div class="small mute">Pieces in 1 carton</div><div class="small">Change if the pack size is different this time</div></div><div class="qty" style="width:138px;height:44px"><button onclick="A.ippcd(-1)" aria-label="Less">−</button><input id="ippc" inputmode="numeric" value="${it.ppc}" oninput="A.ippc(this.value)"><button onclick="A.ippcd(1)" aria-label="More">+</button></div></div></div>
     ${d.type==='sale'?`<div class="seg"><button class="${it.rt==='wholesale'?'on':''}" onclick="A.iset('rt','wholesale')">${T('wholesale')}</button><button class="${it.rt==='retail'?'on':''}" onclick="A.iset('rt','retail')">${T('retail')}</button></div>`:''}
     <div class="g2"><label class="f"><span>${T('ctn')}</span><div class="qty"><button onclick="A.iq2('ctn',-1)" aria-label="Fewer cartons">−</button><input id="q_ctn" inputmode="numeric" value="${it.ctn}" oninput="A.iin('ctn',this.value)"><button onclick="A.iq2('ctn',1)" aria-label="More cartons">+</button></div></label>
     <label class="f"><span>+ ${S.lang==='hi'?'खुले पीस':'Loose pieces'}</span><div class="qty"><button onclick="A.iq2('pc',-1)" aria-label="Fewer pieces">−</button><input id="q_pc" inputmode="numeric" value="${it.pc}" oninput="A.iin('pc',this.value)"><button onclick="A.iq2('pc',1)" aria-label="More pieces">+</button></div></label></div>
@@ -54,9 +61,9 @@ let UP=null;
 function upload(){if(S.book!=='gst'){setBook('gst')}UP={step:'pick'};drawUp()}
 const SAMPLE_INV={vendor:'v2',inv:'AA/2627/7781',rows:[{txt:'CLINIC PLUS SHAMPOO 175ML',vid:'p3v0',qty:4,unit:'ctn',rate:3110,gst:18},{txt:'COLGATE ST 100GM',vid:'p5v0',qty:3,unit:'ctn',rate:3250,gst:18},{txt:'H&S SMOOTH SILKY 180ML',vid:'p4v0',qty:2,unit:'ctn',rate:5590,gst:18},{txt:'COLGATE STRONG TEETH 200G NEW',vid:'',qty:2,unit:'ctn',rate:4190,gst:18}]};
 function drawUp(){
-  if(UP.step==='pick')sheet(`<h2>Upload GST purchase bill</h2><div class="small mute" style="margin:-6px 0 10px">PDF or photo of the vendor's bill. The app reads it and fills the entry. You check it before saving.</div>
+  if(UP.step==='pick')sheet(`<h2>GST purchase bill</h2><div class="small mute" style="margin:-6px 0 10px">Keep the vendor's bill PDF or photo with this entry, then type the items. Automatic reading of bills is coming in a later version.</div>
   <label class="drop" for="upf"><div style="font-weight:600;font-size:17px">Choose PDF or photo</div><div class="small mute">Tap here</div></label><input type="file" id="upf" accept=".pdf,image/*" style="display:none" onchange="A.upRead(this.files[0]&&this.files[0].name)">
-  <button class="btn ghost" style="margin-top:10px" onclick="A.upRead('Agarwal_Agencies_Inv_7781.pdf')">Try with a sample bill</button>`);
+  <button class="btn ghost" style="margin-top:10px" onclick="A.closeSheet();A.newBill('purchase')">Type the bill without a file</button>`);
   else if(UP.step==='reading'){sheet(`<h2>Reading bill…</h2><div class="small mute">${esc(UP.file)}</div><div class="prog"><i id="upg"></i></div><div id="upm" class="mute">Reading text</div>`);const msgs=['Reading text','Finding vendor and GSTIN','Finding items and rates','Matching with your products'];let k=0;const tm=setInterval(()=>{k++;const g=$('#upg');if(!g){clearInterval(tm);return}g.style.width=k*25+'%';$('#upm').textContent=msgs[Math.min(k,3)];if(k>=4){clearInterval(tm);setTimeout(()=>{UP={step:'review',file:UP.file,...JSON.parse(JSON.stringify(SAMPLE_INV))};drawUp()},300)}},450)}
   else{const c=cOf(UP.vendor);let sub=0,tax=0;UP.rows.forEach(r=>{sub+=r.qty*r.rate;tax+=r.qty*r.rate*r.gst/100});const un=UP.rows.filter(r=>!r.vid).length;
     sheet(`<h2>Check and confirm</h2><div class="small mute" style="margin:-6px 0 10px">Preview: reading is simulated with a sample bill.</div>
@@ -74,7 +81,7 @@ function drawCN(){const x=B().bills.find(b=>b.id===CN.ref);sheet(`<h2>Credit not
 
 /* ---------- actions ---------- */
 const S_=S;window.S_=S;
-const A=window.A={go,back,tab,setBook,closeSheet,addMenu,psearch,newBill,editBill,itemSheet,pickContact,payForm,expForm,upload,creditNote,printBill:()=>{try{window.print()}catch(e){}toast('Opens the print / Save as PDF screen in the Android app')},
+const A=window.A={go,back,tab,setBook,closeSheet,addMenu,psearch,newBill,editBill,itemSheet,pickContact,payForm,expForm,upload,creditNote,printBill:async()=>{if(IS_APP&&PRN){try{await PRN.printWebView({name:'Bill'});}catch(e){toast('Printing is not available on this phone')}return}try{window.print()}catch(e){toast('Printing is not available here')}},
   askOk:()=>{const f=askFn;askFn=null;f&&f()},pin,lock:()=>{S.locked=true;render()},lang:()=>{S.lang=S.lang==='hi'?'en':'hi';render()},setLang:l=>{S.lang=l;render()},
   setv:(k,val)=>{S.view[k]=val;render(k!=='q')},vtab:t=>{S.view.t=t;render()},
   setMin:vid=>{const V_=VAR[vid];sheet(`<h2>Minimum stock</h2><p class="mute">Alert me when ${esc(vname(vid))} goes below how many cartons?</p><div class="qty"><button onclick="A.mnd(-1)" aria-label="Less">−</button><input id="mn" inputmode="numeric" value="${Math.round(V_.min/V_.ppc)}"><button onclick="A.mnd(1)" aria-label="More">+</button></div><button class="btn" style="margin-top:12px" onclick="A.minSave('${vid}')">${T('save')}</button>`)},
@@ -137,7 +144,7 @@ const A=window.A={go,back,tab,setBook,closeSheet,addMenu,psearch,newBill,editBil
   efset:(k,val)=>{EF[k]=val;EF.amt=$('#ef_a')?$('#ef_a').value:EF.amt;drawExp()},efin:(k,val)=>{EF[k]=val},
   efSave:()=>{const a=+EF.amt;if(!(a>0)){toast('Enter amount');return}B().exps.push({id:uid(),head:EF.head,amt:a,date:Date.now(),note:EF.note});closeSheet();render();toast('Expense saved')},
   /* upload */
-  upRead:f=>{if(!f)return;UP={step:'reading',file:f};drawUp()},upMap:(k,v)=>{UP.rows[k].vid=v;drawUp()},
+  upRead:f=>{if(!f)return;closeSheet();newBill('purchase');S.draft.file=f;S.draft.vinv='';render();toast('File noted: '+f+'. Now add the items from the bill.')},upMap:(k,v)=>{UP.rows[k].vid=v;drawUp()},
   upSave:()=>{const b=S.books.gst;const x={id:uid(),type:'purchase',no:nextNo('purchase'),date:Date.now(),cid:UP.vendor,items:UP.rows.map(r=>({vid:r.vid,unit:r.unit,qty:r.qty,rate:r.rate,rt:'wholesale'})),transport:0,status:'issued',del:'pending',delBy:'',vinv:UP.inv,file:UP.file};b.bills.push(x);closeSheet();S.stack=[{n:S.tab}];S.view={n:'bill',id:x.id};render(true);toast('Purchase bill saved from PDF · mark received when goods arrive')},
   /* credit note */
   cnq:(k,d)=>{const x=B().bills.find(b=>b.id===CN.ref);CN.q[k]=Math.max(0,Math.min(x.items[k].qty,CN.q[k]+d));drawCN()},cnr:v=>{CN.reason=v},
@@ -149,16 +156,18 @@ const A=window.A={go,back,tab,setBook,closeSheet,addMenu,psearch,newBill,editBil
   voiceBill:()=>{const r=S.view.r;S.draft={type:'sale',cid:r.cid,items:[{vid:r.vid,unit:r.unit,qty:r.qty,rate:r.rate,rt:'wholesale'}],transport:0,paid:0,mode:'cash',date:Date.now(),vinv:''};go('billform')},
   /* settings */
   tog:k=>{S[k]=!S[k];render()},
+  fingerTog:async()=>{if(S.finger){S.finger=false;render();return}if(!BIO){toast('Fingerprint is not available');return}try{const a=await BIO.isAvailable();if(!a||!a.isAvailable){toast('First add a fingerprint in your phone settings');return}await BIO.verifyIdentity({reason:'Turn on fingerprint unlock',title:'Confirm fingerprint',negativeButtonText:'Cancel'});S.finger=true;render();toast('Fingerprint unlock is on')}catch(e){toast('Fingerprint not confirmed')}},
   backup:()=>{const p=$('#bkp');p.style.display='block';const i=p.querySelector('i');let w=0;const tm=setInterval(()=>{w+=20;i.style.width=w+'%';if(w>=100){clearInterval(tm);S.lastBackup=Date.now();render();toast('Backed up to Google Drive (simulated in preview)')}},250)},
   changePin:()=>sheet(`<h2>Change PIN</h2><label class="f"><span>New 4-digit PIN</span><input class="inp" id="np" inputmode="numeric" maxlength="4" type="password"></label><button class="btn" onclick="A.savePin()">${T('save')}</button>`),
   savePin:()=>{const v=$('#np').value;if(!/^\d{4}$/.test(v)){toast('PIN must be 4 digits');return}S.pin=v;closeSheet();toast('PIN changed')},
   saveShop:()=>{S.shop.name=$('#sh_n').value;S.shop.addr=$('#sh_a').value;S.shop.phone=$('#sh_p').value;S.shop.gstin=$('#sh_g').value;render();toast('Shop details saved')},
-  clearMonth:(y,m)=>ask('Clear '+MON[m]+' '+y+'?','A PDF copy and a backup are made first. Then daily bills, payments and expenses of '+MON[m]+' are deleted. Party balances and stock are carried forward.','Back up and clear',()=>{
+  clearMonth:(y,m)=>ask('Clear '+MON[m]+' '+y+'?','First a backup file is made for you to save, and a copy is kept on this phone. Then daily bills, payments and expenses of '+MON[m]+' are deleted. Party balances and stock are carried forward.','Back up and clear',async()=>{
+    try{await IDB.set('before_clear_'+y+'_'+m,snapshot());await saveBackupFile()}catch(e){if(!(e&&/cancel/i.test(String(e.message||e)))){toast('Backup failed, nothing was cleared');return}}
     const b=S.books.daily;const a=new Date(y,m,1).getTime(),z=new Date(y,m+1,1).getTime();const inM=o=>o.date>=a&&o.date<z;
     b.bills.filter(inM).forEach(x=>{if(!live(x))return;b.cOpen[x.cid]=(b.cOpen[x.cid]||0)+billTotal(x,'daily').grand;x.items.forEach(i=>b.open[i.vid]=(b.open[i.vid]||0)+(x.type==='purchase'?pcs(i):-pcs(i)))});
     b.pays.filter(inM).forEach(p=>{if(!(p.chq&&p.chq.st==='bounced'))b.cOpen[p.cid]=(b.cOpen[p.cid]||0)-p.amt});
     const n=b.bills.filter(inM).length+b.pays.filter(o=>inM(o)&&!(o.chq&&o.chq.st==='pending')).length+b.exps.filter(inM).length;
-    b.bills=b.bills.filter(o=>!inM(o));b.pays=b.pays.filter(o=>!inM(o)||(o.chq&&o.chq.st==='pending'&&(b.cOpen[o.cid]+=o.amt,true)));b.exps=b.exps.filter(o=>!inM(o));b.cleared.push(MON[m]+' '+y);S.lastBackup=Date.now();render();toast(n+' records cleared · balances carried forward')},true),
+    b.bills=b.bills.filter(o=>!inM(o));b.pays=b.pays.filter(o=>!inM(o)||(o.chq&&o.chq.st==='pending'&&(b.cOpen[o.cid]+=o.amt,true)));b.exps=b.exps.filter(o=>!inM(o));b.cleared.push(MON[m]+' '+y);render();toast(n+' records cleared · balances carried forward')},true),
   exportCA:()=>{const b=S.books.gst;const m0=new Date(NOW.getFullYear(),NOW.getMonth(),1).getTime();const rows=[['Type','Invoice','Date','Party','GSTIN','Taxable','CGST','SGST','IGST','Total']];
     b.bills.filter(x=>live(x)&&x.date>=m0).forEach(x=>{const t=billTotal(x,'gst');const c=cOf(x.cid);rows.push([x.type,x.no,fdy(x.date),c.name,c.gstin||'',t.sub.toFixed(2),t.igst?'0':(t.tax/2).toFixed(2),t.igst?'0':(t.tax/2).toFixed(2),t.igst?t.tax.toFixed(2):'0',t.grand])});
     const csv=rows.map(r=>r.join('\t')).join('\n');sheet(`<h2>GST register · ${MON[NOW.getMonth()]}</h2><div class="small mute" style="margin:-6px 0 8px">${rows.length-1} bills. Copy and paste into Excel.</div><textarea class="inp" style="height:220px;font-size:12px" readonly id="cav">${esc(csv)}</textarea><button class="btn" onclick="A.copyCA()">Copy</button>`)},
@@ -168,7 +177,8 @@ const A=window.A={go,back,tab,setBook,closeSheet,addMenu,psearch,newBill,editBil
 /* ---------- voice assistant (offline rules + AI) ---------- */
 /* ---------- native Android (Capacitor) speech ---------- */
 const IS_APP=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
-let NSR=null,NTTS=null;if(IS_APP){try{NSR=window.Capacitor.registerPlugin('SpeechRecognition');NTTS=window.Capacitor.registerPlugin('TextToSpeech')}catch(e){}}
+let NSR=null,NTTS=null,BIO=null,PRN=null,NFS=null,NSH=null;if(IS_APP){const rp=n=>{try{return window.Capacitor.registerPlugin(n)}catch(e){return null}};NSR=rp('SpeechRecognition');NTTS=rp('TextToSpeech');BIO=rp('NativeBiometric');PRN=rp('Printer');NFS=rp('Filesystem');NSH=rp('Share')}
+const APP_VERSION='1.1.0';
 async function nativeSpeak(text){if(!NTTS)return false;try{await NTTS.stop().catch(()=>{});await NTTS.speak({text:text.slice(0,3900),lang:S.lang==='hi'?'hi-IN':'en-IN',rate:0.95,pitch:1,volume:1,category:'playback'});return true}catch(e){return false}}
 async function nativeListen(){if(!NSR)return false;try{const a=await NSR.available();if(a&&a.available===false){toast('Speech recognition not available on this phone');return true}const p=await NSR.requestPermissions();if(p&&p.speechRecognition&&p.speechRecognition!=='granted'){toast('Microphone permission was not given');return true}
   vMicState(true);const r=await NSR.start({language:S.lang==='hi'?'hi-IN':'en-IN',maxResults:1,prompt:S.lang==='hi'?'बोलिए…':'Speak now…',partialResults:false,popup:true});S.vlisten=false;vMicState(false);const t=r&&r.matches&&r.matches[0];if(t){const e=$('#vtxt');if(e)e.value=t;A.vrun()}}catch(e){S.vlisten=false;vMicState(false);toast('Did not catch that. Try again.')}return true}
@@ -238,32 +248,3 @@ Parties (buyers): ${JSON.stringify(contacts.filter(c=>c.type==='party').map(c=>(
 Vendors: ${JSON.stringify(contacts.filter(c=>c.type==='vendor').map(c=>({id:c.id,name:c.name})))}
 Staff: ${JSON.stringify(S.staff.map(s=>({id:s.id,name:s.name})))}
 Expense heads: ${JSON.stringify(HEADS)}
-Words "peti", "carton", "box", "dabba" mean unit "ctn"; otherwise unit "pcs". Rate is per that unit; use null if not said.
-Return ONLY JSON: {"actions":[...]} where each action is one of:
-{"kind":"sale"|"purchase","cid":party/vendor id or null,"items":[{"vid":..,"unit":"ctn"|"pcs","qty":number,"rate":number|null}]}
-{"kind":"payment","cid":id,"dir":"in"|"out","amt":number,"mode":"cash"|"upi"|"cheque"}
-{"kind":"expense","head":one of heads,"amt":number,"note":string}
-{"kind":"attendance","sid":id,"status":"P"|"A"|"H"|"L"}
-{"kind":"advance","sid":id,"amt":number}
-{"kind":"query","q":"balance"|"stock"|"lowstock"|"profit"|"sale"|"purchase"|"cash"|"expense"|"receivable","cid":id?,"vid":id?,"per":"today"|"yesterday"|"week"|"month"}
-Use only ids from the lists. If something is unclear, leave it out. Never invent numbers.
-Words: """${raw}"""`;
-  const r=await SAMP.json(prompt,{modelTier:'default'});const a=(r&&r.actions)||[];
-  return a.filter(x=>x&&x.kind).map(x=>{
-    if(x.kind==='sale'||x.kind==='purchase'){const cid=contacts.some(c=>c.id===x.cid)?x.cid:null;const items=(x.items||[]).filter(i=>VAR[i.vid]&&i.qty>0).map(i=>{const unit=i.unit==='ctn'?'ctn':'pcs';return {vid:i.vid,unit,qty:+i.qty,rate:+i.rate||(cid&&lastRateFor(i.vid,cid,x.kind,unit))||defRate(i.vid,x.kind,unit,'wholesale'),rt:'wholesale',ppc:VAR[i.vid].ppc}});return items.length?{kind:x.kind,cid,items}:null}
-    if(x.kind==='payment')return contacts.some(c=>c.id===x.cid)?{kind:'payment',cid:x.cid,dir:x.dir==='out'?'out':'in',amt:+x.amt||0,mode:['cash','upi','cheque'].includes(x.mode)?x.mode:'cash'}:null;
-    if(x.kind==='expense')return {kind:'expense',head:HEADS.includes(x.head)?x.head:'Other',amt:+x.amt||0,note:x.note||''};
-    if(x.kind==='attendance')return S.staff.some(s=>s.id===x.sid)?{kind:'attendance',sid:x.sid,status:['P','A','H','L'].includes(x.status)?x.status:'P'}:null;
-    if(x.kind==='advance')return S.staff.some(s=>s.id===x.sid)?{kind:'advance',sid:x.sid,amt:+x.amt||0}:null;
-    if(x.kind==='query'){if(x.vid&&!VAR[x.vid])x.vid=null;if(x.cid&&!contacts.some(c=>c.id===x.cid))x.cid=null;return {kind:'query',q:x.q,cid:x.cid,vid:x.vid,per:x.per||'today'}}
-    return null}).filter(Boolean);
-}
-function qAnswer(a){const b=B();const hi=S.lang==='hi';
-  const range=per=>per==='yesterday'?[today0-DAY,today0]:per==='week'?[today0-6*DAY,today0+DAY]:per==='month'?[new Date(NOW.getFullYear(),NOW.getMonth(),1).getTime(),today0+DAY]:[today0,today0+DAY];
-  const pl=per=>({today:hi?'आज':'today',yesterday:hi?'कल':'yesterday',week:hi?'इस हफ्ते':'this week',month:hi?'इस महीने':'this month'}[per||'today']);
-  if(a.q==='balance'&&a.cid){const c=cOf(a.cid);const bal=balance(a.cid);return c.type==='party'?(hi?`${c.name} से ${inr(bal)} लेना है।`:`${c.name} has to give you ${inr(bal)}.`):(hi?`${c.name} को ${inr(bal)} देना है।`:`You have to give ${c.name} ${inr(bal)}.`)}
-  if(a.q==='stock'&&a.vid){const p=prodOf(a.vid);const lines=p.v.map(v=>`${p.name} ${v.size}: ${fq(stockOf(v.id),v.id)}`);return lines.join('. ')+'.'}
-  if(a.q==='lowstock'){const low=Object.keys(VAR).filter(v=>stockOf(v)<VAR[v].min);return low.length?(hi?'कम स्टॉक: ':'Low stock: ')+low.map(v=>vname(v)+' '+fq(stockOf(v),v)).join(', ')+'.':(hi?'कोई सामान कम नहीं है।':'Nothing is low.')}
-  if(a.q==='receivable'){const tot=contacts.filter(c=>c.type==='party').reduce((s,c)=>s+Math.max(0,balance(c.id)),0);return hi?`कुल ${inr(tot)} लेना है।`:`In total you will get ${inr(tot)}.`}
-  const [s,e]=range(a.per);const bl=b.bills.filter(x=>live(x)&&x.date>=s&&x.date<e);
-  if(a.q==='profit'){const gp=bl.reduce((t,x)=>t+profitOf(x),0);return hi?`${pl(a.per)} का मुनाफ़ा ${inr(gp)} (भाड़ा और खर्चे से पहले)।`:`Profit ${pl(a.per)} is ${inr(gp)} before transport and expenses.`}

@@ -1,4 +1,4 @@
-name: Build APK and website
+name: Build app and website
 
 on:
   push:
@@ -11,65 +11,126 @@ permissions:
   id-token: write
 
 jobs:
-  apk:
-    name: Android APK
+  android:
+    name: Android (APK + Play Store AAB)
     runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: 1.1.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Assemble app file from parts
         run: |
           cat www/parts/*.html > www/index.html
           ls -l www/index.html
-          sha256sum www/index.html
 
-      - name: Install Capacitor
-        run: npm install
+      - name: Install Capacitor and plugins
+        run: npm ci
 
-      - name: Create Android project
+      - name: Create Android project (Capacitor 8, target SDK 36)
         run: npx cap add android
 
-      - name: Add microphone and speech permissions
+      - name: App icon and splash screen
+        run: npx capacitor-assets generate --android
+
+      - name: Manifest – microphone for voice entry, no cloud auto-backup
         run: |
           M=android/app/src/main/AndroidManifest.xml
-          sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <queries>\n        <intent><action android:name="android.speech.RecognitionService" /></intent>\n        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>\n    </queries>\n    <application#' "$M"
+          grep -q 'android.permission.RECORD_AUDIO' "$M" || sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <application#' "$M"
+          sed -i 's#<application#<queries>\n        <intent><action android:name="android.speech.RecognitionService" /></intent>\n        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>\n    </queries>\n    <application#' "$M"
+          sed -i 's#android:allowBackup="true"#android:allowBackup="false"#' "$M"
           cat "$M"
+
+      - name: Version number (must go up for every Play upload)
+        run: |
+          G=android/app/build.gradle
+          sed -i -E "s/versionCode [0-9]+/versionCode ${VERSION_CODE}/; s/versionName \"[^\"]*\"/versionName \"${VERSION_NAME}\"/" "$G"
+          grep -nE "versionCode|versionName|targetSdk|compileSdk" "$G" android/variables.gradle || true
 
       - name: Copy app into Android project
         run: npx cap sync android
 
-      - name: Build APK
+      - name: Signing key for Google Play (from repository secrets)
+        if: env.HAS_KEY == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/upload.jks
+          cat >> android/app/build.gradle <<'EOF'
+
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file('upload.jks')
+                      storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                      keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                      keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          EOF
+
+      - name: Build
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          if [ "$HAS_KEY" = "true" ]; then
+            ./gradlew bundleRelease assembleRelease --no-daemon
+            cp app/build/outputs/bundle/release/app-release.aab ../WholesaleKhata-PlayStore.aab
+            cp app/build/outputs/apk/release/app-release.apk ../WholesaleKhata.apk
+          else
+            ./gradlew assembleDebug --no-daemon
+            cp app/build/outputs/apk/debug/app-debug.apk ../WholesaleKhata.apk
+            echo "::warning::No signing key in repository secrets, so no Play Store AAB was made. See PLAY_STORE.md."
+          fi
 
-      - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk WholesaleKhata.apk
+      - name: Show final permissions
+        run: |
+          f=$(find android/app/build/intermediates -name AndroidManifest.xml -path '*merged_manifest*' | head -1)
+          echo "$f"; grep -oE 'uses-permission[^>]*' "$f" || true
+          grep -oE 'android:targetSdkVersion="[0-9]+"' "$f" || true
 
       - uses: actions/upload-artifact@v4
         with:
-          name: WholesaleKhata-apk
-          path: WholesaleKhata.apk
+          name: WholesaleKhata-android
+          path: |
+            WholesaleKhata.apk
+            WholesaleKhata-PlayStore.aab
+          if-no-files-found: warn
 
-      - name: Publish release with APK
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: Wholesale Khata v1.0.${{ github.run_number }}
+          tag_name: v${{ env.VERSION_NAME }}
+          name: Wholesale Khata v${{ env.VERSION_NAME }}
           body: |
             Download **WholesaleKhata.apk** below and open it on your Android phone.
             Allow "Install unknown apps" for your browser or file manager when asked.
-          files: WholesaleKhata.apk
+            ${{ env.HAS_KEY == 'true' && 'WholesaleKhata-PlayStore.aab is the file to upload in Google Play Console.' || '' }}
+          files: |
+            WholesaleKhata.apk
+            WholesaleKhata-PlayStore.aab
+          fail_on_unmatched_files: false
 
   website:
     name: Website (GitHub Pages)
@@ -81,10 +142,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Assemble app file from parts
-        run: |
-          cat www/parts/*.html > www/index.html
-          ls -l www/index.html
-          sha256sum www/index.html
+        run: cat www/parts/*.html > www/index.html
 
       - uses: actions/configure-pages@v5
         with:

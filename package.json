@@ -1,16 +1,24 @@
 {
   "name": "wholesale-khata",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Wholesale Khata – billing, stock, khata, staff and reports app for a wholesaler",
   "scripts": {
+    "build:web": "cat www/parts/*.html > www/index.html",
     "sync": "cap sync android"
   },
   "dependencies": {
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/cli": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
-    "@capacitor-community/speech-recognition": "6.0.1",
-    "@capacitor-community/text-to-speech": "5.1.0"
+    "@capacitor-community/speech-recognition": "7.0.1",
+    "@capacitor-community/text-to-speech": "8.0.2",
+    "@capacitor/android": "8.6.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/share": "8.0.3",
+    "@capgo/capacitor-native-biometric": "8.9.3",
+    "@capgo/capacitor-printer": "8.1.11"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "4.0.0",
+    "@capacitor/cli": "8.6.2"
   }
 }

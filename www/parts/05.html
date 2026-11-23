@@ -1,0 +1,39 @@
+ hi:['आपकी रोज़ की दिनचर्या','सुबह: होम खोलिए, सारांश पढ़िए, हाज़िरी लगाइए। दिन में: टच या आवाज़ से बिल बनाइए, पेमेंट डालिए। शाम को: डिलीवरी पक्की कीजिए, दिन का मुनाफ़ा देखिए, याद दिलाने के संदेश भेजिए। महीने के अंत में: तनख्वाह दीजिए, रोज़ का खाता साफ़ कीजिए, GST एक्सपोर्ट CA को भेजिए।','रोज़ करीब 15 मिनट का फ़ोन का काम घंटों के डायरी काम की जगह लेता है, और कारोबार की पूरी तस्वीर हमेशा सामने।']}
+];
+const GIC={bills:'expense'};
+let GP={i:0,auto:false,speaking:false,tok:0};
+function gText(i){const g=GUIDE[i];const L=S.lang==='hi'?g.hi:g.en;return {t:L[0],b:L[1],f:L[2]}}
+async function gSpeak(i){const {t,b,f}=gText(i);const txt=`${t}. ${b} ${S.lang==='hi'?'फ़ायदा':'Benefit'}: ${f}`;const tok=++GP.tok;GP.speaking=true;gBtn();
+  const done=()=>{if(tok!==GP.tok)return;GP.speaking=false;gBtn();if(GP.auto&&S.view.n!=='guide'){GP.auto=false;gBtn();return}if(GP.auto){if(GP.i<GUIDE.length-1){setTimeout(()=>{if(GP.auto&&tok===GP.tok){GP.i++;render();gSpeak(GP.i)}},700)}else{GP.auto=false;gBtn()}}};
+  if(NTTS){if(await nativeSpeak(txt)){done();return}}
+  try{if(TTSO){await TTSO.speak(txt,{language:S.lang==='hi'?'hi':'en'});done();return}}catch(e){if(tok!==GP.tok)return;if(e&&e.code==='viewer_stopped'){GP.auto=false;GP.speaking=false;gBtn();return}}
+  try{if(window.speechSynthesis){const u=new SpeechSynthesisUtterance(txt);u.lang=S.lang==='hi'?'hi-IN':'en-IN';u.rate=.95;u.onend=done;u.onerror=()=>{GP.speaking=false;GP.auto=false;gBtn()};speechSynthesis.cancel();speechSynthesis.speak(u);return}}catch(e){}
+  GP.speaking=false;GP.auto=false;gBtn();toast(S.lang==='hi'?'इस जगह आवाज़ उपलब्ध नहीं, पढ़कर देखें':'Voice is not available here. Read the text instead.')}
+function gStop(){GP.tok++;GP.auto=false;GP.speaking=false;try{NTTS&&NTTS.stop()}catch(e){}try{TTSO&&TTSO.stop()}catch(e){}try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){}gBtn()}
+function gBtn(){const b=$('#gplay'),a=$('#gall');if(b)b.innerHTML=GP.speaking&&!GP.auto?(S.lang==='hi'?'■ रोकें':'■ Stop'):(S.lang==='hi'?'▶ सुनें':'▶ Listen');if(a)a.innerHTML=GP.auto?(S.lang==='hi'?'■ टूर रोकें':'■ Stop tour'):(S.lang==='hi'?'▶ पूरा टूर आवाज़ के साथ':'▶ Play full tour with voice')}
+V.guide=v=>{v.title=S.lang==='hi'?'ऐप गाइड':'App guide';const i=GP.i,g=GUIDE[i],{t,b,f}=gText(i);const hi=S.lang==='hi';
+  return backBtn()+`<div class="row" style="margin-bottom:10px"><div class="sp small mute">${hi?'चरण':'Step'} ${i+1} / ${GUIDE.length}</div><div class="seg" style="margin:0;width:150px"><button class="${!hi?'on':''}" onclick="A.gLang('en')">English</button><button class="${hi?'on':''}" onclick="A.gLang('hi')">हिंदी</button></div></div>
+  <div style="display:flex;gap:4px;margin-bottom:12px">${GUIDE.map((x,k)=>`<button onclick="A.gTo(${k})" aria-label="Step ${k+1}" style="flex:1;height:6px;border:0;border-radius:9px;cursor:pointer;background:${k<=i?'var(--gold)':'var(--line)'}"></button>`).join('')}</div>
+  <div class="hero" style="padding:20px 18px"><div style="display:flex;gap:12px;align-items:center;position:relative;z-index:1">${icT(g.icn||g.ic,'rgba(255,255,255,.18)')}<div style="font-family:var(--serif);font-size:24px;font-weight:700;line-height:1.15">${esc(t)}</div></div></div>
+  <div class="card" style="font-size:17px;line-height:1.6">${esc(b)}</div>
+  <div class="card" style="border-color:var(--gold);background:color-mix(in srgb,var(--gold) 9%,var(--card))"><div class="small" style="color:var(--gold2);font-weight:600;margin-bottom:2px">${hi?'आपका फ़ायदा':'How this helps you'}</div><div style="font-size:16.5px">${esc(f)}</div></div>
+  <div class="btns"><button class="btn" id="gplay" onclick="A.gPlay()">${hi?'▶ सुनें':'▶ Listen'}</button><button class="btn ghost" onclick="${g.go}">${hi?'यह स्क्रीन खोलें':'Open this screen'}</button></div>
+  <div class="btns"><button class="btn ghost" onclick="A.gTo(${i-1})" ${i===0?'disabled':''}>‹ ${hi?'पिछला':'Previous'}</button><button class="btn ghost" onclick="A.gTo(${i+1})" ${i===GUIDE.length-1?'disabled':''}>${hi?'अगला':'Next'} ›</button></div>
+  <button class="btn gold" id="gall" style="margin-top:12px" onclick="A.gAll()">${GP.auto?(hi?'■ टूर रोकें':'■ Stop tour'):(hi?'▶ पूरा टूर आवाज़ के साथ':'▶ Play full tour with voice')}</button>
+  <div class="sample">${hi?'टूर में ऐप अपने आप पढ़कर सुनाता है। कभी भी रोक सकते हैं।':'The tour reads each step aloud and moves on by itself. Stop any time.'}</div>`};
+Object.assign(A,{
+  guide:()=>{GP.i=0;go('guide')},
+  gTo:k=>{if(k<0||k>=GUIDE.length)return;const wasAuto=GP.auto;gStop();GP.i=k;render(true);if(wasAuto){GP.auto=true;gSpeak(k)}},
+  gPlay:()=>{if(GP.speaking){gStop();return}GP.auto=false;gSpeak(GP.i)},
+  gAll:()=>{if(GP.auto){gStop();return}gStop();GP.auto=true;gSpeak(GP.i)},
+  gLang:l=>{gStop();S.lang=l;render()}
+});
+const _more=V.more;V.more=v=>{const h=_more(v);return `<div class="hero" style="cursor:pointer" onclick="A.guide()"><div class="g">${S.lang==='hi'?'नए हैं? 3 मिनट का टूर':'New here? 3-minute tour'}</div><div style="font-family:var(--serif);font-size:22px;font-weight:700;margin:4px 0;position:relative;z-index:1">${S.lang==='hi'?'ऐप गाइड, आवाज़ के साथ':'App guide with voice'}</div><div class="note" style="margin-top:4px">${S.lang==='hi'?'हर फ़ीचर और उसका फ़ायदा, हिंदी या अंग्रेज़ी में सुनें':'Every feature and how it helps you, in Hindi or English'} ›</div></div>`+h};
+const _home=V.home;V.home=v=>{let h=_home(v);const card=`<div class="alert" onclick="A.guide()" style="border-color:var(--gold)"><b style="color:var(--gold2)">${S.lang==='hi'?'ऐप गाइड:':'App guide:'}</b> ${S.lang==='hi'?'आवाज़ के साथ पूरा टूर सुनें':'listen to the full tour with voice'}<span class="sp"></span>›</div>`;const k=h.indexOf('<h3>');return k>0?h.slice(0,k)+card+h.slice(k):h};
+/* ---------- start ---------- */
+try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
+IDB.get('data').then(d=>{let ok=false;if(d){try{restoreData(d);ok=true}catch(e){}}if(!ok)gen();booted=true;render(true);saveLocal();autoB()}).catch(()=>{gen();booted=true;render(true)});
+}
+</script>
+</body>
+</html>
