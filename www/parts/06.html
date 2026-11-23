@@ -148,7 +148,7 @@ const _acSet=V.settings;V.settings=v=>{const h=_acSet(v);const c=acCard();if(!c)
 /* home: trial reminder in the last 7 days, view-only notice after */
 const _acHome=V.home;V.home=v=>{const h=_acHome(v);if(!onCfg()||!ACC.cache)return h;const s=acState();let b='';
   if(!s.active)b=`<div class="alert bad" onclick="A.acPaywall()"><b>${s.kind==='trial'?L('Free trial ended','फ्री ट्रायल खत्म'):acKindName(s.kind==='blocked'?'blocked':'paid')+' '+L('ended','खत्म')}</b> · ${L('view only. Choose a plan to add entries.','केवल देख सकते हैं। एंट्री के लिए प्लान लें।')}<span class="sp"></span>›</div>`;
-  else if(s.days<=7&&s.kind!=='five')b=`<div class="alert" onclick="A.acPaywall()"><b>${acKindName(s.kind)}</b>: ${s.days} ${L('days left','दिन बाकी')}<span class="sp"></span>›</div>`;
+  else if(s.days<=7&&s.kind!=='five')b=`<div class="alert" onclick="A.acPaywall()"><b>${acKindName(s.kind)}:</b> ${s.days} ${L('days left','दिन बाकी')}<span class="sp"></span>›</div>`;
   if(!b)return h;const i=h.indexOf('<div class="hero">');return i<0?b+h:h.slice(0,i)+b+h.slice(i)};
 
 async function acReauth(pw){const u=ACC.au.currentUser;await u.reauthenticateWithCredential(ACC.fb.auth.EmailAuthProvider.credential(u.email,pw))}
