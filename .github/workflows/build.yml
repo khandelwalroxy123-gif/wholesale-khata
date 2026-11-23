@@ -181,6 +181,11 @@ jobs:
       - name: Copy app into iOS project
         run: npx cap sync ios
 
+      - name: Privacy manifest (PrivacyInfo.xcprivacy)
+        run: |
+          gem list -i xcodeproj >/dev/null || sudo gem install xcodeproj --no-document
+          ruby ios-extra/add_privacy.rb
+
       - name: Build for iPhone Simulator (proves the iOS app compiles; no Apple account needed)
         run: |
           set -o pipefail
