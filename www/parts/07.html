@@ -1,0 +1,23 @@
+if(!IS_APP&&'serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
+Object.assign(A,{acCompNew,acCompSave,acCompDel:id=>ask(L('Remove free access?','मुफ़्त एक्सेस हटाएँ?'),esc(id),L('Remove','हटाएँ'),async()=>{try{await ACC.db.doc('comps/'+id).delete();const u=(ACC.admin.users||[]).find(x=>String(x.email||'').toLowerCase()===id);if(u&&u.plan==='comp'){await ACC.db.doc('users/'+u.id).update({plan:'',planUntil:null});Object.assign(u,{plan:'',planUntil:null})}ACC.admin.comps=ACC.admin.comps.filter(x=>x.id!==id);render()}catch(e){toast(acErr(e))}}),acFull:()=>{const u=onBase()+'admin.html';try{window.open(u,'_blank')||(location.href=u)}catch(e){location.href=u}},acMode:m=>{ACC.mode=m;ACC.err='';ACC.msg='';acScreen()},acGo,acDoc,acLang:()=>{S.lang=S.lang==='hi'?'en':'hi';try{localStorage.setItem('wk_lang',S.lang)}catch(e){}acScreen()},acPaywall:()=>acPaywall(),acBuy,acRestore,acAdminLoad,acAu,acAdm,acAdminBuys,acNotifAsk,
+  acAq:q=>{ACC.admin.q=q;const y=$('#main').scrollTop;render();$('#main').scrollTop=y;const e=document.querySelector('.search input');if(e){e.focus();e.setSelectionRange(q.length,q.length)}},acAf:f=>{ACC.admin.f=f;render()},
+  acBuyOk:async id=>{try{await ACC.db.doc('purchases/'+id).update({status:'checked'});const b=ACC.admin.buys.find(x=>x.id===id);if(b)b.status='checked';acAdminBuys()}catch(e){toast(acErr(e))}},
+  acManage:()=>NPUR&&NPUR.manageSubscriptions().catch(()=>{}),
+  acVerify:async()=>{try{await ACC.au.currentUser.sendEmailVerification();toast(L('Verification email sent.','सत्यापन ईमेल भेजा।'))}catch(e){toast(acErr(e))}},
+  acPw:()=>ask(L('Change password?','पासवर्ड बदलें?'),L('We will email a link to','लिंक भेजा जाएगा')+' '+esc(ACC.user?ACC.user.email:''),L('Send link','लिंक भेजें'),async()=>{try{await ACC.au.sendPasswordResetEmail(ACC.user.email);toast(L('Link sent. Check your email.','लिंक भेजा। ईमेल देखें।'))}catch(e){toast(acErr(e))}}),
+  acOut:()=>ask(L('Sign out?','साइन आउट करें?'),L('Your books stay on this phone. You need your email and password to open the app again.','आपकी बही इस फ़ोन पर रहेगी। दोबारा खोलने के लिए ईमेल और पासवर्ड चाहिए।'),L('Sign out','साइन आउट'),async()=>{try{await ACC.au.signOut()}catch(e){}try{localStorage.removeItem('wk_acc')}catch(e){}ACC.cache=null;ACC.doc=null;ACC.play=null;ACC.mode='in';ACC.msg='';S.view={n:'home'};S.stack=[];ACC.need=true;render()}),
+  acDelAsk:()=>sheet(`<h2>${L('Delete account','खाता हटाएँ')}</h2><p class="mute small">${L(`This deletes your login, your trial and plan record, and your online shop link with its orders. Records of ${STORE} payments are kept as tax law requires. A monthly plan must be cancelled in ${STORE} separately.`,`इससे आपका लॉगिन, ट्रायल/प्लान रिकॉर्ड और ऑनलाइन दुकान लिंक व ऑर्डर हट जाएँगे। ${STORE} भुगतान के रिकॉर्ड टैक्स कानून के अनुसार रखे जाते हैं। मासिक प्लान ${STORE} में अलग से रद्द करें।`)}</p>
+    <label class="f"><span>${L('Enter your password to confirm','पुष्टि के लिए पासवर्ड डालें')}</span><input class="inp" id="acd_w" type="password" autocomplete="current-password"></label>
+    <label class="acchk"><input type="checkbox" id="acd_x"> <span>${L('Also erase the bills and khata on this phone','इस फ़ोन के बिल और खाता भी मिटाएँ')}</span></label>
+    <div class="warnbox" id="acd_err" style="display:none"></div><div class="btns"><button class="btn ghost" onclick="A.closeSheet()">${T('cancel')}</button><button class="btn danger" id="acd_go" onclick="A.acDelete()">${L('Delete my account','मेरा खाता हटाएँ')}</button></div>`),
+  acDelete});
+window.__AC={acLoadDoc,acPlayApply,acNotify,acState};
+
+/* ---------- boot ---------- */
+try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
+IDB.get('data').then(d=>{let ok=false;if(d){try{restoreData(d);ok=true}catch(e){}}if(!ok)gen();booted=true;render(true);saveLocal();autoB();acBoot()}).catch(()=>{gen();booted=true;render(true);acBoot()});
+}
+</script>
+</body>
+</html>

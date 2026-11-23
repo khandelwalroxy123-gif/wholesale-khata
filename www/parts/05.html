@@ -1,3 +1,4 @@
+ en:['Sale bill in 30 seconds','Tap plus, choose Sale, pick the party and add items. Enter cartons and loose pieces together. The rate fills in from the last rate given to that party. The app warns you if you sell below cost, have less stock, or the party crosses its credit limit. Print the bill as PDF or send it on WhatsApp.','Fast, correct bills with no calculation mistakes, and no loss-making sale goes out by accident.'],
  hi:['30 सेकंड में बिक्री बिल','प्लस दबाइए, बिक्री चुनिए, पार्टी चुनिए और सामान जोड़िए। पेटी और खुले पीस एक साथ डालिए। उस पार्टी का पिछला रेट अपने आप आ जाता है। लागत से कम रेट, कम स्टॉक या पार्टी की उधार सीमा पार होने पर ऐप चेतावनी देता है। बिल PDF में प्रिंट करें या WhatsApp पर भेजें।','तेज़ और सही बिल, हिसाब में गलती नहीं, और घाटे का सौदा गलती से नहीं होगा।']},
 {ic:'upload',c:'#173a6b',go:"A.upload()",
  en:['Purchase bills','Enter purchase bills like sale bills. In the GST book you can keep the vendor’s bill PDF or photo with the entry and lock the bill after saving. Automatic reading of bills is coming in a later version.','Almost no typing for purchases, stock goes up instantly, and your input tax credit papers are in order.'],
@@ -234,4 +235,3 @@ const _onHome=V.home;V.home=v=>{let h=_onHome(v);if(ONL.on){const n=ONL.reqs.len
   const al=(n?`<div class="alert" onclick="A.go('online')"><b>${n} customer${n>1?'s':''}</b> waiting for you to allow ordering<span class="sp"></span>›</div>`:'')+(m?`<div class="alert" onclick="A.go('online')"><b>${m} new online order${m>1?'s':''}</b> to accept<span class="sp"></span>›</div>`:'');
   if(al)h=h.replace('<div class="stats">',al+'<div class="stats">')}return h};
 /* more menu entry */
-const _onMore=V.more;V.more=v=>{const h=_onMore(v);const i=h.indexOf('<div class="li"');if(i<0)return h;

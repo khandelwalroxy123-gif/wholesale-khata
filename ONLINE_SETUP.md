@@ -68,6 +68,8 @@ In the app: **More → Online orders · link & QR** → enter your UPI ID → **
 ## Accounts, trial and plans
 - Every shop owner signs in with email + password when the app first opens. The trial (30 days) starts from the server's clock when the account is made, so it cannot be faked by changing the phone date.
 - **Admin:** the account `rahulg.aice@gmail.com` (set in `firestore.rules` → `isAdmin()` and in the app → `ADMIN_EMAILS`). Create that account first, then open the verification email. In the app: **Settings → Account & plan → Admin** shows all accounts and plans, lets you add trial days, give a month or a 5-Year Plan (for cash/bank payments) and put an account on hold. It never shows a shop's books.
+- **Full admin page:** <https://khandelwalroxy123-gif.github.io/wholesale-khata/admin.html> – sign in with the admin email and password (same as the app). Tabs: Overview (counts, sign-ups, use, money), Accounts (search, CSV download, trial days, month, 5-Year Plan, hold, notes), Free access, Purchases, Online shops (with their orders). Also opens from the app: Settings → Admin → Full admin page.
+- **Free (complimentary) access:** Admin → Give free access → email + 1 month / 1 year / 5 years / no end date. An existing account gets it at once; someone new gets it after signing up with that email and verifying it. Remove it any time.
 - **Google Play products** to create in Play Console → Monetize (after the first upload):
   - Subscription `wk_monthly`, base plan `monthly-499`, auto-renewing monthly, ₹499.
   - One-time product `wk_5year`, ₹20,000 (valid 5 years – the app counts it from the purchase date).

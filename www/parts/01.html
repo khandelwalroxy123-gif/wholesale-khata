@@ -464,5 +464,3 @@ more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2
 const go=(n,p={})=>{S.stack.push(S.view);S.view={n,...p};render(true)};
 const back=()=>{S.view=S.stack.pop()||{n:S.tab};render(true)};
 const tab=n=>{S.tab=n;S.stack=[];S.view={n};render(true)};
-const setBook=bk=>{if(S.book===bk)return;S.book=bk;S.stack=[];S.view={n:S.tab==='more'?'more':S.tab};render(true);toast(bk==='gst'?'GST book open — separate stock & khata':'Daily book open')};
-let tt;const toast=m=>{clearTimeout(tt);let e=$('#toast');if(!e){e=document.createElement('div');e.id='toast';e.className='toast';$('#app').appendChild(e)}e.textContent=m;e.style.display='block';tt=setTimeout(()=>e.style.display='none',2600)};

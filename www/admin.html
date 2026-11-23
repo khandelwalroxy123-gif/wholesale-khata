@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin · Wholesale Khata</title>
+<link href="fonts/fonts.css" rel="stylesheet">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{color-scheme:light;--ink:#1f1d1a;--mute:#6b6a65;--line:#e6e3dd;--soft:#f6f4f0;--book:#8a1c2b;--in:#157a46;--out:#c0362c;--warn:#9a6200;--info:#2559a6}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 Hind,system-ui,sans-serif;background:#fff;color:var(--ink)}
+header{border-top:4px solid var(--book);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;background:#fff;z-index:5}
+h1{font-family:"Playfair Display",Georgia,serif;font-size:22px;margin:0}
+h2{font-family:"Playfair Display",Georgia,serif;font-size:19px;margin:18px 0 8px}
+nav{display:flex;gap:4px;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:3px;flex-wrap:wrap}
+nav button{border:0;background:none;padding:7px 12px;border-radius:9px;font:inherit;font-weight:600;color:var(--mute);cursor:pointer}
+nav button.on{background:#fff;color:var(--book);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.sp{flex:1}
+main{max-width:1250px;margin:0 auto;padding:14px 20px 60px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.c{border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.c .l{color:var(--mute);font-size:13px}.c .v{font-family:"Playfair Display",Georgia,serif;font-size:28px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--mute);font-weight:600;border-bottom:1px solid var(--line);padding:8px 6px;background:#fff;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:8px 6px;vertical-align:top}
+tr.row{cursor:pointer}tr.row:hover td{background:var(--soft)}
+.pill{display:inline-block;font-size:12px;padding:1px 9px;border-radius:99px;font-weight:600;white-space:nowrap}
+.g{background:#e6f3ec;color:var(--in)}.r{background:#f8e7e5;color:var(--out)}.a{background:#fbf1dc;color:var(--warn)}.b{background:#e7eef8;color:var(--info)}.n{background:var(--soft);color:var(--mute)}
+input,select,textarea{font:inherit;border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;color:var(--ink)}
+button.btn{font:inherit;font-weight:600;border:0;border-radius:10px;padding:8px 14px;background:var(--book);color:#fff;cursor:pointer}
+button.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+button.bad{background:var(--out)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 10px}
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:#fff;border-left:1px solid var(--line);box-shadow:-8px 0 30px rgba(0,0,0,.08);padding:18px;overflow:auto;z-index:10;display:none}
+.panel.on{display:block}
+.row2{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.mute{color:var(--mute)}.small{font-size:13px}
+.box{border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.login{max-width:380px;margin:60px auto;display:grid;gap:10px}
+.msg{border-radius:10px;padding:8px 12px;display:none}.msg.err{display:block;background:#f8e7e5;color:var(--out)}.msg.ok{display:block;background:#e6f3ec;color:var(--in)}
+.wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<header><h1>Wholesale Khata · Admin</h1><nav id="tabs" style="display:none"></nav><span class="sp"></span><span id="who" class="small mute"></span></header>
+<main id="main"><div class="login mute">Loading…</div></main>
+<div class="panel" id="panel"></div>
+<script src="firebase-config.js"></script>
+<script src="vendor/firebase-app-compat.js"></script><script src="vendor/firebase-auth-compat.js"></script><script src="vendor/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+const ADMIN='rahulg.aice@gmail.com',DAY=864e5,TRIAL=30,FOREVER=4102444800000;
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ms=v=>v&&v.toMillis?v.toMillis():(typeof v==='number'?v:0);
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fd=t=>{if(!t)return '-';const d=new Date(t);return d.getDate()+' '+MON[d.getMonth()]+' '+d.getFullYear()};
+const inr=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
+if(!firebase.apps.length)firebase.initializeApp(window.WK_FIREBASE);
+const au=firebase.auth(),db=firebase.firestore(),TS=firebase.firestore.Timestamp,SV=firebase.firestore.FieldValue.serverTimestamp;
+const D={tab:'overview',users:[],buys:[],comps:[],shops:[],orders:{},q:'',f:'all'};
+const KN={trial:'Free trial',monthly:'Monthly',five:'5-Year Plan',paid:'Paid',comp:'Free (complimentary)',blocked:'On hold',ended:'Ended'};
+const KC={trial:'a',monthly:'g',five:'g',paid:'g',comp:'b',blocked:'r',ended:'r'};
+function st(u){const now=Date.now(),c=ms(u.createdAt)||now,te=c+(TRIAL+(u.extraDays||0))*DAY,pu=ms(u.planUntil);
+  if(u.blocked)return {k:'blocked',until:0};let k='trial',until=te;
+  if(pu>now&&pu>=until){k=u.plan||'paid';until=pu}
+  const cp=D.comps.find(x=>x.id===String(u.email||'').toLowerCase()&&!x.revoked);if(cp){const cu=cp.until?ms(cp.until):FOREVER;if(cu>now&&cu>=until){k='comp';until=cu}}
+  if(until<=now)return {k:'ended',until};return {k,until}}
+const till=s=>s.until>=FOREVER-DAY?'no end':s.until?fd(s.until):'-';
+const pill=k=>`<span class="pill ${KC[k]||'n'}">${KN[k]||esc(k)}</span>`;
+
+function login(msg){$('#tabs').style.display='none';$('#who').textContent='';
+  $('#main').innerHTML=`<div class="login"><h2>Admin sign in</h2><input id="e" type="email" placeholder="Email" value="${ADMIN}" autocomplete="username"><input id="w" type="password" placeholder="Password" autocomplete="current-password"><button class="btn" id="go">Sign in</button><div class="msg ${msg?'err':''}" id="m">${esc(msg||'')}</div><div class="small mute">Only the admin email can open this page, and only after it is verified. Use the same email and password as in the app.</div></div>`;
+  const go=async()=>{const m=$('#m');m.className='msg';try{await au.signInWithEmailAndPassword($('#e').value.trim().toLowerCase(),$('#w').value)}catch(x){m.textContent=x.code==='auth/invalid-credential'||x.code==='auth/wrong-password'?'Email or password is wrong.':(x.message||x);m.className='msg err'}};
+  $('#go').onclick=go;$('#w').onkeydown=e=>{if(e.key==='Enter')go()}}
+
+au.onAuthStateChanged(async u=>{if(!u||u.isAnonymous)return login();
+  if(String(u.email).toLowerCase()!==ADMIN){await au.signOut();return login('This page is only for the admin account.')}
+  try{await u.reload()}catch(e){}
+  if(!au.currentUser.emailVerified){$('#main').innerHTML=`<div class="login"><h2>Verify your email first</h2><p>Open the verification email sent to ${esc(u.email)} and click the link, then come back and press Continue.</p><button class="btn" id="vr">Send the email again</button><button class="btn ghost" id="ct">Continue</button><button class="btn ghost" id="so">Sign out</button></div>`;
+    $('#vr').onclick=async()=>{try{await au.currentUser.sendEmailVerification();alert('Sent. Check your inbox and Spam.')}catch(e){alert(e.message)}};$('#ct').onclick=()=>location.reload();$('#so').onclick=()=>au.signOut();return}
+  await au.currentUser.getIdToken(true);
+  $('#who').innerHTML=esc(u.email)+' · <a href="#" id="out">Sign out</a>';$('#out').onclick=e=>{e.preventDefault();au.signOut()};load()});
+
+async function load(){$('#main').innerHTML='<p class="mute">Loading everything…</p>';
+  try{const [u,p,c,s]=await Promise.all([db.collection('users').get(),db.collection('purchases').get(),db.collection('comps').get(),db.collection('shops').get()]);
+    D.users=u.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.createdAt)-ms(a.createdAt));
+    D.buys=p.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.createdAt)-ms(a.createdAt));
+    D.comps=c.docs.map(d=>({id:d.id,...d.data()}));D.shops=s.docs.map(d=>({id:d.id,...d.data()}));
+    await Promise.all(D.shops.map(async sh=>{try{const [o,r]=await Promise.all([db.collection('shops/'+sh.id+'/orders').get(),db.collection('shops/'+sh.id+'/sessions').get()]);
+      D.orders[sh.id]=o.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.createdAt)-ms(a.createdAt));sh.reqs=r.docs.filter(d=>d.data().status==='pending').length}catch(e){D.orders[sh.id]=[]}}))}
+  catch(e){$('#main').innerHTML=`<div class="msg err" style="display:block">${/permission/i.test(e.message)?'The database refused: make sure the latest firestore.rules are published and your email is verified.':esc(e.message)}</div>`;return}
+  tabs();show()}
+function tabs(){const t=[['overview','Overview'],['accounts','Accounts ('+D.users.length+')'],['free','Free access'],['buys','Purchases'+(D.buys.filter(b=>b.status==='new').length?' ('+D.buys.filter(b=>b.status==='new').length+' new)':'')],['shops','Online shops ('+D.shops.length+')']];
+  $('#tabs').style.display='flex';$('#tabs').innerHTML=t.map(([k,l])=>`<button class="${D.tab===k?'on':''}" data-t="${k}">${l}</button>`).join('')+`<button data-t="reload" title="Reload">⟳</button>`;
+  $('#tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(b.dataset.t==='reload')return load();D.tab=b.dataset.t;tabs();show()})}
+function show(){closeP();({overview,accounts,free,buys,shops})[D.tab]()}
+
+function overview(){const now=Date.now(),us=D.users.map(u=>({...u,s:st(u)}));const n=k=>us.filter(u=>u.s.k===k).length;
+  const joined=d=>us.filter(u=>now-ms(u.createdAt)<d*DAY).length;const act=d=>us.filter(u=>now-ms(u.lastSeen)<d*DAY).length;
+  const soon=us.filter(u=>u.s.k==='trial'&&u.s.until-now<7*DAY).length;
+  const rev=D.buys.reduce((a,b)=>a+(b.product==='five'?20000:b.product==='monthly'?499:0),0);
+  const plat=k=>us.filter(u=>u.platform===k).length;const ords=Object.values(D.orders).flat();
+  const C=(l,v,x)=>`<div class="c"><div class="l">${l}</div><div class="v">${v}</div>${x?`<div class="small mute">${x}</div>`:''}</div>`;
+  $('#main').innerHTML=`<h2>Accounts</h2><div class="cards">${C('All accounts',us.length,`+${joined(7)} this week · +${joined(30)} in 30 days`)}${C('On free trial',n('trial'),soon+' ending in 7 days')}${C('Paid',n('monthly')+n('five')+n('paid'),`${n('monthly')} monthly · ${n('five')} five-year`)}${C('Free (complimentary)',n('comp'))}${C('Ended',n('ended'),'view only in the app')}${C('On hold',n('blocked'))}</div>
+  <h2>Use</h2><div class="cards">${C('Opened the app (7 days)',act(7))}${C('Opened (30 days)',act(30))}${C('Android / iPhone / Web',plat('android')+' / '+plat('ios')+' / '+plat('web'))}${C('Online shops',D.shops.length,D.shops.filter(s=>s.open).length+' open now')}${C('Online orders',ords.length,ords.filter(o=>o.status==='placed').length+' waiting · '+inr(ords.filter(o=>o.status!=='cancelled').reduce((a,o)=>a+(o.total||0),0))+' total')}</div>
+  <h2>Money</h2><div class="cards">${C('Store purchases',D.buys.length,D.buys.filter(b=>b.status==='new').length+' not yet checked')}${C('Store sales (list price)',inr(rev),'before store fee and tax; monthly counted once per purchase record')}</div>
+  <p class="small mute">Each shop's bills, khata and stock are stored only on their own phone, so they are not shown here.</p>`}
+
+function accounts(){const now=Date.now(),q=D.q.toLowerCase();const us=D.users.map(u=>({...u,s:st(u)}));
+  const F=[['all','All'],['trial','Trial'],['soon','Trial ending'],['paid','Paid'],['comp','Free'],['ended','Ended'],['blocked','On hold']];
+  const list=us.filter(u=>(D.f==='all'||(D.f==='paid'?['monthly','five','paid'].includes(u.s.k):D.f==='soon'?u.s.k==='trial'&&u.s.until-now<7*DAY:u.s.k===D.f))&&(!q||[u.name,u.shop,u.phone,u.email,u.note].join(' ').toLowerCase().includes(q)));
+  $('#main').innerHTML=`<div class="tools"><input id="q" placeholder="Search name, shop, phone, email, note" value="${esc(D.q)}" style="min-width:280px"><select id="f">${F.map(([k,l])=>`<option value="${k}" ${D.f===k?'selected':''}>${l}</option>`).join('')}</select><span class="sp"></span><span class="mute small">${list.length} shown</span><button class="btn ghost" id="csv">Download CSV</button></div>
+  <div class="wrap"><table><tr><th>Shop</th><th>Name</th><th>Phone</th><th>Email</th><th>Joined</th><th>Last seen</th><th>App</th><th>Plan</th><th>Till</th></tr>
+  ${list.map(u=>`<tr class="row" data-id="${u.id}"><td><b>${esc(u.shop)}</b></td><td>${esc(u.name)}</td><td>${esc(u.phone)}</td><td>${esc(u.email)}</td><td>${fd(ms(u.createdAt))}</td><td>${fd(ms(u.lastSeen))}</td><td class="small">${esc(u.platform||'')} ${esc(u.appVersion||'')}</td><td>${pill(u.s.k)}</td><td>${till(u.s)}</td></tr>`).join('')||'<tr><td colspan="9" class="mute">No accounts.</td></tr>'}</table></div>`;
+  $('#q').oninput=e=>{D.q=e.target.value;const p=e.target.selectionStart;accounts();const i=$('#q');i.focus();i.setSelectionRange(p,p)};$('#f').onchange=e=>{D.f=e.target.value;accounts()};
+  document.querySelectorAll('tr.row').forEach(r=>r.onclick=()=>user(r.dataset.id));
+  $('#csv').onclick=()=>{const rows=[['Shop','Name','Phone','Email','Joined','Last seen','Platform','Version','Plan','Till','Note']].concat(list.map(u=>[u.shop,u.name,u.phone,u.email,fd(ms(u.createdAt)),fd(ms(u.lastSeen)),u.platform,u.appVersion,KN[u.s.k]||u.s.k,till(u.s),u.note]));
+    const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));a.download='wholesale-khata-accounts.csv';a.click()}}
+
+function closeP(){$('#panel').classList.remove('on')}
+function user(id){const u=D.users.find(x=>x.id===id);if(!u)return;const s=st(u),now=Date.now();const shops=D.shops.filter(x=>x.ownerUid===id);const buys=D.buys.filter(b=>b.uid===id);
+  const p=$('#panel');p.classList.add('on');
+  p.innerHTML=`<div class="tools"><h2 style="margin:0">${esc(u.shop||u.name)}</h2><span class="sp"></span><button class="btn ghost" id="x">Close</button></div>
+  <div>${esc(u.name)} · <a href="tel:${esc(u.phone)}">${esc(u.phone)}</a> · <a href="https://wa.me/91${esc(u.phone)}" target="_blank" rel="noopener">WhatsApp</a> · <a href="mailto:${esc(u.email)}">${esc(u.email)}</a></div>
+  <div class="box">${pill(s.k)} ${s.k==='ended'?'ended '+fd(s.until):'till '+till(s)}<div class="small mute" style="margin-top:6px">Joined ${fd(ms(u.createdAt))} · last seen ${fd(ms(u.lastSeen))} · ${esc(u.platform||'')} ${esc(u.appVersion||'')}${u.extraDays?' · +'+u.extraDays+' trial days':''}</div></div>
+  <div class="row2"><button class="btn ghost" data-a="t7">+7 trial days</button><button class="btn ghost" data-a="m1">+1 month</button><button class="btn ghost" data-a="five">Give 5-Year Plan</button><button class="btn ghost" data-a="comp">Free access…</button><button class="btn ${u.blocked?'':'bad'}" data-a="${u.blocked?'unblock':'block'}">${u.blocked?'Remove hold':'Put on hold'}</button></div>
+  <div class="box"><b>Note</b> <span class="small mute">(only you see this)</span><textarea id="nt" rows="2" style="width:100%;margin-top:6px">${esc(u.note||'')}</textarea><button class="btn" data-a="note">Save note</button></div>
+  <div class="box"><b>Store purchases</b>${buys.length?buys.map(b=>`<div class="small">${esc(b.product)} · ${esc(b.orderId)} · ${esc((b.purchaseDate||'').slice(0,10))} · ${esc(b.platform||'android')} · ${esc(b.status)}</div>`).join(''):'<div class="small mute">None</div>'}</div>
+  <div class="box"><b>Online shop</b>${shops.length?shops.map(sh=>`<div class="small">${esc(sh.name)} · ${sh.open?'open':'closed'} · ${(D.orders[sh.id]||[]).length} orders · <a href="#" data-shop="${sh.id}">see orders</a></div>`).join(''):'<div class="small mute">Not using online orders</div>'}</div>`;
+  $('#x').onclick=closeP;p.querySelectorAll('[data-shop]').forEach(a=>a.onclick=e=>{e.preventDefault();D.tab='shops';tabs();shops();shop(a.dataset.shop)});
+  p.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>act(u,b.dataset.a))}
+async function act(u,a){const now=Date.now();let d={};const base=Math.max(now,ms(u.planUntil));
+  if(a==='t7')d={extraDays:(u.extraDays||0)+7};
+  else if(a==='m1'){const t=new Date(base);t.setMonth(t.getMonth()+1);d={plan:'monthly',planUntil:TS.fromMillis(t.getTime())}}
+  else if(a==='five'){if(!confirm('Give the 5-Year Plan from today? Use this when they paid you directly.'))return;const t=new Date();t.setFullYear(t.getFullYear()+5);d={plan:'five',planUntil:TS.fromMillis(t.getTime())}}
+  else if(a==='comp')return compForm(u.email);
+  else if(a==='block'){if(!confirm('Put on hold? They can still view their books but cannot add entries.'))return;d={blocked:true}}
+  else if(a==='unblock')d={blocked:false};else if(a==='note')d={note:$('#nt').value.trim().slice(0,500)};
+  try{await db.doc('users/'+u.id).update(d);Object.assign(u,d);user(u.id);if(D.tab==='accounts')accounts(),user(u.id)}catch(e){alert(e.message)}}
+
+const DUR=[['m1','1 month'],['y1','1 year'],['y5','5 years'],['none','No end date']];
+function compForm(email){const p=$('#panel');p.classList.add('on');p.innerHTML=`<div class="tools"><h2 style="margin:0">Give free access</h2><span class="sp"></span><button class="btn ghost" id="x">Close</button></div>
+  <p class="small mute">Full app with no payment. Works for an existing account at once, or for someone who signs up later with this email (after they verify it).</p>
+  <p><input id="ce" type="email" placeholder="Email" value="${esc(email||'')}" style="width:100%"></p>
+  <p><select id="cd" style="width:100%">${DUR.map(([k,l])=>`<option value="${k}" ${k==='y1'?'selected':''}>${l}</option>`).join('')}</select></p>
+  <p><input id="cn" placeholder="Note, e.g. family, staff, demo" style="width:100%"></p><button class="btn" id="cs">Give access</button>`;
+  $('#x').onclick=closeP;$('#cs').onclick=async()=>{const e=$('#ce').value.trim().toLowerCase(),k=$('#cd').value,n=$('#cn').value.trim().slice(0,200);
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))return alert('Enter a valid email.');let until=null;const t=new Date();
+    if(k==='m1'){t.setMonth(t.getMonth()+1);until=TS.fromMillis(t.getTime())}else if(k==='y1'){t.setFullYear(t.getFullYear()+1);until=TS.fromMillis(t.getTime())}else if(k==='y5'){t.setFullYear(t.getFullYear()+5);until=TS.fromMillis(t.getTime())}
+    try{const doc={email:e,until,note:n,revoked:false,by:au.currentUser.email,createdAt:SV()};await db.doc('comps/'+e).set(doc);
+      const u=D.users.find(x=>String(x.email||'').toLowerCase()===e);if(u){const pu=until||TS.fromMillis(FOREVER);await db.doc('users/'+u.id).update({plan:'comp',planUntil:pu});Object.assign(u,{plan:'comp',planUntil:pu})}
+      const i=D.comps.findIndex(x=>x.id===e);const row={id:e,...doc};i<0?D.comps.push(row):D.comps[i]=row;closeP();tabs();show()}catch(x){alert(x.message)}}}
+function free(){const now=Date.now();const c=D.comps.filter(x=>!x.revoked);
+  $('#main').innerHTML=`<div class="tools"><button class="btn" id="add">Give free access</button><span class="mute small">For family, staff, partners or demo shops. They use the app fully with no payment.</span></div>
+  <div class="wrap"><table><tr><th>Email</th><th>Till</th><th>Account</th><th>Note</th><th>Given</th><th></th></tr>${c.map(x=>{const u=D.users.find(u=>String(u.email||'').toLowerCase()===x.id);const un=x.until?ms(x.until):0;
+    return `<tr><td>${esc(x.id)}</td><td>${un?(un>now?fd(un):'<span class="pill r">ended '+fd(un)+'</span>'):'no end'}</td><td>${u?esc(u.shop||u.name)+' · joined':'<span class="mute">not joined yet</span>'}</td><td>${esc(x.note||'')}</td><td class="small">${fd(ms(x.createdAt))}</td><td><button class="btn ghost" data-del="${esc(x.id)}">Remove</button></td></tr>`}).join('')||'<tr><td colspan="6" class="mute">No free accounts yet.</td></tr>'}</table></div>`;
+  $('#add').onclick=()=>compForm('');
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{const id=b.dataset.del;if(!confirm('Remove free access for '+id+'?'))return;
+    try{await db.doc('comps/'+id).delete();const u=D.users.find(x=>String(x.email||'').toLowerCase()===id);if(u&&u.plan==='comp'){await db.doc('users/'+u.id).update({plan:'',planUntil:null});Object.assign(u,{plan:'',planUntil:null})}D.comps=D.comps.filter(x=>x.id!==id);free()}catch(e){alert(e.message)}})}
+function buys(){$('#main').innerHTML=`<p class="small mute">Match each order with Play Console → Order management (Android) or App Store Connect → Sales (iPhone), then mark it checked.</p>
+  <div class="wrap"><table><tr><th>Date</th><th>Account</th><th>Plan</th><th>Store</th><th>Order ID</th><th>Status</th><th></th></tr>${D.buys.map(b=>`<tr><td>${esc((b.purchaseDate||'').slice(0,10))||fd(ms(b.createdAt))}</td><td>${esc(b.email)}</td><td>${b.product==='five'?'5-Year ₹20,000':b.product==='monthly'?'Monthly ₹499':esc(b.product)}</td><td>${esc(b.platform||'android')}</td><td class="small">${esc(b.orderId)}</td><td>${b.status==='new'?'<span class="pill a">new</span>':'<span class="pill g">'+esc(b.status)+'</span>'}</td><td>${b.status==='new'?`<button class="btn ghost" data-ok="${esc(b.id)}">Checked</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" class="mute">No purchases yet.</td></tr>'}</table></div>`;
+  document.querySelectorAll('[data-ok]').forEach(b=>b.onclick=async()=>{try{await db.doc('purchases/'+b.dataset.ok).update({status:'checked'});D.buys.find(x=>x.id===b.dataset.ok).status='checked';tabs();buys()}catch(e){alert(e.message)}})}
+function shops(){$('#main').innerHTML=`<div class="wrap"><table><tr><th>Shop</th><th>Owner</th><th>Phone</th><th>UPI</th><th>Status</th><th>Links</th><th>Orders</th><th>Waiting</th><th>Updated</th></tr>${D.shops.map(s=>{const u=D.users.find(x=>x.id===s.ownerUid);const o=D.orders[s.id]||[];
+    return `<tr class="row" data-s="${s.id}"><td><b>${esc(s.name)}</b><div class="small mute">${esc(s.addr||'')}</div></td><td>${u?esc(u.email):'<span class="mute">old app (no login)</span>'}</td><td>${esc(s.phone)}</td><td class="small">${esc(s.upi)}</td><td>${s.open?'<span class="pill g">open</span>':'<span class="pill n">closed</span>'}</td><td class="small">retail: ${s.autoRetail?'auto':'ask'} · wholesale: ${s.autoWholesale?'auto':'ask'}</td><td>${o.length}</td><td>${(s.reqs||0)+o.filter(x=>x.status==='placed').length}</td><td class="small">${fd(ms(s.updatedAt))}</td></tr>`}).join('')||'<tr><td colspan="9" class="mute">No online shops.</td></tr>'}</table></div>`;
+  document.querySelectorAll('tr[data-s]').forEach(r=>r.onclick=()=>shop(r.dataset.s))}
+function shop(id){const s=D.shops.find(x=>x.id===id);const o=D.orders[id]||[];const p=$('#panel');p.classList.add('on');const base=location.href.replace(/[^/]*([?#].*)?$/,'');
+  p.innerHTML=`<div class="tools"><h2 style="margin:0">${esc(s.name)}</h2><span class="sp"></span><button class="btn ghost" id="x">Close</button></div>
+  <div class="small">Links: <a href="${base}shop.html?s=${id}&t=r" target="_blank" rel="noopener">retail</a> · <a href="${base}shop.html?s=${id}&t=w" target="_blank" rel="noopener">wholesale</a></div>
+  <table style="margin-top:10px"><tr><th>Date</th><th>Customer</th><th>Total</th><th>Status</th><th>Pay</th></tr>${o.map(x=>`<tr><td class="small">${fd(ms(x.createdAt))}</td><td>${esc(x.name)}<div class="small mute">${esc(x.phone)} · ${esc(x.tier)} · ${esc(x.delivery)}</div></td><td>${inr(x.total)}</td><td>${esc(x.status)}</td><td class="small">${esc(x.payMode)} · ${esc(x.payStatus)}</td></tr>`).join('')||'<tr><td colspan="5" class="mute">No orders.</td></tr>'}</table>`;
+  $('#x').onclick=closeP}
+})();
+</script>
+</body>
+</html>

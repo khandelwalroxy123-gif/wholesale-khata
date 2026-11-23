@@ -1,3 +1,5 @@
+async function nativeSpeak(text){if(!NTTS)return false;try{await NTTS.stop().catch(()=>{});await NTTS.speak({text:text.slice(0,3900),lang:S.lang==='hi'?'hi-IN':'en-IN',rate:0.95,pitch:1,volume:1,category:'playback'});return true}catch(e){return false}}
+async function nativeListen(){if(!NSR)return false;try{const a=await NSR.available();if(a&&a.available===false){toast('Speech recognition not available on this phone');return true}const p=await NSR.requestPermissions();if(p&&p.speechRecognition&&p.speechRecognition!=='granted'){toast('Microphone permission was not given');return true}
   vMicState(true);const r=await NSR.start({language:S.lang==='hi'?'hi-IN':'en-IN',maxResults:1,prompt:S.lang==='hi'?'बोलिए…':'Speak now…',partialResults:false,popup:true});S.vlisten=false;vMicState(false);const t=r&&r.matches&&r.matches[0];if(t){const e=$('#vtxt');if(e)e.value=t;A.vrun()}}catch(e){S.vlisten=false;vMicState(false);toast('Did not catch that. Try again.')}return true}
 
 let DICT=null,TTSO=null,SAMP=null;
@@ -259,4 +261,3 @@ const GUIDE=[
  en:['Search any product, see every rate','Type a product name, pick the size, and you see stock and all sale and purchase rates, newest first. You also see the last 5 rates for every vendor and every party, and the full history below.','When a party asks for a rate, you answer in seconds and never quote below your cost.'],
  hi:['कोई भी सामान खोजें, हर रेट देखें','सामान का नाम लिखिए, साइज़ चुनिए, और स्टॉक के साथ सारे बिक्री और खरीद के रेट दिखेंगे, नए से पुराने। हर वेंडर और हर पार्टी के आखिरी 5 रेट भी दिखते हैं, और नीचे पूरी हिस्ट्री।','पार्टी रेट पूछे तो सेकंडों में जवाब, और कभी लागत से कम रेट नहीं।']},
 {ic:'sale',c:'#1f7a4d',go:"A.newBill('sale','c1')",
- en:['Sale bill in 30 seconds','Tap plus, choose Sale, pick the party and add items. Enter cartons and loose pieces together. The rate fills in from the last rate given to that party. The app warns you if you sell below cost, have less stock, or the party crosses its credit limit. Print the bill as PDF or send it on WhatsApp.','Fast, correct bills with no calculation mistakes, and no loss-making sale goes out by accident.'],

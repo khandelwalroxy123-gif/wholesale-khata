@@ -32,7 +32,7 @@ service cloud.firestore {
 
       // Two price lists: retail and wholesale. A customer reads only the one the shop chose for them.
       match /catalog/{tier} {
-        allow read: if isOwner(s) || (approved(s) && approvedTier(s) == tier);
+        allow read: if isOwner(s) || isAdmin() || (approved(s) && approvedTier(s) == tier);
         allow write: if isOwner(s);
       }
 
@@ -52,7 +52,7 @@ service cloud.firestore {
           || (want == 'wholesale' && shopDoc(s).get('autoWholesale', false) == true);
       }
       match /sessions/{uid} {
-        allow read: if isOwner(s) || (signedIn() && request.auth.uid == uid);
+        allow read: if isOwner(s) || isAdmin() || (signedIn() && request.auth.uid == uid);
         allow create, update: if isOwner(s) || (
           signedIn() && request.auth.uid == uid && visitOk(request.resource.data) && (
             (request.resource.data.keys().hasOnly(['name', 'phone', 'want', 'status', 'requestedAt', 'visit'])
@@ -70,7 +70,7 @@ service cloud.firestore {
       }
 
       match /orders/{o} {
-        allow read: if isOwner(s) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow read: if isOwner(s) || isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
         allow create: if approved(s)
           && request.resource.data.keys().hasOnly(['uid', 'name', 'phone', 'address', 'delivery', 'note', 'tier', 'items',
                                                    'clientTotal', 'total', 'payMode', 'payStatus', 'status', 'createdAt', 'visit'])
@@ -123,6 +123,13 @@ service cloud.firestore {
         && request.resource.data.status == 'new' && request.resource.data.createdAt == request.time;
       allow read: if isAdmin() || (member() && resource.data.uid == request.auth.uid);
       allow update, delete: if isAdmin();
+    }
+
+    // Complimentary access given by the admin, keyed by email (lower case). The owner of that
+    // email can read it only after verifying the email, so nobody can claim someone else's gift.
+    match /comps/{email} {
+      allow read: if isAdmin() || (member() && request.auth.token.email == email && request.auth.token.email_verified == true);
+      allow write: if isAdmin();
     }
   }
 }
