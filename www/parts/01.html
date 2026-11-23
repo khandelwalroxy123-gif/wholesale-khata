@@ -212,6 +212,20 @@ h3{color:var(--mute)}
 .ic{box-shadow:none}.ic.tint{background:color-mix(in srgb,var(--c) 13%,transparent);color:var(--c)}
 .pill.blue{background:color-mix(in srgb,var(--info) 13%,transparent);color:var(--info)}
 .av{background:var(--soft);color:var(--ink)}
+
+/* MINIMAL 2 – light header and lock screen; the book colour shows only as a thin top line, the active book and the + button */
+header.top{background:var(--card);color:var(--ink);border-top:4px solid var(--book);border-bottom:1px solid var(--line);padding-top:calc(10px + var(--sat))}
+.toprow .sub{color:var(--mute);opacity:1}
+.ib{background:var(--soft);border:1px solid var(--line);color:var(--ink)}
+.ib:active{background:var(--line)}
+.booksw{background:var(--soft);border:1px solid var(--line)}
+.booksw button{color:var(--mute);opacity:1}
+.booksw button.on{background:var(--book);color:#fff}
+.lockscr{background:var(--bg);color:var(--ink)}
+.mono{border:2px solid var(--book);color:var(--book);box-shadow:none}
+.dots i{border-color:var(--book)}.dots i.f{background:var(--book)}
+.pad button{background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.pad button:active{background:var(--soft)}
 </style>
 </head>
 <body>
@@ -450,8 +464,3 @@ const backBtn=()=>`<button class="back" onclick="A.back()">${T('back')}</button>
 /* ---------- lock ---------- */
 let pinIn='';
 function lockScreen(){
-  $('#layer').innerHTML=`<div class="lockscr"><div class="mono">${esc(S.shop.name.split(' ').map(w=>w[0]).slice(0,2).join(''))}</div><div style="font-size:22px;font-weight:700;font-family:var(--serif)">${esc(S.shop.name)}</div><div style="opacity:.85">Enter PIN to open</div><div class="dots">${[0,1,2,3].map(i=>`<i class="${i<pinIn.length?'f':''}"></i>`).join('')}</div>
-  <div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="A.pin('${n}')">${n}</button>`).join('')}<button onclick="A.pin('fp')" style="font-size:14px" aria-label="Fingerprint">${fingerOn()?'Finger':''}</button><button onclick="A.pin('0')">0</button><button onclick="A.pin('del')" style="font-size:20px" aria-label="Delete">⌫</button></div>
-  ${S.pin==='1234'?'<div style="margin-top:22px;opacity:.8;font-size:14px">Sample PIN: 1234 · change it in Settings</div>':''}</div>`;
-}
-function fingerOn(){return !!(S.finger&&IS_APP&&BIO)}

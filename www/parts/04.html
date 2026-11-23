@@ -1,3 +1,7 @@
+  if(st.length&&has(t,['advance','एडवांस','udhaar diya'])){st.forEach(s=>acts.push({kind:'advance',sid:s.id,amt:amt()}));return acts}
+  if(st.length&&!findProd(t)){const stOf=x=>has(x,['absent','nahi aaya','nahin aaya','nahi aayi','gair','गैरहाजिर','नहीं आया'])?'A':has(x,['half','aadha','आधा','हाफ'])?'H':has(x,['chhutti','chutti','leave','छुट्टी'])?'L':'P';const seen={};t.split(/ , | \. | । /).forEach(seg=>{const ss=findStaff(' '+seg+' ');const a=stOf(seg);ss.forEach(s=>{if(!seen[s.id]){seen[s.id]=1;acts.push({kind:'attendance',sid:s.id,status:a})}})});return acts}
+  const HM=[['Electricity bill',['bijli','electric','light bill','बिजली']],['Water bill',['paani','pani','water','पानी']],['Worker salary',['salary','tankhwah','पगार','तनख्वाह','majdoori','मजदूरी']],['Shop rent',['rent','kiraya','किराया']],['Tea & snacks',['chai','tea','nashta','नाश्ता','चाय']],['Transport',['transport','bhada','bhaada','tempo','भाड़ा','टेम्पो']],['Repair',['repair','marammat','मरम्मत']]];
+  const hm=HM.find(h=>has(t,h[1]));
   if(hm||has(t,['kharcha','expense','खर्चा'])){if(!findProd(t)&&!findParty(t,['party','vendor'])){acts.push({kind:'expense',head:hm?hm[0]:'Other',amt:amt(),note:raw.trim().slice(0,60)});return acts}}
   const p=findProd(t);const c=findParty(t,['party','vendor']);
   if(!p&&c){const out=has(t,['diya','diye','paid','bheja','de diya','दिया','भेजा','chukaya'])||c.type==='vendor'&&!has(t,['mila','received','aaya','मिला']);
@@ -232,6 +236,3 @@ const GUIDE=[
  hi:['स्टाफ़ हाज़िरी और तनख्वाह','सुबह एक टच में हाज़िर, आधा दिन, गैरहाज़िर या छुट्टी लगाइए। कैलेंडर में पूरा महीना दिखता है। एडवांस और ओवरटाइम दर्ज होता है, तनख्वाह अपने आप बनती है, और सैलरी स्लिप WhatsApp पर जाती है।','तनख्वाह पर कोई झगड़ा नहीं, और पता रहता है किसने कितना कमाया।']},
 {ic:'reports',c:'#a34a1f',go:"A.go('reports')",
  en:['Profit and loss, daily to monthly','Reports show sale, purchase, gross profit, transport, expenses and net profit for today, the week or the month, with charts. Profit is also shown by product, by party, and which vendor is cheaper.','You know which products and parties really earn money, and where to push or cut.'],
- hi:['मुनाफ़ा-घाटा, रोज़ से महीने तक','रिपोर्ट में आज, हफ़्ते या महीने की बिक्री, खरीद, कुल मुनाफ़ा, भाड़ा, खर्चे और असली मुनाफ़ा चार्ट के साथ दिखता है। हर सामान, हर पार्टी का मुनाफ़ा और कौन सा वेंडर सस्ता है, यह भी।','पता चलता है कौन सा माल और कौन सी पार्टी सच में कमाई देती है, कहाँ बढ़ाना है और कहाँ कम करना है।']},
-{ic:'voice',c:'#7d1d2c',go:"A.go('voice')",
- en:['Just speak','Tap the mic at the top and speak in Hindi, English or Hinglish. For example: Sharma ko 2 peti Surf 1 kg 3300 rupees. Or ask: Sharma ka kitna baaki hai? The app fills the entry or answers aloud. Nothing is saved until you check it.','Entries while your hands are busy at the counter, and answers without searching.'],

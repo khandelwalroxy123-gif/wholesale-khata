@@ -29,19 +29,36 @@ service cloud.firestore {
         allow write: if isOwner(s);
       }
 
-      // One document per customer device. The customer can only ask (status 'pending');
-      // only the shop owner can allow or decline.
+      // One document per customer device. Normally the customer can only ask (status 'pending')
+      // and only the shop owner can allow or decline. If the shop switched on "Allow automatically"
+      // for that link (autoRetail / autoWholesale), the customer may approve this one visit
+      // themselves, only for the link's own price list and for at most 6 hours.
+      function visitOk(d) {
+        return d.name is string && d.name.size() > 0 && d.name.size() <= 60
+          && d.phone is string && d.phone.size() <= 15
+          && d.want in ['retail', 'wholesale']
+          && d.visit is string && d.visit.size() <= 20
+          && d.requestedAt == request.time;
+      }
+      function autoOn(s, want) {
+        return (want == 'retail' && shopDoc(s).get('autoRetail', false) == true)
+          || (want == 'wholesale' && shopDoc(s).get('autoWholesale', false) == true);
+      }
       match /sessions/{uid} {
         allow read: if isOwner(s) || (signedIn() && request.auth.uid == uid);
         allow create, update: if isOwner(s) || (
-          signedIn() && request.auth.uid == uid
-          && request.resource.data.keys().hasOnly(['name', 'phone', 'want', 'status', 'requestedAt', 'visit'])
-          && request.resource.data.status == 'pending'
-          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60
-          && request.resource.data.phone is string && request.resource.data.phone.size() <= 15
-          && request.resource.data.want in ['retail', 'wholesale']
-          && request.resource.data.visit is string && request.resource.data.visit.size() <= 20
-          && request.resource.data.requestedAt == request.time);
+          signedIn() && request.auth.uid == uid && visitOk(request.resource.data) && (
+            (request.resource.data.keys().hasOnly(['name', 'phone', 'want', 'status', 'requestedAt', 'visit'])
+              && request.resource.data.status == 'pending')
+            ||
+            (request.resource.data.keys().hasOnly(['name', 'phone', 'want', 'status', 'requestedAt', 'visit', 'tier', 'auto', 'approvedAt', 'validUntil'])
+              && request.resource.data.status == 'approved' && request.resource.data.auto == true
+              && request.resource.data.tier == request.resource.data.want
+              && autoOn(s, request.resource.data.want)
+              && request.resource.data.approvedAt == request.time
+              && request.resource.data.validUntil is timestamp
+              && request.resource.data.validUntil <= request.time + duration.value(6, 'h'))
+          ));
         allow delete: if isOwner(s);
       }
 

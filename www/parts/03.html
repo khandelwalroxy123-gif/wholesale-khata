@@ -1,3 +1,7 @@
+  ${d.items.map((i,k)=>{const below=d.type==='sale'&&perPc(i)<avgCost(i.vid);const short=d.type==='sale'&&pcs(i)>stockOf(i.vid);return `<div class="card" onclick="A.itemSheet(${k})" style="cursor:pointer"><div class="row"><div class="sp"><b>${esc(vname(i.vid))}</b><div class="small mute">${i.qty} ${i.unit==='ctn'?T('ctn').toLowerCase():T('pcs').toLowerCase()} × ${inr2(i.rate)}${i.rt==='retail'?' · retail':''}${g?' · GST '+prodOf(i.vid).gst+'%':''}</div></div><b class="num">${inr2(i.qty*i.rate)}</b></div>${below?`<div class="warnbox">Below your cost (${inr2(avgCost(i.vid))}/pc). You lose money on this.</div>`:''}${short?`<div class="warnbox">Only ${fq(stockOf(i.vid),i.vid)} in stock.</div>`:''}</div>`}).join('')}
+  <button class="btn ghost" onclick="A.itemSheet(-1)" style="border-style:dashed;margin-bottom:12px">${T('additem')}</button>
+  ${d.file?`<div class="small mute" style="margin:-4px 0 10px">Bill file: ${esc(d.file)}</div>`:''}${g&&d.type==='purchase'?`<label class="f"><span>Vendor invoice no.</span><input class="inp" value="${esc(d.vinv||'')}" oninput="S_.draft.vinv=this.value"></label>`:''}
+  <div class="g2"><label class="f"><span>${T('transport')}</span><input class="inp" inputmode="numeric" value="${d.transport||''}" placeholder="0" oninput="S_.draft.transport=+this.value||0"></label>
   <label class="f"><span>${T('paid')}</span><input class="inp" inputmode="numeric" id="paidnow" value="${d.paid||''}" placeholder="0" oninput="S_.draft.paid=+this.value||0"></label></div>
   <div class="seg">${['cash','upi','cheque'].map(m=>`<button class="${d.mode===m?'on':''}" onclick="A.dmode('${m}')">${m==='upi'?'UPI':m[0].toUpperCase()+m.slice(1)}</button>`).join('')}</div>
   <div class="card"><table class="t"><tbody>${g?`<tr><td>Taxable</td><td class="r num">${inr2(tt.sub)}</td></tr><tr><td>${tt.igst?'IGST':'CGST + SGST'}</td><td class="r num">${inr2(tt.tax)}</td></tr>`:''}<tr><td><b>${T('total')}</b></td><td class="r num" style="font-size:22px"><b>${inr(tt.grand)}</b></td></tr></tbody></table>
@@ -233,7 +237,3 @@ function vOffline(raw){
     return acts;
   }
   const st=findStaff(t);
-  if(st.length&&has(t,['advance','एडवांस','udhaar diya'])){st.forEach(s=>acts.push({kind:'advance',sid:s.id,amt:amt()}));return acts}
-  if(st.length&&!findProd(t)){const stOf=x=>has(x,['absent','nahi aaya','nahin aaya','nahi aayi','gair','गैरहाजिर','नहीं आया'])?'A':has(x,['half','aadha','आधा','हाफ'])?'H':has(x,['chhutti','chutti','leave','छुट्टी'])?'L':'P';const seen={};t.split(/ , | \. | । /).forEach(seg=>{const ss=findStaff(' '+seg+' ');const a=stOf(seg);ss.forEach(s=>{if(!seen[s.id]){seen[s.id]=1;acts.push({kind:'attendance',sid:s.id,status:a})}})});return acts}
-  const HM=[['Electricity bill',['bijli','electric','light bill','बिजली']],['Water bill',['paani','pani','water','पानी']],['Worker salary',['salary','tankhwah','पगार','तनख्वाह','majdoori','मजदूरी']],['Shop rent',['rent','kiraya','किराया']],['Tea & snacks',['chai','tea','nashta','नाश्ता','चाय']],['Transport',['transport','bhada','bhaada','tempo','भाड़ा','टेम्पो']],['Repair',['repair','marammat','मरम्मत']]];
-  const hm=HM.find(h=>has(t,h[1]));

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#8a1c2b">
+<meta name="theme-color" content="#ffffff">
 <title>Order online</title>
 <link href="fonts/fonts.css" rel="stylesheet">
 <style>
@@ -11,11 +11,11 @@
 *{box-sizing:border-box}html,body{margin:0;height:100%}
 body{background:#e9e9e6;color:var(--ink);font:16px/1.45 Hind,system-ui,sans-serif}
 #app{max-width:520px;min-height:100%;margin:0 auto;background:var(--bg);padding-bottom:110px;position:relative}
-header{background:var(--book);color:#fff;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 0;position:sticky;top:0;z-index:5}
+header{background:#fff;color:var(--ink);border-top:4px solid var(--book);border-bottom:1px solid var(--line);padding:calc(12px + env(safe-area-inset-top,0px)) 16px 0;position:sticky;top:0;z-index:5}
 header h1{font-family:"Playfair Display",Georgia,serif;font-size:24px;margin:0;line-height:1.2}
-header .sub{opacity:.85;font-size:14px}
-.tabs{display:flex;gap:6px;margin-top:10px}.tabs button{flex:1;background:transparent;border:0;color:rgba(255,255,255,.7);font:600 16px Hind,sans-serif;padding:10px 0;border-bottom:3px solid transparent;cursor:pointer}
-.tabs button.on{color:#fff;border-bottom-color:#fff}
+header .sub{color:var(--mute);font-size:14px}
+.tabs{display:flex;gap:6px;margin-top:10px}.tabs button{flex:1;background:transparent;border:0;color:var(--mute);font:600 16px Hind,sans-serif;padding:10px 0;border-bottom:3px solid transparent;cursor:pointer}
+.tabs button.on{color:var(--book);border-bottom-color:var(--book)}
 main{padding:14px 14px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
 h2{font-family:"Playfair Display",Georgia,serif;font-size:21px;margin:4px 0 10px}
@@ -117,10 +117,11 @@ function askHTML(){const s=St.sess;const mine=s&&s.visit===sessionStorage.getIte
     ${ph?`<a class="btn ghost" href="https://wa.me/91${ph}?text=${encodeURIComponent('Namaste, I am '+(s.name||'')+'. I have asked to order on your online shop. Please allow.')}" target="_blank" rel="noopener">Remind on WhatsApp</a>`:''}</div>`}
   if(mine&&s.status==='denied')return `<div class="card"><h2>Not allowed right now</h2><p class="mute">The shop did not allow ordering this time. You can call the shop${St.shop.phone?' on '+esc(St.shop.phone):''}.</p><button class="btn ghost" onclick="W.ask()">Ask again</button></div>`;
   const me=St.me||{};
-  return `<div class="card"><h2>Ask to order</h2><p class="mute small" style="margin-top:-4px">The shop allows each visit. Your name and phone are shared with ${esc(St.shop.name)} to handle your order (<a href="privacy.html">privacy</a>).<br>हर बार दुकान से अनुमति ली जाती है।</p>
+  const auto=!!St.shop[WANT==='wholesale'?'autoWholesale':'autoRetail'];
+  return `<div class="card"><h2>${auto?'Start your order':'Ask to order'}</h2><p class="mute small" style="margin-top:-4px">${auto?'':'The shop allows each visit. '}Your name and phone are shared with ${esc(St.shop.name)} to handle your order (<a href="privacy.html">privacy</a>).${auto?'':'<br>हर बार दुकान से अनुमति ली जाती है।'}</p>
   <label class="f"><span>Your name · नाम</span><input class="inp" id="a_n" value="${esc(me.name||'')}" maxlength="60" autocomplete="name"></label>
   <label class="f"><span>Mobile number · मोबाइल</span><input class="inp" id="a_p" value="${esc(me.phone||'')}" inputmode="tel" maxlength="14" autocomplete="tel"></label>
-  <button class="btn" onclick="W.ask()">Ask shop to allow · अनुमति माँगें</button></div>`}
+  <button class="btn" onclick="W.ask()">${auto?'See price list · रेट लिस्ट देखें':'Ask shop to allow · अनुमति माँगें'}</button></div>`}
 
 function catHTML(){const items=St.cat.items||[];const cats=[...new Set(items.map(i=>i.cat))];const q=St.q.toLowerCase();const ws=St.cat.tier==='wholesale';
   const list=items.filter(i=>(!St.c||i.cat===St.c)&&(!q||(i.name+' '+i.size+' '+i.cat).toLowerCase().includes(q)));
@@ -162,7 +163,10 @@ window.W={
   ask:async()=>{const n=(($('#a_n')||{}).value||St.me.name||'').trim();const p=(($('#a_p')||{}).value||St.me.phone||'').replace(/\D/g,'').slice(-10);
     if(!n){toast('Enter your name');return}if(p.length!==10){toast('Enter a 10 digit mobile number');return}
     St.me.name=n;St.me.phone=p;saveMe();const visit=Math.random().toString(36).slice(2,10);sessionStorage.setItem(visitKey,visit);St.cat=null;
-    try{await St.db.doc('shops/'+SHOP+'/sessions/'+St.uid).set({name:n,phone:p,want:WANT,status:'pending',requestedAt:firebase.firestore.FieldValue.serverTimestamp(),visit});}catch(e){toast('Could not send. Check internet.')}},
+    const auto=!!St.shop[WANT==='wholesale'?'autoWholesale':'autoRetail'];const FV=firebase.firestore.FieldValue;
+    const doc=auto?{name:n,phone:p,want:WANT,status:'approved',tier:WANT,auto:true,requestedAt:FV.serverTimestamp(),approvedAt:FV.serverTimestamp(),validUntil:firebase.firestore.Timestamp.fromMillis(Date.now()+6*3600e3-120e3),visit}
+                  :{name:n,phone:p,want:WANT,status:'pending',requestedAt:FV.serverTimestamp(),visit};
+    try{await St.db.doc('shops/'+SHOP+'/sessions/'+St.uid).set(doc);}catch(e){toast('Could not send. Check internet.')}},
   q:(k,d)=>{St.cart[k]=Math.max(0,(St.cart[k]||0)+d);if(!St.cart[k])delete St.cart[k];render()},
   s:v=>{St.q=v;const p=document.activeElement&&document.activeElement.selectionStart;render();const e=$('main input.inp');if(e){e.focus();try{e.setSelectionRange(p,p)}catch(x){}}},
   c:v=>{St.c=v;render()},

@@ -17,7 +17,7 @@ The orders need a small online database. It runs on Google Firebase's free **Spa
 
 ## 4. Paste the security rules
 **Firestore Database → Rules** → delete what is there → paste the whole of [`firestore.rules`](firestore.rules) from this repo → **Publish**.
-These rules make sure a customer sees prices only after the shop allows that visit, sees only the price list the shop chose (retail or wholesale), and sees only their own orders. Only the shop's phone can accept orders or change the price list.
+These rules make sure a customer sees prices only after the shop allows that visit (or after the shop has switched that link to "Allow automatically"), sees only the price list the shop chose (retail or wholesale), and sees only their own orders. Only the shop's phone can accept orders or change the price list.
 
 ## 5. Allow the website address
 **Authentication → Settings → Authorized domains → Add domain** → `khandelwalroxy123-gif.github.io`
@@ -52,6 +52,7 @@ Commit to `main`. GitHub Actions builds the new APK and website.
 In the app: **More → Online orders · link & QR** → enter your UPI ID → **Start online shop**.
 - Share the **Retail** link/QR with shop customers and the **Wholesale** link/QR with retailers.
 - When someone opens a link, the app beeps and shows **"customer waiting"**. Tap **Allow · Retail** or **Allow · Wholesale** (allowed for that visit, 6 hours) or **Decline**.
+- Don't want to approve every visit? In **Online orders → Who can order**, set the Retail link and/or the Wholesale link to **Allow automatically**. Anyone with that link then sees its prices and can order at once (you still accept each order). Keep the Wholesale link on **Ask me each time** if you don't want just anyone to see wholesale rates.
 - New order → **Accept & make bill** (bill goes to the Daily book, or to the GST book as a draft – choose in Online orders → Settings).
 - Tap **Packed → Out for delivery → Delivered**; the customer sees each step at once.
 - UPI: after acceptance the customer pays to your UPI ID and taps "I have paid" (with UTR). Check your bank/UPI app, then tap **UPI payment received** – it goes into the khata. Cash: tap **Cash received**.
