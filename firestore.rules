@@ -1,0 +1,81 @@
+rules_version = '2';
+// Wholesale Khata – online orders.
+// Paste this whole file in Firebase console → Firestore Database → Rules → Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function shopDoc(s) { return get(/databases/$(database)/documents/shops/$(s)).data; }
+    function isOwner(s) { return signedIn() && shopDoc(s).ownerUid == request.auth.uid; }
+    function sessPath(s) { return /databases/$(database)/documents/shops/$(s)/sessions/$(request.auth.uid); }
+    // A customer may see prices and order only after the shop allowed this visit, and only until it expires.
+    function approved(s) {
+      return signedIn() && exists(sessPath(s))
+        && get(sessPath(s)).data.status == 'approved'
+        && request.time < get(sessPath(s)).data.validUntil;
+    }
+    function approvedTier(s) { return get(sessPath(s)).data.tier; }
+
+    match /shops/{s} {
+      // Shop name, phone, UPI ID and open/closed are public so the link page can show them.
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isOwner(s) && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if isOwner(s);
+
+      // Two price lists: retail and wholesale. A customer reads only the one the shop chose for them.
+      match /catalog/{tier} {
+        allow read: if isOwner(s) || (approved(s) && approvedTier(s) == tier);
+        allow write: if isOwner(s);
+      }
+
+      // One document per customer device. The customer can only ask (status 'pending');
+      // only the shop owner can allow or decline.
+      match /sessions/{uid} {
+        allow read: if isOwner(s) || (signedIn() && request.auth.uid == uid);
+        allow create, update: if isOwner(s) || (
+          signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['name', 'phone', 'want', 'status', 'requestedAt', 'visit'])
+          && request.resource.data.status == 'pending'
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60
+          && request.resource.data.phone is string && request.resource.data.phone.size() <= 15
+          && request.resource.data.want in ['retail', 'wholesale']
+          && request.resource.data.visit is string && request.resource.data.visit.size() <= 20
+          && request.resource.data.requestedAt == request.time);
+        allow delete: if isOwner(s);
+      }
+
+      match /orders/{o} {
+        allow read: if isOwner(s) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow create: if approved(s)
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'phone', 'address', 'delivery', 'note', 'tier', 'items',
+                                                   'clientTotal', 'total', 'payMode', 'payStatus', 'status', 'createdAt', 'visit'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.tier == approvedTier(s)
+          && request.resource.data.status == 'placed'
+          && request.resource.data.payStatus == 'unpaid'
+          && request.resource.data.payMode in ['cash', 'upi']
+          && request.resource.data.delivery in ['delivery', 'pickup']
+          && request.resource.data.items is list && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 150
+          && request.resource.data.name is string && request.resource.data.name.size() <= 60
+          && request.resource.data.address is string && request.resource.data.address.size() <= 200
+          && request.resource.data.note is string && request.resource.data.note.size() <= 200
+          && request.resource.data.createdAt == request.time;
+        allow update: if isOwner(s) || (
+          signedIn() && resource.data.uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payStatus', 'utr', 'status', 'customerAt'])
+          && (
+            // customer says "I have paid" by UPI
+            (resource.data.payStatus == 'unpaid' && request.resource.data.payStatus == 'claimed'
+              && request.resource.data.status == resource.data.status
+              && (!('utr' in request.resource.data) || (request.resource.data.utr is string && request.resource.data.utr.size() <= 30)))
+            ||
+            // customer cancels before the shop accepts
+            (resource.data.status == 'placed' && request.resource.data.status == 'cancelled'
+              && request.resource.data.payStatus == resource.data.payStatus)
+          ));
+        allow delete: if isOwner(s);
+      }
+    }
+  }
+}

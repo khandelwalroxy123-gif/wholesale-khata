@@ -19,20 +19,32 @@ li{margin:4px 0}
 </style>
 </head>
 <body>
-<header><a href="index.html">‹ Back to the app</a><h1>Privacy policy</h1><div class="mute">Wholesale Khata · Effective 23 November 2026</div></header>
+<header><a href="index.html">‹ Back to the app</a><h1>Privacy policy</h1><div class="mute">Wholesale Khata · Effective 23 November 2026 · updated for online orders</div></header>
 <main>
 <p>Wholesale Khata is a billing, stock and khata app for wholesale shops. This policy explains what happens to your information when you use the app on Android or in a web browser.</p>
 
 <h2>The short version</h2>
 <ul>
 <li>There is no account and no sign-up.</li>
-<li>All your shop data stays on your own phone or computer.</li>
-<li>The app does not send your data to us or to anyone else.</li>
-<li>No ads, no analytics, no tracking.</li>
+<li>Your books (bills, stock, khata, staff) stay on your own phone or computer.</li>
+<li>Only if a shop turns on <b>Online orders</b>, the shop's price list and its customers' order details are kept in the app's online database (Google Firebase) so customers can order and track.</li>
+<li>No ads, no analytics, no tracking, and nothing is sold.</li>
 </ul>
 
 <h2>Information the app stores</h2>
 <p>The app stores the information you enter: your shop details, products, rates, stock, bills, parties and vendors (names, phone numbers, GSTIN, balances), payments, cheques, expenses, and staff attendance and salary. It is saved only in the app's private storage on your device so that it works without internet. We, the developer, cannot see or access it.</p>
+
+<h2>Online orders (optional)</h2>
+<p>A shop can turn on Online orders and share a link or QR code. When this is on:</p>
+<ul>
+<li><b>Shop:</b> the shop name, phone number, address, UPI ID and the retail and wholesale price lists are stored online so customers can see them.</li>
+<li><b>Customers:</b> when you open a shop's link, you give your name and mobile number to ask the shop for permission to order. When you order, your address (for delivery), note, items, order amount, payment method, payment status and the UPI reference number you enter are stored with the order. This is used only so the shop can accept, bill, deliver and confirm payment, and so you can track the order.</li>
+<li>Each phone or browser gets a random anonymous ID from Google Firebase so it can see only its own orders. No e-mail or password is used.</li>
+<li>The data is stored in Google Firebase (Cloud Firestore, servers in India where available) and sent over encrypted connections (HTTPS). Google acts as our service provider. It is not shared with anyone else and not used for advertising.</li>
+<li>When the shop accepts an order, the bill is saved in the shop's books on the shop's phone.</li>
+<li>UPI payments are made in your own UPI app directly to the shop; the app never sees your bank details or UPI PIN.</li>
+</ul>
+<p><b>Deleting online data:</b> a shop can delete all of its online data at any time (Online orders → Delete online shop). A customer can ask the shop, or write to the developer at the e-mail address on the app's Google Play page, to delete their orders and details; we will delete them within 30 days.</p>
 
 <h2>Microphone and voice entry</h2>
 <p>The microphone is used only when you tap <b>Speak</b> in the voice assistant. The words you say are turned into text by your phone's own speech recognition service (on most Android phones this is provided by Google and covered by Google's privacy policy). The app receives only the text, uses it to fill in the entry on your phone, and does not keep or send any audio.</p>
@@ -50,7 +62,7 @@ li{margin:4px 0}
 </ul>
 
 <h2>Internet use</h2>
-<p>The app does not need internet and makes no network requests of its own. Fonts are included in the app. Links to WhatsApp open in WhatsApp or your browser only when you tap them.</p>
+<p>The app works without internet. It connects to the internet only for Online orders, if the shop turns them on. Fonts are included in the app. Links to WhatsApp open in WhatsApp or your browser only when you tap them.</p>
 
 <h2>Keeping and deleting your data</h2>
 <p>Your data stays on your device until you remove it. <b>More → Settings → Start fresh</b> removes your bills, payments, expenses, parties, vendors and staff from the app; for safety the app keeps a few recent copies in its private storage on the phone. Uninstalling the app (or clearing its storage in Android settings) deletes all of its data, including those copies. Backup files you saved elsewhere are not touched; delete them where you saved them.</p>
@@ -72,7 +84,8 @@ li{margin:4px 0}
 <ul>
 <li>ऐप में कोई अकाउंट या साइन-अप नहीं है।</li>
 <li>आपकी दुकान का पूरा डेटा सिर्फ़ आपके फ़ोन में रहता है। हम (डेवलपर) उसे नहीं देख सकते।</li>
-<li>ऐप आपका डेटा हमें या किसी और को नहीं भेजता। कोई विज्ञापन या ट्रैकिंग नहीं।</li>
+<li>ऐप आपकी बही का डेटा कहीं नहीं भेजता। कोई विज्ञापन या ट्रैकिंग नहीं।</li>
+<li>अगर दुकान <b>ऑनलाइन ऑर्डर</b> चालू करती है, तो दुकान की रेट लिस्ट और ग्राहक का नाम, मोबाइल, पता और ऑर्डर Google Firebase में सुरक्षित रखे जाते हैं, ताकि दुकान ऑर्डर ले सके और ग्राहक उसे ट्रैक कर सके। यह किसी और को नहीं दिया जाता। दुकान "Delete online shop" से सारा ऑनलाइन डेटा हटा सकती है; ग्राहक दुकान या डेवलपर से अपना डेटा हटवा सकते हैं।</li>
 <li>माइक्रोफ़ोन सिर्फ़ तब चलता है जब आप <b>बोलें</b> दबाते हैं। फ़ोन की अपनी आवाज़-पहचान सेवा बोले गए शब्दों को टेक्स्ट में बदलती है; ऐप कोई रिकॉर्डिंग नहीं रखता।</li>
 <li>फ़िंगरप्रिंट Android जाँचता है; ऐप को आपका फ़िंगरप्रिंट कभी नहीं मिलता।</li>
 <li>WhatsApp पर भेजना, बैकअप फ़ाइल सेव करना और प्रिंट करना तभी होता है जब आप बटन दबाते हैं।</li>

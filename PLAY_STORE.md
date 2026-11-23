@@ -10,8 +10,8 @@ Everything Play Console asks for, in the order it asks. Files for the listing ar
 | Upload format: signed Android App Bundle (`.aab`) | Built by GitHub Actions once the signing key is added (step 2) |
 | Version code goes up on every upload | Set from the build number automatically |
 | Privacy policy inside the app and on the web | More → Settings → Privacy, and `https://khandelwalroxy123-gif.github.io/wholesale-khata/privacy.html` |
-| No data sent off the phone, no ads, no analytics | Fonts are bundled, no network calls; Android cloud auto-backup is off |
-| Permissions | Microphone only (voice entry, used only when the user taps Speak) and fingerprint |
+| No ads, no analytics | Fonts are bundled; books stay on the phone; Android cloud auto-backup is off. Only the optional Online orders feature uses the internet (Firebase) – declared below |
+| Permissions | Microphone (voice entry, only when the user taps Speak), fingerprint, internet (online orders) |
 | Real features only | Fingerprint is checked by Android; Print uses Android's print/PDF screen; backup is a real file; bill upload no longer fakes data |
 
 ## 2. Signing key (one time)
@@ -67,7 +67,8 @@ Wholesale Khata is a simple billing and accounts app for wholesalers of daily-us
 • Voice entry in Hindi, English or Hinglish
 • Print or save bills as PDF, share on WhatsApp
 • PIN and fingerprint lock; save a backup file to Drive or WhatsApp and restore on any phone
-• Your data stays on your phone – no account, no ads
+• Online orders: share a Retail and a Wholesale link or QR; you allow each visit, customers order, pay cash or UPI and track live; bills are made automatically
+• Your books stay on your phone – no account, no ads
 
 The app starts with a sample shop so you can try it. Go to More → Settings → Start fresh to begin with your own data.
 
@@ -90,17 +91,29 @@ The app starts with a sample shop so you can try it. Go to More → Settings →
 | News app | No |
 | COVID-19 / Health | No |
 | Government app | No |
-| Financial features | Bookkeeping only → "My app doesn't provide any financial features" |
+| Financial features | Bookkeeping and ordering; payments are made in the customer's own UPI app → "My app doesn't provide any financial features" |
 | Data safety | See below |
 | Permissions declarations | None needed (no restricted permissions) |
 
 ### Data safety form
 
-- **Does your app collect or share any of the required user data types?** → **No.**
-  All data is stored only on the device; nothing is sent to the developer or third parties. User-initiated sharing (WhatsApp messages, backup file through the share menu, printing) is exempt.
-- **Is all user data encrypted in transit?** → Not applicable (no data is transmitted).
-- **Do you provide a way for users to request that their data be deleted?** → Data never leaves the device; users delete it with Settings → Start fresh or by uninstalling.
-- Voice entry uses the phone's own speech recognition service (handled by Android/Google, not by the app); the app receives only the text and keeps no audio. This is described in the privacy policy.
+The books stay on the device. The optional **Online orders** feature stores data in Google Firebase (our service provider), so it must be declared. Answer:
+
+- **Does your app collect or share any of the required user data types?** → **Yes**
+- **Is all of the user data collected by your app encrypted in transit?** → **Yes** (Firebase uses HTTPS)
+- **Do you provide a way for users to request that their data is deleted?** → **Yes** – shops: Online orders → Delete online shop; customers: request by e-mail (privacy policy). Add the privacy policy URL as the deletion web link.
+
+| Data type | Collected | Shared | Processed ephemerally | Required or optional | Purpose |
+|---|---|---|---|---|---|
+| Personal info → Name | Yes | No | No | Optional (only for online orders) | App functionality |
+| Personal info → Phone number | Yes | No | No | Optional | App functionality |
+| Personal info → Address | Yes | No | No | Optional | App functionality |
+| Financial info → Purchase history | Yes | No | No | Optional | App functionality |
+| Device or other IDs (Firebase anonymous ID) | Yes | No | No | Optional | App functionality |
+
+Not collected: location, contacts, photos, files, audio, health, messages, app activity, crash logs, analytics.
+Voice entry uses the phone's own speech recognition service (handled by Android/Google, not by the app); the app receives only the text and keeps no audio.
+User-initiated sharing (WhatsApp messages, backup file through the share menu, printing) is exempt.
 
 ## 6. Before each release
 

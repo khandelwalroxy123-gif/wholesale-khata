@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7d1d2c">
+<title>Order online</title>
+<link href="fonts/fonts.css" rel="stylesheet">
+<style>
+:root{color-scheme:light;--bg:#fbf8f3;--ink:#1f1a17;--mute:#6f665e;--line:#ece4d8;--card:#fff;--soft:#f4eee5;--gold:#c9a24a;--gold2:#9b7a2c;--book:#7d1d2c;--book2:#4f0f1b;--in:#147a43;--out:#b3261e;--warnbg:#fbf1dc;--warn:#8a5a00}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:#e8e1d6;color:var(--ink);font:16px/1.45 Hind,system-ui,sans-serif}
+#app{max-width:520px;min-height:100%;margin:0 auto;background:var(--bg);padding-bottom:110px;position:relative}
+header{background:radial-gradient(120% 140% at 100% 0%,#9b2a3c 0%,var(--book) 45%,var(--book2) 100%);color:#fff;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 0;border-bottom:3px solid var(--gold);position:sticky;top:0;z-index:5}
+header h1{font-family:"Playfair Display",Georgia,serif;font-size:24px;margin:0;line-height:1.2}
+header .sub{opacity:.85;font-size:14px}
+.tabs{display:flex;gap:6px;margin-top:10px}.tabs button{flex:1;background:transparent;border:0;color:#f3e3c2;font:600 16px Hind,sans-serif;padding:10px 0;border-bottom:3px solid transparent;cursor:pointer}
+.tabs button.on{color:#fff;border-bottom-color:var(--gold)}
+main{padding:14px 14px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(60,30,10,.05)}
+h2{font-family:"Playfair Display",Georgia,serif;font-size:21px;margin:4px 0 10px}
+h3{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold2);margin:16px 2px 8px}
+.mute{color:var(--mute)}.small{font-size:14px}
+label.f{display:block;margin-bottom:10px}label.f span{display:block;font-size:14px;color:var(--mute);margin-bottom:4px}
+.inp{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;font:16px Hind,sans-serif;background:#fff;color:var(--ink)}
+.inp:focus{outline:2px solid var(--gold);border-color:var(--gold)}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:13px 14px;font:600 17px Hind,sans-serif;background:var(--book);color:#fff;cursor:pointer;text-align:center;text-decoration:none}
+.btn.ghost{background:transparent;color:var(--book);border:1.5px solid var(--line)}.btn.green{background:#1f7a4d}.btn.sm{padding:8px 10px;font-size:15px;width:auto;display:inline-block}
+.btn:disabled{opacity:.5}
+.btns{display:flex;gap:10px}.btns>*{flex:1}
+.seg{display:flex;background:var(--soft);border-radius:12px;padding:4px;margin-bottom:10px}.seg button{flex:1;border:0;background:transparent;padding:9px 6px;border-radius:9px;font:600 15px Hind,sans-serif;color:var(--mute);cursor:pointer}.seg button.on{background:#fff;color:var(--book);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.item{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.item:last-child{border-bottom:0}
+.item .sp{flex:1;min-width:0}.item .t{font-weight:600}.item .s{font-size:14px;color:var(--mute)}
+.qty{display:flex;align-items:center;gap:6px}.qty button{width:34px;height:34px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font:700 18px Hind;color:var(--book);cursor:pointer}.qty b{min-width:22px;text-align:center}
+.qty .u{font-size:12px;color:var(--mute);width:24px}
+.chips{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;padding-bottom:2px}.chips button{flex:none;border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:5px 12px;font:500 14px Hind;color:var(--ink);cursor:pointer}.chips button.on{background:var(--book);color:#fff;border-color:var(--book)}
+.bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(500px,calc(100% - 24px));background:#1f1a17;color:#fff;border-radius:18px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);border:1px solid var(--gold);z-index:6}
+.bar .sp{flex:1}.bar .btn{width:auto;background:var(--gold);color:#1f1a17;padding:10px 16px}
+.steps{display:flex;gap:4px;margin:10px 0 6px}.steps i{flex:1;height:6px;border-radius:3px;background:var(--line)}.steps i.f{background:#1f7a4d}
+.pill{display:inline-block;font-size:13px;padding:2px 9px;border-radius:12px;background:var(--soft);color:var(--mute)}.pill.g{background:#e3f4ea;color:var(--in)}.pill.r{background:#fde7e5;color:var(--out)}.pill.y{background:var(--warnbg);color:var(--warn)}
+.warn{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:14px;margin:8px 0}
+table.t{width:100%;border-collapse:collapse;font-size:15px}table.t td{padding:6px 0;border-bottom:1px solid var(--line);vertical-align:top}table.t td.r{text-align:right;white-space:nowrap}
+.spin{width:44px;height:44px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--book);animation:sp 1s linear infinite;margin:10px auto}@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:#1f1a17;color:#fff;padding:10px 14px;border-radius:12px;z-index:9;font-size:15px;border:1px solid var(--gold);display:none;max-width:90%}
+.qr{width:180px;height:180px;margin:8px auto;background:#fff;padding:6px;border-radius:12px}
+.foot{text-align:center;font-size:13px;color:var(--mute);padding:14px}
+.foot a{color:var(--mute)}
+@media print{header,.bar,.noprint,.foot{display:none!important}body,#app{background:#fff}.card{border:0;box-shadow:none}}
+</style>
+<script src="firebase-config.js"></script>
+<script src="vendor/firebase-app-compat.js"></script>
+<script src="vendor/firebase-auth-compat.js"></script>
+<script src="vendor/firebase-firestore-compat.js"></script>
+<script src="vendor/qrcode.js"></script>
+</head>
+<body>
+<div id="app">
+<header><h1 id="sname">Order online</h1><div class="sub" id="ssub">Loading…</div>
+<div class="tabs noprint"><button id="t_shop" class="on" onclick="go('shop')">Order · ऑर्डर</button><button id="t_orders" onclick="go('orders')">My orders · मेरे ऑर्डर</button></div></header>
+<main id="main"><div class="card"><div class="spin"></div></div></main>
+<div class="foot"><a href="privacy.html">Privacy policy</a></div>
+</div>
+<div id="bar"></div><div class="toast" id="toast"></div>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const inr=n=>'₹'+Math.round(+n||0).toLocaleString('en-IN');
+const inr2=n=>'₹'+(+n||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});
+const ts=v=>v&&v.toMillis?v.toMillis():(typeof v==='number'?v:0);
+const when=v=>{const d=new Date(ts(v)||Date.now());return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+', '+d.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})};
+let tt;function toast(m){const e=$('#toast');e.textContent=m;e.style.display='block';clearTimeout(tt);tt=setTimeout(()=>e.style.display='none',2800)}
+const Q=new URLSearchParams(location.search);const SHOP=(Q.get('s')||'').replace(/[^a-z0-9]/gi,'');const WANT=Q.get('t')==='w'?'wholesale':'retail';
+const STEPS=['placed','accepted','packed','out','delivered'];
+const LABEL={placed:'Order sent · shop will accept soon',accepted:'Accepted · bill ready',packed:'Packed',out:'Out for delivery',delivered:'Delivered',cancelled:'Cancelled'};
+const LABEL_HI={placed:'ऑर्डर भेजा गया',accepted:'स्वीकार · बिल तैयार',packed:'पैक हो गया',out:'डिलीवरी पर निकला',delivered:'पहुँच गया',cancelled:'रद्द'};
+const St={tab:'shop',shop:null,sess:null,cat:null,cart:{},q:'',c:'',orders:[],uid:null,db:null,me:{},chk:null};
+try{St.me=JSON.parse(localStorage.getItem('wk_me')||'{}')}catch(e){}
+const saveMe=()=>{try{localStorage.setItem('wk_me',JSON.stringify(St.me))}catch(e){}};
+const visitKey='wk_visit_'+SHOP;
+window.go=t=>{St.tab=t;$('#t_shop').classList.toggle('on',t==='shop');$('#t_orders').classList.toggle('on',t==='orders');render()};
+function fail(msg){$('#ssub').textContent='';$('#main').innerHTML='<div class="card"><h2>Sorry</h2><p>'+esc(msg)+'</p></div>';$('#bar').innerHTML=''}
+
+async function boot(){
+  if(!SHOP)return fail('This link is not complete. Ask the shop for its order link or QR.');
+  if(!window.WK_FIREBASE||!window.firebase)return fail('Online ordering is not switched on for this app yet.');
+  try{
+    const app=firebase.apps.length?firebase.app():firebase.initializeApp(window.WK_FIREBASE);
+    const au=firebase.auth();await new Promise(r=>{const u=au.onAuthStateChanged(x=>{u();r(x)})});if(!au.currentUser)await au.signInAnonymously();
+    St.uid=au.currentUser.uid;St.db=firebase.firestore();
+    const sd=await St.db.doc('shops/'+SHOP).get();if(!sd.exists)return fail('This shop link no longer works. Ask the shop for a new link.');
+    St.shop=sd.data();$('#sname').textContent=St.shop.name||'Order online';document.title=(St.shop.name||'Shop')+' · Order online';
+    $('#ssub').textContent=(WANT==='wholesale'?'Wholesale order · होलसेल':'Order · ऑर्डर')+(St.shop.open===false?' · closed now':'');
+    St.db.doc('shops/'+SHOP).onSnapshot(d=>{if(d.exists){St.shop=d.data();render()}});
+    St.db.collection('shops/'+SHOP+'/orders').where('uid','==',St.uid).onSnapshot(q=>{St.orders=q.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ts(b.createdAt)-ts(a.createdAt));render()},()=>{});
+    St.db.doc('shops/'+SHOP+'/sessions/'+St.uid).onSnapshot(async d=>{St.sess=d.exists?d.data():null;
+      if(St.sess&&St.sess.status==='approved'&&St.sess.visit===sessionStorage.getItem(visitKey)&&!St.cat)await loadCat();render()},()=>{});
+    render();
+  }catch(e){fail('Could not connect. Check your internet and open the link again.')}
+}
+async function loadCat(){try{const t=St.sess.tier||'retail';const c=await St.db.doc('shops/'+SHOP+'/catalog/'+t).get();St.cat=c.exists?c.data():{items:[]};St.cat.tier=t}catch(e){St.cat=null;toast('Could not load the price list')}}
+const approved=()=>St.sess&&St.sess.status==='approved'&&St.sess.visit===sessionStorage.getItem(visitKey)&&ts(St.sess.validUntil)>Date.now();
+const cartItems=()=>Object.entries(St.cart).map(([k,q])=>{const [vid,unit]=k.split('|');const it=(St.cat&&St.cat.items||[]).find(x=>x.vid===vid);if(!it||!(q>0))return null;const rate=unit==='ctn'?it.ctn:it.pc;return {vid,name:it.name,size:it.size,unit,qty:q,rate}}).filter(Boolean);
+const cartTotal=()=>cartItems().reduce((s,i)=>s+i.qty*i.rate,0);
+
+function render(){if(!St.shop)return;const m=$('#main');$('#bar').innerHTML='';
+  if(St.tab==='orders'){m.innerHTML=ordersHTML();return}
+  if(St.shop.open===false){m.innerHTML='<div class="card"><h2>Closed for orders</h2><p class="mute">The shop is not taking online orders right now. Please try later.<br>दुकान अभी ऑनलाइन ऑर्डर नहीं ले रही है।</p></div>';return}
+  if(!approved()){m.innerHTML=askHTML();return}
+  if(!St.cat){m.innerHTML='<div class="card"><div class="spin"></div></div>';loadCat().then(render);return}
+  m.innerHTML=catHTML();const n=cartItems().length;
+  if(n)$('#bar').innerHTML=`<div class="bar"><div class="sp"><b>${n} item${n>1?'s':''}</b><div class="small" style="opacity:.8">${inr(cartTotal())}</div></div><button class="btn" onclick="W.checkout()">Order · ऑर्डर करें</button></div>`}
+
+function askHTML(){const s=St.sess;const mine=s&&s.visit===sessionStorage.getItem(visitKey);
+  if(mine&&s.status==='pending'){const ph=String(St.shop.phone||'').replace(/\D/g,'').slice(-10);
+    return `<div class="card" style="text-align:center"><div class="spin"></div><h2>Waiting for the shop</h2><p class="mute">${esc(St.shop.name)} will allow you to order in a moment. Keep this page open.<br>दुकान की अनुमति का इंतज़ार है।</p>
+    ${ph?`<a class="btn ghost" href="https://wa.me/91${ph}?text=${encodeURIComponent('Namaste, I am '+(s.name||'')+'. I have asked to order on your online shop. Please allow.')}" target="_blank" rel="noopener">Remind on WhatsApp</a>`:''}</div>`}
+  if(mine&&s.status==='denied')return `<div class="card"><h2>Not allowed right now</h2><p class="mute">The shop did not allow ordering this time. You can call the shop${St.shop.phone?' on '+esc(St.shop.phone):''}.</p><button class="btn ghost" onclick="W.ask()">Ask again</button></div>`;
+  const me=St.me||{};
+  return `<div class="card"><h2>Ask to order</h2><p class="mute small" style="margin-top:-4px">The shop allows each visit. Your name and phone are shared with ${esc(St.shop.name)} to handle your order (<a href="privacy.html">privacy</a>).<br>हर बार दुकान से अनुमति ली जाती है।</p>
+  <label class="f"><span>Your name · नाम</span><input class="inp" id="a_n" value="${esc(me.name||'')}" maxlength="60" autocomplete="name"></label>
+  <label class="f"><span>Mobile number · मोबाइल</span><input class="inp" id="a_p" value="${esc(me.phone||'')}" inputmode="tel" maxlength="14" autocomplete="tel"></label>
+  <button class="btn" onclick="W.ask()">Ask shop to allow · अनुमति माँगें</button></div>`}
+
+function catHTML(){const items=St.cat.items||[];const cats=[...new Set(items.map(i=>i.cat))];const q=St.q.toLowerCase();const ws=St.cat.tier==='wholesale';
+  const list=items.filter(i=>(!St.c||i.cat===St.c)&&(!q||(i.name+' '+i.size+' '+i.cat).toLowerCase().includes(q)));
+  const step=(vid,unit)=>{const k=vid+'|'+unit;const v=St.cart[k]||0;return `<div class="qty"><span class="u">${unit==='ctn'?'ctn':'pcs'}</span><button onclick="W.q('${k}',-1)" aria-label="less">−</button><b>${v}</b><button onclick="W.q('${k}',1)" aria-label="more">+</button></div>`};
+  return `<div class="card" style="padding:10px 12px"><input class="inp" placeholder="Search · खोजें (e.g. shampoo)" value="${esc(St.q)}" oninput="W.s(this.value)"></div>
+  <div class="chips"><button class="${!St.c?'on':''}" onclick="W.c('')">All</button>${cats.map(c=>`<button class="${St.c===c?'on':''}" onclick="W.c('${esc(c)}')">${esc(c)}</button>`).join('')}</div>
+  <div class="card">${list.map(i=>`<div class="item"><div class="sp"><div class="t">${esc(i.name)} <span class="mute" style="font-weight:400">${esc(i.size)}</span></div>
+    <div class="s">${ws?`${inr2(i.ctn)}/carton of ${i.ppc} · ${inr2(i.pc)}/pc`:`${inr2(i.pc)}/pc`}${i.mrp?' · MRP '+inr2(i.mrp):''}${i.inStock?'':' · <span style="color:var(--out)">out of stock</span>'}</div></div>
+    <div>${i.inStock?(ws?step(i.vid,'ctn')+'<div style="height:6px"></div>'+step(i.vid,'pcs'):step(i.vid,'pcs')):''}</div></div>`).join('')||'<div class="mute">Nothing found.</div>'}</div>`}
+
+function checkoutHTML(){const me=St.me||{};const c=St.chk;const upi=!!St.shop.upi;
+  return `<div class="card"><h2>Your order</h2><table class="t"><tbody>${cartItems().map(i=>`<tr><td>${esc(i.name)} ${esc(i.size)}<div class="small mute">${i.qty} ${i.unit} × ${inr2(i.rate)}</div></td><td class="r">${inr2(i.qty*i.rate)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="r"><b>${inr(cartTotal())}</b></td></tr></tbody></table>
+  <p class="small mute">The shop confirms the final bill when it accepts your order.</p></div>
+  <div class="card"><div class="seg"><button class="${c.del==='delivery'?'on':''}" onclick="W.set('del','delivery')">Home delivery</button><button class="${c.del==='pickup'?'on':''}" onclick="W.set('del','pickup')">I will pick up</button></div>
+  ${c.del==='delivery'?`<label class="f"><span>Delivery address · पता</span><textarea class="inp" id="c_ad" rows="2" maxlength="200">${esc(me.address||'')}</textarea></label>`:''}
+  <label class="f"><span>Note for the shop (optional)</span><input class="inp" id="c_no" maxlength="200"></label>
+  <div class="small mute" style="margin-bottom:6px">Payment · भुगतान</div><div class="seg"><button class="${c.pay==='cash'?'on':''}" onclick="W.set('pay','cash')">Cash · नकद</button>${upi?`<button class="${c.pay==='upi'?'on':''}" onclick="W.set('pay','upi')">UPI online</button>`:''}</div>
+  ${c.pay==='upi'?'<div class="small mute">You can pay by UPI after the shop accepts your order (the final amount is shown then).</div>':''}
+  <div class="btns" style="margin-top:12px"><button class="btn ghost" onclick="W.back()">Back</button><button class="btn green" id="c_go" onclick="W.place()">Place order</button></div></div>`}
+
+function upiURL(o){return 'upi://pay?pa='+encodeURIComponent(St.shop.upi)+'&pn='+encodeURIComponent(St.shop.upiName||St.shop.name||'Shop')+'&am='+encodeURIComponent((+o.total||0).toFixed(2))+'&cu=INR&tn='+encodeURIComponent('Order '+no(o))}
+function qrSVG(t){try{const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true})}catch(e){return ''}}
+const no=o=>'#'+String(o.id).slice(0,6).toUpperCase();
+function ordersHTML(){if(!St.orders.length)return '<div class="card"><h2>No orders yet</h2><p class="mute">Your orders from this shop will show here, with live status.<br>आपके ऑर्डर यहाँ दिखेंगे।</p></div>';
+  return St.orders.map(o=>{const i=STEPS.indexOf(o.status);const can=o.status!=='cancelled';const items=o.bill?o.bill.items:(o.items||[]).map(x=>({name:x.name+' '+(x.size||''),unit:x.unit,qty:x.qty,rate:x.rate}));
+    const payBlock=o.payMode==='upi'&&can?(o.payStatus==='paid'?'<span class="pill g">Paid ✓</span>':o.payStatus==='claimed'?'<span class="pill y">Payment sent · shop will confirm</span>':o.status==='placed'?'<div class="small mute">Pay by UPI after the shop accepts.</div>':
+      `<a class="btn green" href="${esc(upiURL(o))}">Pay ${inr(o.total)} by UPI app</a><div class="small mute" style="text-align:center;margin-top:6px">Or scan from another phone</div><div class="qr">${qrSVG(upiURL(o))}</div>
+      <label class="f"><span>After paying, enter UPI reference (UTR), optional</span><input class="inp" id="utr_${o.id}" maxlength="30"></label><button class="btn ghost" onclick="W.paid('${o.id}')">I have paid · भुगतान कर दिया</button>`)
+      :(o.payStatus==='paid'?'<span class="pill g">Paid ✓</span>':can?'<span class="pill">Pay cash on delivery / pickup</span>':'');
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>Order ${no(o)}</b><span class="small mute">${when(o.createdAt)}</span></div>
+    <div style="margin-top:6px"><span class="pill ${o.status==='cancelled'?'r':o.status==='delivered'?'g':'y'}">${LABEL[o.status]||o.status}</span> <span class="small mute">${LABEL_HI[o.status]||''}</span></div>
+    ${can?`<div class="steps">${STEPS.map((s,k)=>`<i class="${k<=i?'f':''}"></i>`).join('')}</div><div class="small mute" style="display:flex;justify-content:space-between"><span>Sent</span><span>Accepted</span><span>Packed</span><span>On way</span><span>Delivered</span></div>`:''}
+    <h3>${o.bill?'Bill '+esc(o.bill.no):'Items'}</h3><table class="t"><tbody>${items.map(x=>`<tr><td>${esc(x.name)}<div class="small mute">${x.qty} ${x.unit==='ctn'?'ctn':'pcs'} × ${inr2(x.rate)}</div></td><td class="r">${inr2(x.qty*x.rate)}</td></tr>`).join('')}${o.bill&&o.bill.tax?`<tr><td>GST</td><td class="r">${inr2(o.bill.tax)}</td></tr>`:''}<tr><td><b>Total</b></td><td class="r"><b>${inr(o.total)}</b></td></tr></tbody></table>
+    <div class="small mute" style="margin:6px 0">${o.delivery==='pickup'?'Pickup from shop':'Deliver to: '+esc(o.address||'')}</div>
+    <div style="margin-top:8px">${payBlock}</div>
+    <div class="btns noprint" style="margin-top:10px">${o.status==='placed'?`<button class="btn ghost" onclick="W.cancel('${o.id}')">Cancel order</button>`:''}${o.bill?`<button class="btn ghost" onclick="window.print()">Print / save bill</button>`:''}</div></div>`}).join('')}
+
+window.W={
+  ask:async()=>{const n=(($('#a_n')||{}).value||St.me.name||'').trim();const p=(($('#a_p')||{}).value||St.me.phone||'').replace(/\D/g,'').slice(-10);
+    if(!n){toast('Enter your name');return}if(p.length!==10){toast('Enter a 10 digit mobile number');return}
+    St.me.name=n;St.me.phone=p;saveMe();const visit=Math.random().toString(36).slice(2,10);sessionStorage.setItem(visitKey,visit);St.cat=null;
+    try{await St.db.doc('shops/'+SHOP+'/sessions/'+St.uid).set({name:n,phone:p,want:WANT,status:'pending',requestedAt:firebase.firestore.FieldValue.serverTimestamp(),visit});}catch(e){toast('Could not send. Check internet.')}},
+  q:(k,d)=>{St.cart[k]=Math.max(0,(St.cart[k]||0)+d);if(!St.cart[k])delete St.cart[k];render()},
+  s:v=>{St.q=v;const p=document.activeElement&&document.activeElement.selectionStart;render();const e=$('main input.inp');if(e){e.focus();try{e.setSelectionRange(p,p)}catch(x){}}},
+  c:v=>{St.c=v;render()},
+  checkout:()=>{if(!cartItems().length)return;St.chk={del:'delivery',pay:'cash'};$('#bar').innerHTML='';$('#main').innerHTML=checkoutHTML();window.scrollTo(0,0)},
+  set:(k,v)=>{const ad=$('#c_ad');if(ad)St.me.address=ad.value;St.chk[k]=v;$('#main').innerHTML=checkoutHTML()},
+  back:()=>{St.chk=null;render()},
+  place:async()=>{if(!approved()){toast('Your visit has ended. Ask the shop again.');St.chk=null;render();return}
+    const c=St.chk;const ad=$('#c_ad');const address=c.del==='delivery'?(ad?ad.value.trim():''):'';if(c.del==='delivery'&&!address){toast('Enter delivery address');return}
+    St.me.address=address||St.me.address;saveMe();const items=cartItems();const total=Math.round(cartTotal());const b=$('#c_go');b.disabled=true;
+    try{await St.db.collection('shops/'+SHOP+'/orders').add({uid:St.uid,name:St.me.name,phone:St.me.phone,address,delivery:c.del,note:(($('#c_no')||{}).value||'').trim().slice(0,200),
+        tier:St.cat.tier,items,clientTotal:total,total,payMode:c.pay,payStatus:'unpaid',status:'placed',createdAt:firebase.firestore.FieldValue.serverTimestamp(),visit:sessionStorage.getItem(visitKey)});
+      St.cart={};St.chk=null;toast('Order sent to the shop');go('orders')}catch(e){b.disabled=false;toast('Could not place the order. Ask the shop to allow you again.')}},
+  paid:async id=>{const u=(($('#utr_'+id)||{}).value||'').trim().slice(0,30);try{await St.db.doc('shops/'+SHOP+'/orders/'+id).update({payStatus:'claimed',utr:u,customerAt:firebase.firestore.FieldValue.serverTimestamp()});toast('Thank you. The shop will confirm.')}catch(e){toast('Could not update. Try again.')}},
+  cancel:async id=>{if(!confirm('Cancel this order?'))return;try{await St.db.doc('shops/'+SHOP+'/orders/'+id).update({status:'cancelled',customerAt:firebase.firestore.FieldValue.serverTimestamp()})}catch(e){toast('The shop has already accepted it. Please call the shop.')}}
+};
+boot();
+})();
+</script>
+</body>
+</html>

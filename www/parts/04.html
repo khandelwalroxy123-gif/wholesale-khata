@@ -91,7 +91,7 @@ Object.assign(A,{
 /* ---------- saving: phone (local) + Google Drive + app server ---------- */
 const PR_BASE=JSON.parse(JSON.stringify(products)),CT_BASE=JSON.parse(JSON.stringify(contacts));
 S.cloud=S.cloud||{drive:true,server:true,driveAt:0,serverAt:0,driveOk:false,serverOk:false};S.localAt=0;S.localSize=0;
-const DATA_KEYS=['lang','book','pin','finger','autoBackup','shop','books','staff','cloud','lastBackup','lastFileBackup'];
+const DATA_KEYS=['lang','book','pin','finger','autoBackup','shop','books','staff','cloud','lastBackup','lastFileBackup','online'];
 function snapshot(){const o={v:1,app:'wholesale-khata',savedAt:Date.now()};DATA_KEYS.forEach(k=>o[k]=S[k]);o.products=products;o.contacts=contacts;return o}
 function restoreData(d){if(!d||d.app!=='wholesale-khata')throw new Error('Not a backup of this app');
   DATA_KEYS.forEach(k=>{if(d[k]!==undefined)S[k]=d[k]});
@@ -167,7 +167,7 @@ Object.assign(A,{
 });
 /* settings view: put storage card first */
 const _settings=V.settings;V.settings=v=>{const h=_settings(v);const i=h.indexOf('<div class="card"><b>Backup to Google Drive</b>');if(i<0)return h;const j=h.indexOf('<div class="card"><b>App lock</b>');
-  return h.slice(0,i)+storageCard()+`<div class="card"><b>Privacy</b><div class="small mute">Your shop data stays on this phone. The app has no account and sends nothing to us. Version ${APP_VERSION}.</div><a class="btn ghost" style="display:grid;place-items:center;text-decoration:none;margin-top:8px" href="privacy.html">Read the privacy policy</a></div><div class="card"><b>Data on this phone</b><div class="small mute">Start using the app for real, or bring back the sample shop.</div><div class="btns"><button class="btn ghost" onclick="A.startFresh()">Start fresh</button><button class="btn ghost" onclick="A.resetSample()">Load sample data</button></div></div>`+h.slice(j)};
+  return h.slice(0,i)+storageCard()+`<div class="card"><b>Privacy</b><div class="small mute">Your books stay on this phone. ${S.online?'Online orders, customer requests and your price list are kept in the app\'s online database so customers can order and track.':'Nothing is sent online unless you turn on Online orders.'} Version ${APP_VERSION}.</div><a class="btn ghost" style="display:grid;place-items:center;text-decoration:none;margin-top:8px" href="privacy.html">Read the privacy policy</a></div><div class="card"><b>Data on this phone</b><div class="small mute">Start using the app for real, or bring back the sample shop.</div><div class="btns"><button class="btn ghost" onclick="A.startFresh()">Start fresh</button><button class="btn ghost" onclick="A.resetSample()">Load sample data</button></div></div>`+h.slice(j)};
 /* backup file: works in the Android app and in any browser */
 function bkName(){const d=new Date();return 'WholesaleKhata-backup-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.json'}
 async function saveBackupFile(){const json=JSON.stringify(snapshot());const name=bkName();

@@ -27,12 +27,14 @@ https://khandelwalroxy123-gif.github.io/wholesale-khata/
 - Delivery status, expenses by head, staff attendance calendar with advances and automatic salary
 - Daily / weekly / monthly profit and loss by product, party and vendor, including transport and expenses
 - Voice assistant in Hindi, English and Hinglish for entries and questions
+- Online orders: Retail and Wholesale link + QR, shop approves every visit, customer cart with cash or UPI payment, live order status, bill made automatically on accept (needs Firebase, see `ONLINE_SETUP.md`)
 - PIN / fingerprint lock, data saved on the phone, backup file to Drive/WhatsApp and restore, App guide with voice
 - Print or save bills as PDF
 
 ## Project layout
 
 - `www/parts/*.html` – the app, split into parts; the build joins them into `www/index.html`
+- `www/shop.html` – the customer order page opened from the link/QR; `www/firebase-config.js` – Firebase web config; `firestore.rules` – database security rules; `www/vendor/` – Firebase SDK and QR library
 - `www/privacy.html` – privacy policy (also linked in Settings), `www/fonts/` – bundled fonts
 - `assets/` – app icon and splash source images, `store/` – Play Store graphics and screenshots
 - `PLAY_STORE.md` – how to publish on Google Play (signing key, listing, Data safety answers)

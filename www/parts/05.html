@@ -31,8 +31,174 @@ Object.assign(A,{
 const _more=V.more;V.more=v=>{const h=_more(v);return `<div class="hero" style="cursor:pointer" onclick="A.guide()"><div class="g">${S.lang==='hi'?'नए हैं? 3 मिनट का टूर':'New here? 3-minute tour'}</div><div style="font-family:var(--serif);font-size:22px;font-weight:700;margin:4px 0;position:relative;z-index:1">${S.lang==='hi'?'ऐप गाइड, आवाज़ के साथ':'App guide with voice'}</div><div class="note" style="margin-top:4px">${S.lang==='hi'?'हर फ़ीचर और उसका फ़ायदा, हिंदी या अंग्रेज़ी में सुनें':'Every feature and how it helps you, in Hindi or English'} ›</div></div>`+h};
 const _home=V.home;V.home=v=>{let h=_home(v);const card=`<div class="alert" onclick="A.guide()" style="border-color:var(--gold)"><b style="color:var(--gold2)">${S.lang==='hi'?'ऐप गाइड:':'App guide:'}</b> ${S.lang==='hi'?'आवाज़ के साथ पूरा टूर सुनें':'listen to the full tour with voice'}<span class="sp"></span>›</div>`;const k=h.indexOf('<h3>');return k>0?h.slice(0,k)+card+h.slice(k):h};
 /* ---------- start ---------- */
+/* ---------- online shop: customer link / QR, access approval, orders, live status, automatic bills ---------- */
+const ONL={on:false,loading:false,err:'',uid:null,db:null,reqs:[],orders:[],unsub:[],seenReq:{},seenOrd:{},first:true};
+S.online=S.online||null;
+const onCfg=()=>window.WK_FIREBASE||null;
+const ON_STEPS=['placed','accepted','packed','out','delivered'];
+const ON_LABEL={placed:'New order',accepted:'Accepted · bill made',packed:'Packed',out:'Out for delivery',delivered:'Delivered',cancelled:'Cancelled'};
+const ON_PAY={unpaid:'Not paid',claimed:'Customer says paid',paid:'Paid'};
+const onBase=()=>{const l=location.href;if(/^https?:/.test(l)&&!/localhost/.test(location.host))return l.replace(/[^/]*([?#].*)?$/,'');return 'https://khandelwalroxy123-gif.github.io/wholesale-khata/'};
+const onLink=t=>onBase()+'shop.html?s='+encodeURIComponent(S.online.shopId)+'&t='+(t==='wholesale'?'w':'r');
+const onTs=v=>v&&v.toMillis?v.toMillis():(typeof v==='number'?v:0);
+function onLoadScript(src){return new Promise((res,rej)=>{if(document.querySelector('script[data-src="'+src+'"]'))return res();const s=document.createElement('script');s.src=src;s.dataset.src=src;s.onload=()=>res();s.onerror=()=>rej(new Error('Could not load '+src));document.head.appendChild(s)})}
+async function onStart(){if(ONL.on||ONL.loading||!onCfg()||!S.online)return;ONL.loading=true;ONL.err='';
+  try{for(const f of ['vendor/firebase-app-compat.js','vendor/firebase-auth-compat.js','vendor/firebase-firestore-compat.js'])await onLoadScript(f);
+    const fb=window.firebase;const app=fb.apps&&fb.apps.length?fb.app():fb.initializeApp(onCfg());
+    const au=fb.auth();if(!au.currentUser)await new Promise(r=>{const u=au.onAuthStateChanged(x=>{u();r(x)})});if(!au.currentUser)await au.signInAnonymously();
+    ONL.uid=au.currentUser.uid;ONL.db=fb.firestore();ONL.on=true;
+    if(!S.online.ownerUid)S.online.ownerUid=ONL.uid;
+    if(S.online.ownerUid!==ONL.uid){ONL.err='This phone is not the owner of the online shop. Make a new shop link from this phone.';ONL.on=false}
+    else{onListen();await onPublish(false)}}
+  catch(e){ONL.err=errMsg(e);ONL.on=false}
+  ONL.loading=false;if(['online','onorder','home'].includes(S.view.n))render()}
+function onRef(p){return ONL.db.doc('shops/'+S.online.shopId+(p?'/'+p:''))}
+function onCol(c){return ONL.db.collection('shops/'+S.online.shopId+'/'+c)}
+function onListen(){ONL.unsub.forEach(u=>{try{u()}catch(e){}});ONL.unsub=[];
+  ONL.unsub.push(onCol('sessions').where('status','==','pending').onSnapshot(q=>{ONL.reqs=q.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>onTs(a.requestedAt)-onTs(b.requestedAt));
+    const fresh=ONL.reqs.filter(r=>!ONL.seenReq[r.id+'|'+r.visit]);fresh.forEach(r=>ONL.seenReq[r.id+'|'+r.visit]=1);if(fresh.length&&!ONL.first)onAlert(fresh.length+' customer'+(fresh.length>1?'s':'')+' asking to order');onRerender()},e=>{ONL.err=errMsg(e);onRerender()}));
+  ONL.unsub.push(onCol('orders').onSnapshot(q=>{ONL.orders=q.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>onTs(b.createdAt)-onTs(a.createdAt));
+    const fresh=ONL.orders.filter(o=>o.status==='placed'&&!ONL.seenOrd[o.id]);ONL.orders.forEach(o=>ONL.seenOrd[o.id]=1);if(fresh.length&&!ONL.first)onAlert(fresh.length+' new online order'+(fresh.length>1?'s':''));
+    ONL.orders.forEach(onSyncFromOrder);ONL.first=false;onRerender()},e=>{ONL.err=errMsg(e);onRerender()}))}
+let onRT=null;function onRerender(){clearTimeout(onRT);onRT=setTimeout(()=>{if(['online','onorder','home'].includes(S.view.n)&&!$('#layer').innerHTML)render()},150)}
+function onAlert(msg){toast(msg);try{navigator.vibrate&&navigator.vibrate([120,80,120])}catch(e){}
+  try{const c=new (window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator();const g=c.createGain();o.frequency.value=880;g.gain.value=.08;o.connect(g);g.connect(c.destination);o.start();setTimeout(()=>{o.frequency.value=1320},140);setTimeout(()=>{o.stop();c.close()},300)}catch(e){}}
+
+/* price list: owner's prices, never the customer's */
+function onPrice(vid,tier,unit){const o=(S.online.prices||{})[vid]||{};
+  if(tier==='retail')return +o.r||defRate(vid,'sale','pcs','retail');
+  return unit==='ctn'?(+o.wc||defRate(vid,'sale','ctn','wholesale')):(+o.wp||defRate(vid,'sale','pcs','wholesale'))}
+function onCatalog(tier){const items=[];products.forEach(p=>p.v.forEach(v=>{const o=(S.online.prices||{})[v.id]||{};if(o.hide)return;
+  const it={vid:v.id,name:p.name,cat:p.cat,size:v.size,ppc:v.ppc,mrp:v.mrp,inStock:stockOf(v.id)>0};
+  if(tier==='retail')it.pc=onPrice(v.id,'retail','pcs');else{it.ctn=onPrice(v.id,'wholesale','ctn');it.pc=onPrice(v.id,'wholesale','pcs')}items.push(it)}));return items}
+async function onPublish(force){if(!ONL.on)return;const sig=JSON.stringify([onCatalog('retail'),onCatalog('wholesale'),S.shop.name,S.shop.phone,S.online.upi,S.online.upiName,S.online.open]);
+  if(!force&&sig===S.online.pubSig)return;
+  const shop={name:S.shop.name,phone:S.shop.phone||'',addr:S.shop.addr||'',upi:S.online.upi||'',upiName:S.online.upiName||S.shop.name,open:S.online.open!==false,ownerUid:S.online.ownerUid,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  await onRef().set(shop);
+  await onRef('catalog/retail').set({tier:'retail',items:onCatalog('retail'),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  await onRef('catalog/wholesale').set({tier:'wholesale',items:onCatalog('wholesale'),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  S.online.pubSig=sig;S.online.pubAt=Date.now();saveLocal()}
+
+/* access requests: approved for this visit only (6 hours) */
+async function onApprove(id,tier){try{await onCol('sessions').doc(id).update({status:'approved',tier,approvedAt:firebase.firestore.FieldValue.serverTimestamp(),validUntil:firebase.firestore.Timestamp.fromMillis(Date.now()+6*3600e3)});closeSheet();toast('Allowed · '+(tier==='retail'?'retail':'wholesale')+' prices')}catch(e){toast('Could not approve: '+errMsg(e))}}
+async function onDeny(id){try{await onCol('sessions').doc(id).update({status:'denied',deniedAt:firebase.firestore.FieldValue.serverTimestamp()});closeSheet();toast('Request declined')}catch(e){toast('Could not decline: '+errMsg(e))}}
+function onReqSheet(id){const r=ONL.reqs.find(x=>x.id===id);if(!r){toast('Request is gone');return}
+  sheet(`<h2>Allow this customer to order?</h2><div class="card"><b>${esc(r.name)}</b><div class="small">${esc(r.phone)}</div><div class="small mute">Opened your ${r.want==='wholesale'?'wholesale':'retail'} link · ${fd(onTs(r.requestedAt)||Date.now())}, ${ft(onTs(r.requestedAt)||Date.now())}</div>${onFindParty(r.phone)?`<div class="small in">Already in your khata as ${esc(onFindParty(r.phone).name)}</div>`:''}</div>
+  <div class="small mute" style="margin:-4px 0 10px">Choose which prices this customer sees. Allowed for this visit (6 hours).</div>
+  <div class="btns"><button class="btn" onclick="A.onApprove('${id}','retail')">Allow · Retail</button><button class="btn" onclick="A.onApprove('${id}','wholesale')">Allow · Wholesale</button></div>
+  <button class="btn ghost" style="margin-top:10px" onclick="A.onDeny('${id}')">Decline</button>`)}
+
+/* order → bill in the chosen book */
+function onFindParty(phone){const p=String(phone||'').replace(/\D/g,'').slice(-10);return p.length===10?contacts.find(c=>c.type==='party'&&c.phone===p):null}
+function onItems(o){return (o.items||[]).filter(i=>VAR[i.vid]&&+i.qty>0).map(i=>{const unit=i.unit==='ctn'?'ctn':'pcs';return {vid:i.vid,unit,qty:+i.qty,rate:onPrice(i.vid,o.tier,unit),rt:o.tier==='retail'?'retail':'wholesale'}})}
+function onMakeBill(o){const bk=S.online.book||'daily';const prev=S.book;S.book=bk;
+  try{let c=onFindParty(o.phone);if(!c){c={id:'c'+uid(),name:o.name||'Online customer',phone:String(o.phone||'').replace(/\D/g,'').slice(-10),address:o.address||'',gstin:'',remark:'Online order customer',limit:0,type:'party'};contacts.push(c)}
+    const items=onItems(o);const x={id:uid(),type:'sale',no:nextNo('sale'),date:Date.now(),cid:c.id,items,transport:0,status:bk==='gst'?'draft':'saved',del:'pending',delBy:'',vinv:'',orderId:o.id};
+    S.books[bk].bills.push(x);S.online.map=S.online.map||{};S.online.map[o.id]={bill:x.id,book:bk};return x}
+  finally{S.book=prev}}
+function onBillOf(o){const m=(S.online.map||{})[o.id];if(!m)return null;const x=S.books[m.book].bills.find(b=>b.id===m.bill);return x?{x,book:m.book}:null}
+async function onAccept(id){const o=ONL.orders.find(x=>x.id===id);if(!o)return;if(onBillOf(o)){await onSetStatus(id,'accepted');return}
+  const x=onMakeBill(o);const t=billTotal(x,S.online.book||'daily');
+  const bill={no:x.no,items:x.items.map(i=>({name:vname(i.vid),unit:i.unit,qty:i.qty,rate:i.rate,amt:Math.round(i.qty*i.rate*100)/100})),sub:Math.round(t.sub*100)/100,tax:Math.round((t.tax||0)*100)/100,total:Math.round(t.grand)};
+  try{await onCol('orders').doc(id).update({status:'accepted',statusAt:firebase.firestore.FieldValue.serverTimestamp(),bill,total:bill.total});saveLocal();render();toast('Order accepted · bill '+x.no+' made')}
+  catch(e){toast('Saved the bill, but could not update the customer: '+errMsg(e))}}
+async function onSetStatus(id,st){const o=ONL.orders.find(x=>x.id===id);if(!o)return;
+  try{await onCol('orders').doc(id).update({status:st,statusAt:firebase.firestore.FieldValue.serverTimestamp()});
+    const b=onBillOf(o);if(b){if(st==='out'&&b.x.del==='pending')b.x.del='dispatched';if(st==='delivered'&&b.x.del!=='received')b.x.del='delivered';if(st==='cancelled'){b.x.status='cancelled'}}
+    saveLocal();render();toast(ON_LABEL[st])}catch(e){toast('Could not update: '+errMsg(e))}}
+async function onPaid(id){const o=ONL.orders.find(x=>x.id===id);if(!o)return;const b=onBillOf(o);if(!b){toast('Accept the order first, so the bill is made');return}
+  const amt=+(o.total||0)||Math.round(billTotal(b.x,b.book).grand);const mode=o.payMode==='upi'?'upi':'cash';
+  S.books[b.book].pays.push({id:uid(),cid:b.x.cid,dir:'in',amt,mode,date:Date.now(),note:'Online order '+onNo(o)+(o.utr?' · UTR '+o.utr:''),chq:null});
+  try{await onCol('orders').doc(id).update({payStatus:'paid',paidAt:firebase.firestore.FieldValue.serverTimestamp()});saveLocal();render();toast('Payment recorded in khata')}catch(e){toast('Payment saved here, customer not updated: '+errMsg(e))}}
+function onSyncFromOrder(o){const b=onBillOf(o);if(!b)return;if(o.status==='cancelled'&&b.x.status!=='cancelled'){b.x.status='cancelled';saveLocal()}}
+const onNo=o=>'#'+String(o.id).slice(0,6).toUpperCase();
+
+/* QR codes */
+function onQR(text,px){try{const q=qrcode(0,'M');q.addData(text);q.make();return q.createSvgTag({cellSize:Math.max(2,Math.floor((px||200)/(q.getModuleCount()+8))),margin:4,scalable:true})}catch(e){return ''}}
+
+/* screens */
+V.online=v=>{v.title='Online orders';const cfg=onCfg();
+  if(!cfg)return backBtn()+`<h2>Online orders</h2><div class="card"><b>Setup needed</b><div class="small mute">To take orders from a link or QR, the app needs your free Firebase project. Follow ONLINE_SETUP.md in the app's GitHub page, then update the app.</div></div>`;
+  if(!S.online)return backBtn()+`<h2>Online orders</h2><div class="card"><b>Take orders from a link and QR</b><div class="small mute" style="margin:6px 0 10px">Share a Retail link and a Wholesale link (or print their QR codes). Each time a customer opens it you allow them, they order from your price list, pay cash or by UPI, and track the order. Accepting an order makes the bill in your book automatically.</div>
+    <label class="f"><span>Your UPI ID (for online payment)</span><input class="inp" id="on_upi" placeholder="e.g. shopname@okaxis" autocomplete="off"></label>
+    <div class="small mute" style="margin:-4px 0 10px">Customers' names, phone numbers, addresses and orders are kept in your Firebase project so they can track orders. See the privacy policy.</div>
+    <button class="btn" onclick="A.onCreate()">Start online shop</button></div>`;
+  if(!ONL.on&&!ONL.loading&&!ONL.err)setTimeout(onStart,0);
+  if(ONL.loading||(!ONL.on&&!ONL.err))return backBtn()+`<h2>Online orders</h2><div class="card"><div class="prog"><i style="width:60%"></i></div><div class="mute">Connecting…</div></div>`;
+  if(!ONL.on)return backBtn()+`<h2>Online orders</h2><div class="card"><b>Not connected</b><div class="small mute">${esc(ONL.err||'No internet?')}</div><button class="btn" style="margin-top:8px" onclick="A.onRetry()">Try again</button>${/not the owner/.test(ONL.err)?`<button class="btn ghost" style="margin-top:8px" onclick="A.onReset()">Make a new shop link from this phone</button>`:''}</div>`;
+  const f=v.f||'active';const os=ONL.orders.filter(o=>f==='active'?!['delivered','cancelled'].includes(o.status)||(o.status==='delivered'&&o.payStatus!=='paid'):f==='done'?['delivered','cancelled'].includes(o.status):true);
+  const card=t=>`<div class="card"><b>${t==='retail'?'Retail customers':'Wholesale customers'}</b><div style="display:flex;gap:12px;align-items:center;margin-top:8px"><div style="width:120px;height:120px;background:#fff;border-radius:10px;padding:4px;flex:none">${onQR(onLink(t),120)}</div><div class="sp" style="min-width:0"><div class="small" style="word-break:break-all">${esc(onLink(t))}</div><div class="btns" style="margin-top:8px"><button class="btn ghost sm" onclick="A.onShare('${t}')">Share</button><button class="btn ghost sm" onclick="A.onCopy('${t}')">Copy</button></div></div></div></div>`;
+  return backBtn()+`<h2>Online orders</h2>
+  <div class="card"><div class="row"><div class="sp"><b>${S.online.open!==false?'Taking orders':'Closed for orders'}</b><div class="small mute">Price list updated ${S.online.pubAt?fd(S.online.pubAt)+', '+ft(S.online.pubAt):'—'} · bills go to ${S.online.book==='gst'?'GST book (as drafts)':'Daily book'}</div></div><button class="btn ghost sm" onclick="A.onOpen()">${S.online.open!==false?'Close':'Open'}</button></div></div>
+  ${ONL.reqs.length?`<h3>Waiting for you (${ONL.reqs.length})</h3><div class="card">${ONL.reqs.map(r=>`<div class="li" onclick="A.onReq('${r.id}')"><div class="av">${esc((r.name||'?')[0])}</div><div class="sp"><div class="t">${esc(r.name)}</div><div class="s">${esc(r.phone)} · ${r.want==='wholesale'?'wholesale link':'retail link'}</div></div><span class="pill">Allow?</span></div>`).join('')}</div>`:''}
+  <h3>Orders</h3><div class="seg">${[['active','Open'],['done','Done'],['all','All']].map(([k,l])=>`<button class="${f===k?'on':''}" onclick="A.setv('f','${k}')">${l}</button>`).join('')}</div>
+  <div class="card">${os.length?os.map(o=>`<div class="li" onclick="A.go('onorder',{id:'${o.id}'})"><div class="sp"><div class="t">${esc(o.name)} <span class="mute small">${onNo(o)}</span></div><div class="s">${ON_LABEL[o.status]||o.status} · ${o.payMode==='upi'?'UPI':'Cash'} · ${ON_PAY[o.payStatus]||''}</div></div><b class="num">${inr(o.total||0)}</b></div>`).join(''):'<div class="mute small">No orders here.</div>'}</div>
+  ${card('retail')}${card('wholesale')}
+  <div class="card"><b>Settings</b>
+  <label class="f"><span>UPI ID</span><input class="inp" id="on_upi2" value="${esc(S.online.upi||'')}"></label>
+  <div class="seg" style="margin:4px 0 10px"><button class="${(S.online.book||'daily')==='daily'?'on':''}" onclick="A.onBook('daily')">Bills in Daily book</button><button class="${S.online.book==='gst'?'on':''}" onclick="A.onBook('gst')">GST book (drafts)</button></div>
+  <div class="btns"><button class="btn ghost" onclick="A.onSaveSet()">Save</button><button class="btn ghost" onclick="A.go('onprices')">Price list</button></div>
+  <button class="btn ghost" style="margin-top:10px" onclick="A.onPub()">Update price list now</button>
+  <button class="btn danger" style="margin-top:10px" onclick="A.onDelete()">Delete online shop</button></div>`};
+V.onorder=v=>{const o=ONL.orders.find(x=>x.id===v.id);v.title='Order';if(!o)return backBtn()+`<div class="card mute">Order not found.</div>`;
+  const b=onBillOf(o);const i=ON_STEPS.indexOf(o.status);const next=o.status==='cancelled'?null:ON_STEPS[i+1];
+  const items=o.bill?o.bill.items:(o.items||[]).map(it=>({name:(VAR[it.vid]?vname(it.vid):it.name+' '+(it.size||'')),unit:it.unit,qty:it.qty,rate:VAR[it.vid]?onPrice(it.vid,o.tier,it.unit==='ctn'?'ctn':'pcs'):it.rate,amt:0}));
+  return backBtn()+`<h2>${esc(o.name)} <span class="mute small">${onNo(o)}</span></h2><div class="small mute" style="margin:-6px 0 10px">${fd(onTs(o.createdAt)||Date.now())}, ${ft(onTs(o.createdAt)||Date.now())} · ${o.tier==='wholesale'?'Wholesale':'Retail'} prices</div>
+  <div class="card"><div class="small">${esc(o.phone)}${o.delivery==='pickup'?' · Pickup from shop':' · Deliver to: '+esc(o.address||'')}</div>${o.note?`<div class="small mute">Note: ${esc(o.note)}</div>`:''}<div class="btns" style="margin-top:8px"><a class="btn ghost sm" style="display:grid;place-items:center;text-decoration:none" href="tel:${esc(o.phone)}">Call</a>${waBtn(String(o.phone).replace(/\D/g,'').slice(-10),'Hello '+(o.name||'')+', about your order '+onNo(o)+' from '+S.shop.name+'.','WhatsApp')}</div></div>
+  <div class="card"><table class="t"><tbody>${items.map(x=>`<tr><td>${esc(x.name)}<div class="small mute">${x.qty} ${x.unit==='ctn'?'ctn':'pcs'} × ${inr2(x.rate)}</div></td><td class="r num">${inr2(x.qty*x.rate)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="r num"><b>${inr(o.total||items.reduce((s,x)=>s+x.qty*x.rate,0))}</b></td></tr></tbody></table>
+  ${o.clientTotal&&o.bill&&Math.abs(o.clientTotal-o.bill.total)>1?`<div class="warnbox">Customer's cart showed ${inr(o.clientTotal)}; the bill uses your prices.</div>`:''}</div>
+  <div class="card"><b>${ON_LABEL[o.status]||o.status}</b><div class="small mute">Payment: ${o.payMode==='upi'?'UPI':'Cash'} · ${ON_PAY[o.payStatus]||''}${o.utr?' · UTR '+esc(o.utr):''}</div>
+  ${b?`<div class="li" onclick="A.go('bill',{id:'${b.x.id}'})" style="padding:8px 2px"><div class="sp"><div class="t">Bill ${esc(b.x.no)}</div><div class="s">${b.book==='gst'?'GST book (draft – issue it when ready)':'Daily book'}</div></div><span class="chev">›</span></div>`:''}
+  ${o.status==='placed'?`<div class="btns" style="margin-top:8px"><button class="btn green" onclick="A.onAccept('${o.id}')">Accept & make bill</button><button class="btn ghost" onclick="A.onCancel('${o.id}')">Decline</button></div>`:''}
+  ${next&&o.status!=='placed'?`<button class="btn" style="margin-top:8px" onclick="A.onStatus('${o.id}','${next}')">Mark: ${ON_LABEL[next]}</button>`:''}
+  ${o.payStatus!=='paid'&&b&&o.status!=='cancelled'?`<button class="btn ghost" style="margin-top:8px" onclick="A.onPaid('${o.id}')">${o.payMode==='upi'?'UPI payment received':'Cash received'} (${inr(o.total||0)})</button>`:''}
+  ${!['placed','delivered','cancelled'].includes(o.status)?`<button class="btn ghost" style="margin-top:8px" onclick="A.onCancel('${o.id}')">Cancel order</button>`:''}</div>`};
+V.onprices=v=>{v.title='Price list';const q=(v.q||'').toLowerCase();const P=S.online.prices=S.online.prices||{};
+  return backBtn()+`<h2>Price list for customers</h2><div class="small mute" style="margin:-6px 0 10px">Leave blank to use the usual rate. Hidden items are not shown to customers.</div>
+  <div class="search"><input placeholder="${esc(T('searchp'))}" value="${esc(v.q||'')}" oninput="A.onPq(this.value)" autocomplete="off"></div><div id="onpl">${onPriceRows(q)}</div>
+  <button class="btn" style="margin-top:10px" onclick="A.onPub()">Save and update price list</button>`};
+function onPriceRows(q){const P=S.online.prices||{};let h='';products.forEach(p=>p.v.forEach(v=>{if(q&&!(p.name+' '+v.size+' '+p.cat).toLowerCase().includes(q))return;const o=P[v.id]||{};
+  h+=`<div class="card"><div class="row"><div class="sp"><b>${esc(p.name)} ${esc(v.size)}</b><div class="small mute">MRP ${inr2(v.mrp)} · ${v.ppc} pcs/ctn</div></div><button class="btn ghost sm" onclick="A.onHide('${v.id}')">${o.hide?'Hidden':'Shown'}</button></div>
+  <div class="g2" style="margin-top:6px"><label class="f"><span>Retail /pc</span><input class="inp" inputmode="decimal" placeholder="${defRate(v.id,'sale','pcs','retail')}" value="${o.r||''}" onchange="A.onP('${v.id}','r',this.value)"></label><label class="f"><span>Wholesale /ctn</span><input class="inp" inputmode="decimal" placeholder="${defRate(v.id,'sale','ctn','wholesale')}" value="${o.wc||''}" onchange="A.onP('${v.id}','wc',this.value)"></label></div>
+  <label class="f"><span>Wholesale /pc (loose)</span><input class="inp" inputmode="decimal" placeholder="${defRate(v.id,'sale','pcs','wholesale')}" value="${o.wp||''}" onchange="A.onP('${v.id}','wp',this.value)"></label></div>`}));return h||'<div class="card mute">No product found.</div>'}
+TITLES.online=()=>'Online orders';TITLES.onorder=()=>'Order';TITLES.onprices=()=>'Price list';
+
+Object.assign(A,{
+  onCreate:async()=>{const upi=($('#on_upi').value||'').trim();if(upi&&!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(upi)){toast('UPI ID looks wrong (like name@okaxis)');return}
+    S.online={shopId:Array.from(crypto.getRandomValues(new Uint8Array(8))).map(b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join(''),upi,upiName:S.shop.name,open:true,book:'daily',prices:{},map:{}};saveLocal();render();await onStart();if(ONL.on)toast('Online shop is ready. Share the links or QR.')},
+  onRetry:()=>{ONL.err='';onStart();render()},
+  onReset:()=>ask('Make a new shop link?','Old links and QR codes will stop working. Share the new ones with your customers.','Make new link',async()=>{S.online.shopId=Array.from(crypto.getRandomValues(new Uint8Array(8))).map(b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join('');S.online.ownerUid=null;S.online.pubSig='';S.online.map={};ONL.err='';saveLocal();await onStart();render()}),
+  onReq:id=>onReqSheet(id),onApprove,onDeny,
+  onAccept:id=>onAccept(id),onStatus:(id,st)=>onSetStatus(id,st),onPaid:id=>onPaid(id),
+  onCancel:id=>ask('Cancel this order?','The customer will see it as cancelled. If a bill was made, it is kept on record as cancelled.','Cancel order',()=>onSetStatus(id,'cancelled'),true),
+  onOpen:async()=>{S.online.open=S.online.open===false;await onPublish(true).catch(e=>toast(errMsg(e)));render()},
+  onBook:b=>{S.online.book=b;saveLocal();render()},
+  onSaveSet:async()=>{const upi=($('#on_upi2').value||'').trim();if(upi&&!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(upi)){toast('UPI ID looks wrong (like name@okaxis)');return}S.online.upi=upi;try{await onPublish(true);toast('Saved')}catch(e){toast('Could not save: '+errMsg(e))}render()},
+  onPub:async()=>{try{await onPublish(true);toast('Price list updated for customers')}catch(e){toast('Could not update: '+errMsg(e))}if(S.view.n==='online')render()},
+  onP:(vid,k,val)=>{const P=S.online.prices=S.online.prices||{};P[vid]=P[vid]||{};const n=+val;if(val===''||!(n>0))delete P[vid][k];else P[vid][k]=n;saveLocal()},
+  onHide:vid=>{const P=S.online.prices=S.online.prices||{};P[vid]=P[vid]||{};P[vid].hide=!P[vid].hide;saveLocal();$('#onpl').innerHTML=onPriceRows((S.view.q||'').toLowerCase())},
+  onPq:q=>{S.view.q=q;$('#onpl').innerHTML=onPriceRows(q.toLowerCase())},
+  onShare:async t=>{const url=onLink(t);const text=(t==='retail'?'Order from ':'Wholesale orders from ')+S.shop.name+': '+url;
+    if(IS_APP&&NSH){try{await NSH.share({title:S.shop.name,text,url,dialogTitle:'Share order link'})}catch(e){}return}
+    if(navigator.share){try{await navigator.share({title:S.shop.name,text,url})}catch(e){}return}A.onCopy(t)},
+  onCopy:t=>{try{navigator.clipboard.writeText(onLink(t));toast('Link copied')}catch(e){toast(onLink(t))}},
+  onDelete:()=>ask('Delete the online shop?','Customers can no longer open your links. All online orders, requests and the price list are deleted from your Firebase project. Bills already made stay in your books.','Delete',async()=>{
+    try{for(const c of ['orders','sessions','catalog']){const q=await onCol(c).get();for(const d of q.docs)await d.ref.delete()}await onRef().delete()}catch(e){toast('Could not delete everything: '+errMsg(e));return}
+    ONL.unsub.forEach(u=>{try{u()}catch(e){}});Object.assign(ONL,{on:false,reqs:[],orders:[],unsub:[]});S.online=null;saveLocal();render();toast('Online shop deleted')},true)
+});
+/* keep the bill's delivery step and the customer's order status together */
+const _onAdvDel=A.advDel;A.advDel=id=>{_onAdvDel(id);const x=B().bills.find(b=>b.id===id);if(x&&x.orderId&&ONL.on){const st=x.del==='dispatched'?'out':(x.del==='delivered'||x.del==='received')?'delivered':null;const o=ONL.orders.find(y=>y.id===x.orderId);if(st&&o&&o.status!==st&&ON_STEPS.indexOf(st)>ON_STEPS.indexOf(o.status))onCol('orders').doc(o.id).update({status:st,statusAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{})}};
+/* home: show waiting customers and new orders */
+const _onHome=V.home;V.home=v=>{let h=_onHome(v);if(ONL.on){const n=ONL.reqs.length,m=ONL.orders.filter(o=>o.status==='placed').length;
+  const al=(n?`<div class="alert" onclick="A.go('online')"><b>${n} customer${n>1?'s':''}</b> waiting for you to allow ordering<span class="sp"></span>›</div>`:'')+(m?`<div class="alert" onclick="A.go('online')"><b>${m} new online order${m>1?'s':''}</b> to accept<span class="sp"></span>›</div>`:'');
+  if(al)h=h.replace('<div class="stats">',al+'<div class="stats">')}return h};
+/* more menu entry */
+const _onMore=V.more;V.more=v=>{const h=_onMore(v);const i=h.indexOf('<div class="li"');if(i<0)return h;
+  return h.slice(0,i)+`<div class="li" onclick="A.go('online')">${icT('upload','#1f6b52')}<div class="sp"><div class="t">Online orders · link & QR</div><div class="s">${S.online?(ONL.reqs.length?ONL.reqs.length+' waiting · ':'')+ONL.orders.filter(o=>o.status==='placed').length+' new':'Retail & wholesale price list for customers'}</div></div><span class="chev">›</span></div>`+h.slice(i)};
+
+/* ---------- boot ---------- */
 try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
-IDB.get('data').then(d=>{let ok=false;if(d){try{restoreData(d);ok=true}catch(e){}}if(!ok)gen();booted=true;render(true);saveLocal();autoB()}).catch(()=>{gen();booted=true;render(true)});
+IDB.get('data').then(d=>{let ok=false;if(d){try{restoreData(d);ok=true}catch(e){}}if(!ok)gen();booted=true;render(true);saveLocal();autoB();onStart()}).catch(()=>{gen();booted=true;render(true)});
 }
 </script>
 </body>
