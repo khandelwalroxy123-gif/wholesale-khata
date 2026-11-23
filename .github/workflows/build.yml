@@ -1,0 +1,96 @@
+name: Build APK and website
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  apk:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Assemble app file from parts
+        run: |
+          cat www/parts/*.html > www/index.html
+          ls -l www/index.html
+          sha256sum www/index.html
+
+      - name: Install Capacitor
+        run: npm install
+
+      - name: Create Android project
+        run: npx cap add android
+
+      - name: Add microphone and speech permissions
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <queries>\n        <intent><action android:name="android.speech.RecognitionService" /></intent>\n        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>\n    </queries>\n    <application#' "$M"
+          cat "$M"
+
+      - name: Copy app into Android project
+        run: npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk WholesaleKhata.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WholesaleKhata-apk
+          path: WholesaleKhata.apk
+
+      - name: Publish release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Wholesale Khata v1.0.${{ github.run_number }}
+          body: |
+            Download **WholesaleKhata.apk** below and open it on your Android phone.
+            Allow "Install unknown apps" for your browser or file manager when asked.
+          files: WholesaleKhata.apk
+
+  website:
+    name: Website (GitHub Pages)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble app file from parts
+        run: |
+          cat www/parts/*.html > www/index.html
+          ls -l www/index.html
+          sha256sum www/index.html
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
+      - id: deploy
+        uses: actions/deploy-pages@v4
