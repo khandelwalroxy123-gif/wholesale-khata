@@ -1,6 +1,6 @@
 # iPhone app (iOS)
 
-The iPhone app is the same app as Android, built with Capacitor 8 on a Mac in GitHub Actions (job **iPhone (iOS)** in `.github/workflows/build.yml`). Every push to `main`:
+The iPhone app is the same app as Android, built with Capacitor 8 on a Mac in GitHub Actions (workflow **Build iPhone app**, `.github/workflows/ios.yml`; if GitHub has no free Mac at that moment, re-run it from the Actions tab). Every push to `main`:
 
 1. Builds the iOS app for the **iPhone Simulator** – proves it compiles. Download `WholesaleKhata-iOS-Simulator.zip` from the release (opens on a Mac in Xcode's Simulator).
 2. If the Apple secrets below are set, also **signs it and uploads it to App Store Connect → TestFlight**, ready to install on real iPhones and to send for review.

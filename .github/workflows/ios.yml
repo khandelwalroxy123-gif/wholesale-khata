@@ -1,0 +1,121 @@
+name: Build iPhone app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: iPhone (iOS)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      HAS_APPLE: ${{ secrets.ASC_KEY_P8_BASE64 != '' && secrets.APPLE_TEAM_ID != '' }}
+      VERSION_NAME: 1.2.${{ github.run_number }}
+      BUILD_NO: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Newest Xcode on this runner
+        run: |
+          X=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1); echo "Using $X"
+          sudo xcode-select -s "$X/Contents/Developer"; xcodebuild -version
+
+      - name: Assemble app file from parts
+        run: cat www/parts/*.html > www/index.html
+
+      - name: Install Capacitor and plugins
+        run: npm ci
+
+      - name: Create iOS project (CocoaPods – the voice plugin has no Swift package yet)
+        run: npx cap add ios --packagemanager CocoaPods
+
+      - name: App icon and splash screen
+        run: npx capacitor-assets generate --ios
+
+      - name: Info.plist – why the app asks for microphone, speech and Face ID
+        run: |
+          P=ios/App/App/Info.plist; B=/usr/libexec/PlistBuddy
+          $B -c "Add :NSMicrophoneUsageDescription string 'The microphone is used only when you tap Speak, to fill a bill or entry by voice.'" "$P"
+          $B -c "Add :NSSpeechRecognitionUsageDescription string 'Your spoken words are turned into text to fill the entry. No recording is kept.'" "$P"
+          $B -c "Add :NSFaceIDUsageDescription string 'Face ID or Touch ID opens Wholesale Khata instead of typing your PIN.'" "$P"
+          $B -c "Add :ITSAppUsesNonExemptEncryption bool false" "$P"
+          $B -c "Set :CFBundleDisplayName 'Wholesale Khata'" "$P" || $B -c "Add :CFBundleDisplayName string 'Wholesale Khata'" "$P"
+          plutil -p "$P"
+
+      - name: Copy app into iOS project
+        run: npx cap sync ios
+
+      - name: Privacy manifest (PrivacyInfo.xcprivacy)
+        run: |
+          gem list -i xcodeproj >/dev/null || sudo gem install xcodeproj --no-document
+          ruby ios-extra/add_privacy.rb
+
+      - name: Build for iPhone Simulator (proves the iOS app compiles; no Apple account needed)
+        run: |
+          set -o pipefail
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO MARKETING_VERSION="$VERSION_NAME" CURRENT_PROJECT_VERSION="$BUILD_NO" build | tail -40
+          cd build/Build/Products/Release-iphonesimulator && zip -qry "$GITHUB_WORKSPACE/WholesaleKhata-iOS-Simulator.zip" App.app
+          ls -l "$GITHUB_WORKSPACE/WholesaleKhata-iOS-Simulator.zip"
+
+      - name: Signed build and upload to TestFlight (only when Apple secrets are set – see IOS.md)
+        if: env.HAS_APPLE == 'true'
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          set -o pipefail
+          K="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"; echo "$ASC_KEY_P8_BASE64" | base64 -d > "$K"
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $K -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            MARKETING_VERSION="$VERSION_NAME" CURRENT_PROJECT_VERSION="$BUILD_NO" $AUTH archive | tail -40
+          cat > "$RUNNER_TEMP/export.plist" <<PL
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PL
+          sed -i '' 's/^          //' "$RUNNER_TEMP/export.plist"
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/out" $AUTH | tail -40
+          echo "Uploaded build $BUILD_NO ($VERSION_NAME) to App Store Connect → TestFlight."
+
+      - name: No Apple account yet
+        if: env.HAS_APPLE != 'true'
+        run: echo "::warning::iOS app built for the Simulator only. To install on iPhones / TestFlight / App Store, add the Apple secrets described in IOS.md."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WholesaleKhata-ios
+          path: WholesaleKhata-iOS-Simulator.zip
+
+      - name: Add to the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          T=$(gh release list -L 1 --json tagName -q '.[0].tagName' || true)
+          [ -n "$T" ] && gh release upload "$T" WholesaleKhata-iOS-Simulator.zip --clobber || echo "No release to attach to"
