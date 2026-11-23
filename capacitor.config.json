@@ -1,0 +1,6 @@
+{
+  "appId": "com.wholesalekhata.app",
+  "appName": "Wholesale Khata",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}
