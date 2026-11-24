@@ -8,3 +8,4 @@ www/index.html
 .DS_Store
 www/qa.html
 ios/
+!android-keys/debug.keystore
