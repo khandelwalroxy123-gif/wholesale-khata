@@ -28,12 +28,12 @@ service cloud.firestore {
       allow read: if true;
       allow create: if member() && request.resource.data.ownerUid == request.auth.uid;
       allow update: if isOwner(s) && request.resource.data.ownerUid == resource.data.ownerUid;
-      allow delete: if isOwner(s);
+      allow delete: if isOwner(s) || isAdmin();
 
       // Two price lists: retail and wholesale. A customer reads only the one the shop chose for them.
       match /catalog/{tier} {
         allow read: if isOwner(s) || isAdmin() || (approved(s) && approvedTier(s) == tier);
-        allow write: if isOwner(s);
+        allow write: if isOwner(s) || isAdmin();
       }
 
       // One document per customer device. Normally the customer can only ask (status 'pending')
@@ -66,7 +66,7 @@ service cloud.firestore {
               && request.resource.data.validUntil is timestamp
               && request.resource.data.validUntil <= request.time + duration.value(6, 'h'))
           ));
-        allow delete: if isOwner(s);
+        allow delete: if isOwner(s) || isAdmin();
       }
 
       match /orders/{o} {
@@ -98,7 +98,7 @@ service cloud.firestore {
             (resource.data.status == 'placed' && request.resource.data.status == 'cancelled'
               && request.resource.data.payStatus == resource.data.payStatus)
           ));
-        allow delete: if isOwner(s);
+        allow delete: if isOwner(s) || isAdmin();
       }
     }
 

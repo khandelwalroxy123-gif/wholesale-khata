@@ -41,6 +41,7 @@ button.bad{background:var(--out)}
 .login{max-width:380px;margin:60px auto;display:grid;gap:10px}
 .msg{border-radius:10px;padding:8px 12px;display:none}.msg.err{display:block;background:#f8e7e5;color:var(--out)}.msg.ok{display:block;background:#e6f3ec;color:var(--in)}
 .wrap{overflow-x:auto}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:50}.mbox{background:#fff;border-radius:16px;padding:20px 22px;max-width:460px;width:calc(100% - 32px);box-shadow:0 10px 40px rgba(0,0,0,.2)}.mmsg{white-space:pre-line;font-size:15px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -51,6 +52,9 @@ button.bad{background:var(--out)}
 <script src="vendor/firebase-app-compat.js"></script><script src="vendor/firebase-auth-compat.js"></script><script src="vendor/firebase-firestore-compat.js"></script>
 <script>
 (function(){
+const ask=(msg,ok,danger)=>new Promise(res=>{const d=document.createElement('div');d.className='modal';d.innerHTML=`<div class="mbox"><div class="mmsg"></div><div class="row2" style="justify-content:flex-end;margin-top:16px">${ok?'<button class="btn ghost" data-r="0">Cancel</button>':''}<button class="btn ${danger?'bad':''}" data-r="1"></button></div></div>`;d.querySelector('.mmsg').textContent=msg;d.querySelector('[data-r="1"]').textContent=ok||'OK';
+  d.onclick=e=>{const b=e.target.closest('[data-r]');if(b||e.target===d){d.remove();res(!!b&&b.dataset.r==='1')}};document.body.appendChild(d);d.querySelector('[data-r="1"]').focus()});
+const note=msg=>{ask(String(msg))};
 const ADMIN='rahulg.aice@gmail.com',DAY=864e5,TRIAL=30,FOREVER=4102444800000;
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ms=v=>v&&v.toMillis?v.toMillis():(typeof v==='number'?v:0);
@@ -79,7 +83,7 @@ au.onAuthStateChanged(async u=>{if(!u||u.isAnonymous)return login();
   if(String(u.email).toLowerCase()!==ADMIN){await au.signOut();return login('This page is only for the admin account.')}
   try{await u.reload()}catch(e){}
   if(!au.currentUser.emailVerified){$('#main').innerHTML=`<div class="login"><h2>Verify your email first</h2><p>Open the verification email sent to ${esc(u.email)} and click the link, then come back and press Continue.</p><button class="btn" id="vr">Send the email again</button><button class="btn ghost" id="ct">Continue</button><button class="btn ghost" id="so">Sign out</button></div>`;
-    $('#vr').onclick=async()=>{try{await au.currentUser.sendEmailVerification();alert('Sent. Check your inbox and Spam.')}catch(e){alert(e.message)}};$('#ct').onclick=()=>location.reload();$('#so').onclick=()=>au.signOut();return}
+    $('#vr').onclick=async()=>{try{await au.currentUser.sendEmailVerification();note('Sent. Check your inbox and Spam.')}catch(e){note(e.message)}};$('#ct').onclick=()=>location.reload();$('#so').onclick=()=>au.signOut();return}
   await au.currentUser.getIdToken(true);
   $('#who').innerHTML=esc(u.email)+' · <a href="#" id="out">Sign out</a>';$('#out').onclick=e=>{e.preventDefault();au.signOut()};load()});
 
@@ -135,13 +139,13 @@ async function act(u,a){const now=Date.now();let d={};const base=Math.max(now,ms
   if(a==='t7')d={extraDays:(u.extraDays||0)+7};
   else if(a==='m1'){const t=new Date(base);t.setMonth(t.getMonth()+1);d={plan:'monthly',planUntil:TS.fromMillis(t.getTime())}}
   else if(a==='y1'){const t=new Date(base);t.setFullYear(t.getFullYear()+1);d={plan:'yearly',planUntil:TS.fromMillis(t.getTime())}}
-  else if(a==='five'){if(!confirm('Give the 5-Year Plan from today? Use this when they paid you directly.'))return;const t=new Date();t.setFullYear(t.getFullYear()+5);d={plan:'five',planUntil:TS.fromMillis(t.getTime())}}
+  else if(a==='five'){if(!await ask('Give the 5-Year Plan from today? Use this when they paid you directly.','Give 5-Year Plan'))return;const t=new Date();t.setFullYear(t.getFullYear()+5);d={plan:'five',planUntil:TS.fromMillis(t.getTime())}}
   else if(a==='comp')return compForm(u.email);
-  else if(a==='block'){if(!confirm('Put on hold? They can still view their books but cannot add entries.'))return;d={blocked:true}}
-  else if(a==='remove'){if(!confirm('Remove '+(u.shop||u.name||'')+' ('+(u.email||'')+')?\n\nThey will no longer be able to sign in. Their online shop and orders are deleted. Store purchase records are kept for tax. Books on their own phone stay there. You can allow them again from the Removed tab.'))return;
-    try{await removeAccount(u);D.users=D.users.filter(x=>x.id!==u.id);D.shops=D.shops.filter(s=>s.ownerUid!==u.id);closeP();tabs();show()}catch(e){alert(e.message)}return}
+  else if(a==='block'){if(!await ask('Put on hold? They can still view their books but cannot add entries.','Put on hold',true))return;d={blocked:true}}
+  else if(a==='remove'){if(!await ask('Remove '+(u.shop||u.name||'')+' ('+(u.email||'')+')?\n\nThey will no longer be able to sign in. Their online shop and orders are deleted. Store purchase records are kept for tax. Books on their own phone stay there. You can allow them again from the Removed tab.','Remove account',true))return;
+    try{await removeAccount(u);D.users=D.users.filter(x=>x.id!==u.id);D.shops=D.shops.filter(s=>s.ownerUid!==u.id);closeP();tabs();show()}catch(e){note(e.message)}return}
   else if(a==='unblock')d={blocked:false};else if(a==='note')d={note:$('#nt').value.trim().slice(0,500)};
-  try{await db.doc('users/'+u.id).update(d);Object.assign(u,d);user(u.id);if(D.tab==='accounts')accounts(),user(u.id)}catch(e){alert(e.message)}}
+  try{await db.doc('users/'+u.id).update(d);Object.assign(u,d);user(u.id);if(D.tab==='accounts')accounts(),user(u.id)}catch(e){note(e.message)}}
 
 const DUR=[['m1','1 month'],['y1','1 year'],['y5','5 years'],['none','No end date']];
 function compForm(email){const p=$('#panel');p.classList.add('on');p.innerHTML=`<div class="tools"><h2 style="margin:0">Give free access</h2><span class="sp"></span><button class="btn ghost" id="x">Close</button></div>
@@ -150,11 +154,11 @@ function compForm(email){const p=$('#panel');p.classList.add('on');p.innerHTML=`
   <p><select id="cd" style="width:100%">${DUR.map(([k,l])=>`<option value="${k}" ${k==='y1'?'selected':''}>${l}</option>`).join('')}</select></p>
   <p><input id="cn" placeholder="Note, e.g. family, staff, demo" style="width:100%"></p><button class="btn" id="cs">Give access</button>`;
   $('#x').onclick=closeP;$('#cs').onclick=async()=>{const e=$('#ce').value.trim().toLowerCase(),k=$('#cd').value,n=$('#cn').value.trim().slice(0,200);
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))return alert('Enter a valid email.');let until=null;const t=new Date();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))return note('Enter a valid email.');let until=null;const t=new Date();
     if(k==='m1'){t.setMonth(t.getMonth()+1);until=TS.fromMillis(t.getTime())}else if(k==='y1'){t.setFullYear(t.getFullYear()+1);until=TS.fromMillis(t.getTime())}else if(k==='y5'){t.setFullYear(t.getFullYear()+5);until=TS.fromMillis(t.getTime())}
     try{const doc={email:e,until,note:n,revoked:false,by:au.currentUser.email,createdAt:SV()};await db.doc('comps/'+e).set(doc);
       const u=D.users.find(x=>String(x.email||'').toLowerCase()===e);if(u){const pu=until||TS.fromMillis(FOREVER);await db.doc('users/'+u.id).update({plan:'comp',planUntil:pu});Object.assign(u,{plan:'comp',planUntil:pu})}
-      const i=D.comps.findIndex(x=>x.id===e);const row={id:e,...doc};i<0?D.comps.push(row):D.comps[i]=row;closeP();tabs();show()}catch(x){alert(x.message)}}}
+      const i=D.comps.findIndex(x=>x.id===e);const row={id:e,...doc};i<0?D.comps.push(row):D.comps[i]=row;closeP();tabs();show()}catch(x){note(x.message)}}}
 async function removeAccount(u){const uid=u.id,email=String(u.email||'').toLowerCase();const row={email,name:u.name||'',shop:u.shop||'',phone:u.phone||'',by:au.currentUser.email,at:Date.now()};
   await db.doc('removed/'+uid).set(row);
   for(const s of D.shops.filter(x=>x.ownerUid===uid)){for(const c of ['orders','sessions']){const q=await db.collection('shops/'+s.id+'/'+c).get();for(const d of q.docs)await d.ref.delete().catch(()=>{})}
@@ -163,17 +167,17 @@ async function removeAccount(u){const uid=u.id,email=String(u.email||'').toLower
   await db.doc('users/'+uid).delete();D.removed.unshift({id:uid,...row})}
 function removed(){$('#main').innerHTML=`<p class="small mute">These logins can no longer use the app. "Allow again" lets them sign in; they start a new free trial unless you give them a plan or free access. To delete the login itself, use Firebase console → Authentication.</p>
   <div class="wrap"><table><tr><th>Shop</th><th>Name</th><th>Phone</th><th>Email</th><th>Removed</th><th></th></tr>${D.removed.map(x=>`<tr><td><b>${esc(x.shop)}</b></td><td>${esc(x.name)}</td><td>${esc(x.phone)}</td><td>${esc(x.email)}</td><td class="small">${fd(x.at)}</td><td><button class="btn ghost" data-allow="${esc(x.id)}">Allow again</button></td></tr>`).join('')||'<tr><td colspan="6" class="mute">No removed accounts.</td></tr>'}</table></div>`;
-  document.querySelectorAll('[data-allow]').forEach(b=>b.onclick=async()=>{if(!confirm('Allow this login to use the app again?'))return;try{await db.doc('removed/'+b.dataset.allow).delete();D.removed=D.removed.filter(x=>x.id!==b.dataset.allow);tabs();removed()}catch(e){alert(e.message)}})}
+  document.querySelectorAll('[data-allow]').forEach(b=>b.onclick=async()=>{if(!await ask('Allow this login to use the app again?','Allow again'))return;try{await db.doc('removed/'+b.dataset.allow).delete();D.removed=D.removed.filter(x=>x.id!==b.dataset.allow);tabs();removed()}catch(e){note(e.message)}})}
 function free(){const now=Date.now();const c=D.comps.filter(x=>!x.revoked);
   $('#main').innerHTML=`<div class="tools"><button class="btn" id="add">Give free access</button><span class="mute small">For family, staff, partners or demo shops. They use the app fully with no payment.</span></div>
   <div class="wrap"><table><tr><th>Email</th><th>Till</th><th>Account</th><th>Note</th><th>Given</th><th></th></tr>${c.map(x=>{const u=D.users.find(u=>String(u.email||'').toLowerCase()===x.id);const un=x.until?ms(x.until):0;
     return `<tr><td>${esc(x.id)}</td><td>${un?(un>now?fd(un):'<span class="pill r">ended '+fd(un)+'</span>'):'no end'}</td><td>${u?esc(u.shop||u.name)+' · joined':'<span class="mute">not joined yet</span>'}</td><td>${esc(x.note||'')}</td><td class="small">${fd(ms(x.createdAt))}</td><td><button class="btn ghost" data-del="${esc(x.id)}">Remove</button></td></tr>`}).join('')||'<tr><td colspan="6" class="mute">No free accounts yet.</td></tr>'}</table></div>`;
   $('#add').onclick=()=>compForm('');
-  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{const id=b.dataset.del;if(!confirm('Remove free access for '+id+'?'))return;
-    try{await db.doc('comps/'+id).delete();const u=D.users.find(x=>String(x.email||'').toLowerCase()===id);if(u&&u.plan==='comp'){await db.doc('users/'+u.id).update({plan:'',planUntil:null});Object.assign(u,{plan:'',planUntil:null})}D.comps=D.comps.filter(x=>x.id!==id);free()}catch(e){alert(e.message)}})}
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{const id=b.dataset.del;if(!await ask('Remove free access for '+id+'?','Remove',true))return;
+    try{await db.doc('comps/'+id).delete();const u=D.users.find(x=>String(x.email||'').toLowerCase()===id);if(u&&u.plan==='comp'){await db.doc('users/'+u.id).update({plan:'',planUntil:null});Object.assign(u,{plan:'',planUntil:null})}D.comps=D.comps.filter(x=>x.id!==id);free()}catch(e){note(e.message)}})}
 function buys(){$('#main').innerHTML=`<p class="small mute">Match each order with Play Console → Order management (Android) or App Store Connect → Sales (iPhone), then mark it checked.</p>
   <div class="wrap"><table><tr><th>Date</th><th>Account</th><th>Plan</th><th>Store</th><th>Order ID</th><th>Status</th><th></th></tr>${D.buys.map(b=>`<tr><td>${esc((b.purchaseDate||'').slice(0,10))||fd(ms(b.createdAt))}</td><td>${esc(b.email)}</td><td>${b.product==='five'?'5-Year ₹4,999':b.product==='yearly'?'Yearly ₹1,499':b.product==='monthly'?'Monthly ₹199':esc(b.product)}</td><td>${esc(b.platform||'android')}</td><td class="small">${esc(b.orderId)}</td><td>${b.status==='new'?'<span class="pill a">new</span>':'<span class="pill g">'+esc(b.status)+'</span>'}</td><td>${b.status==='new'?`<button class="btn ghost" data-ok="${esc(b.id)}">Checked</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" class="mute">No purchases yet.</td></tr>'}</table></div>`;
-  document.querySelectorAll('[data-ok]').forEach(b=>b.onclick=async()=>{try{await db.doc('purchases/'+b.dataset.ok).update({status:'checked'});D.buys.find(x=>x.id===b.dataset.ok).status='checked';tabs();buys()}catch(e){alert(e.message)}})}
+  document.querySelectorAll('[data-ok]').forEach(b=>b.onclick=async()=>{try{await db.doc('purchases/'+b.dataset.ok).update({status:'checked'});D.buys.find(x=>x.id===b.dataset.ok).status='checked';tabs();buys()}catch(e){note(e.message)}})}
 function shops(){$('#main').innerHTML=`<div class="wrap"><table><tr><th>Shop</th><th>Owner</th><th>Phone</th><th>UPI</th><th>Status</th><th>Links</th><th>Orders</th><th>Waiting</th><th>Updated</th></tr>${D.shops.map(s=>{const u=D.users.find(x=>x.id===s.ownerUid);const o=D.orders[s.id]||[];
     return `<tr class="row" data-s="${s.id}"><td><b>${esc(s.name)}</b><div class="small mute">${esc(s.addr||'')}</div></td><td>${u?esc(u.email):'<span class="mute">old app (no login)</span>'}</td><td>${esc(s.phone)}</td><td class="small">${esc(s.upi)}</td><td>${s.open?'<span class="pill g">open</span>':'<span class="pill n">closed</span>'}</td><td class="small">retail: ${s.autoRetail?'auto':'ask'} · wholesale: ${s.autoWholesale?'auto':'ask'}</td><td>${o.length}</td><td>${(s.reqs||0)+o.filter(x=>x.status==='placed').length}</td><td class="small">${fd(ms(s.updatedAt))}</td></tr>`}).join('')||'<tr><td colspan="9" class="mute">No online shops.</td></tr>'}</table></div>`;
   document.querySelectorAll('tr[data-s]').forEach(r=>r.onclick=()=>shop(r.dataset.s))}
