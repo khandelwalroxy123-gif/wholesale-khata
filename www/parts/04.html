@@ -1,3 +1,21 @@
+  isq:q=>{IT.q=q;const r=products.filter(p=>!q||p.name.toLowerCase().includes(q.toLowerCase())||p.cat.toLowerCase().includes(q.toLowerCase()));$('#isr').innerHTML=r.map(p=>`<div class="li" onclick="A.ipick('${p.id}')">${pThumb(p)}<div class="sp"><div class="t">${esc(p.name)}</div><div class="s">${p.v.map(v=>esc(v.size)).join(' · ')}</div></div></div>`).join('')},
+  ipick:pid=>{IT.pid=pid;const p=products.find(p=>p.id===pid);if(p.v.length===1){A.ivar(p.v[0].id)}else{IT.step='v';drawItem()}},
+  ivar:vid=>{IT.vid=vid;IT.ppc=VAR[vid].ppc;IT.step='q';IT.ctn=1;IT.pc=0;autoRate();drawItem()},istep:s=>{IT.step=s;drawItem()},
+  iset:(k,val)=>{IT[k]=val;autoRate();drawItem()},
+  iq2:(f,d)=>{IT[f]=Math.max(0,(+IT[f]||0)+d);$('#q_'+f).value=IT[f];iinfo()},
+  iin:(k,val)=>{IT[k]=val;if(k==='prate')IT.ptouch=true;if(k==='rate'&&!IT.ptouch){IT.prate=Math.round((+val||0)/(+IT.ppc||1)*100)/100;$('#ipr').value=IT.prate}iinfo()},
+  ippc:v=>{IT.ppc=Math.max(1,+v||1);IT.rate=Math.round((+IT.prate||0)*IT.ppc);$('#ir').value=IT.rate;iinfo()},
+  ippcd:d=>{const e=$('#ippc');e.value=Math.max(1,(+e.value||1)+d);A.ippc(e.value)},
+  iuse:(u,r)=>{if(u==='ctn'){IT.rate=r;if(!IT.ptouch)IT.prate=Math.round(r/IT.ppc*100)/100}else{IT.prate=r;IT.ptouch=true}drawItem()},
+  iadd:()=>{const c=+IT.ctn||0,p=+IT.pc||0,r=+IT.rate,pr=+IT.prate,pp=+IT.ppc||VAR[IT.vid].ppc;if(c<=0&&p<=0){toast('Enter cartons or pieces');return}if(c>0&&!(r>0)){toast('Enter carton rate');return}if(p>0&&!(pr>0)){toast('Enter piece rate');return}
+    const lines=[];if(c>0)lines.push({vid:IT.vid,unit:'ctn',qty:c,rate:r,rt:IT.rt||'wholesale',ppc:pp});if(p>0)lines.push({vid:IT.vid,unit:'pcs',qty:p,rate:pr,rt:IT.rt||'wholesale',ppc:pp});
+    const ch=pp!==VAR[IT.vid].ppc;if(ch)VAR[IT.vid].ppc=pp;
+    if(IT.k>=0)S.draft.items.splice(IT.k,1,...lines);else S.draft.items.push(...lines);closeSheet();render();if(ch)toast('Carton size saved as '+pp+' pcs for next time')},
+  newProduct,newSize,npin:(k,v)=>{NP[k]=v},npgst:g=>{NP.gst=g;drawNP()},npz:(k,f,v)=>{NP.sizes[k][f]=v},npadd:()=>{NP.sizes.push({size:'',ppc:'',mrp:''});drawNP()},npdel:k=>{NP.sizes.splice(k,1);drawNP()},
+  npSave:()=>{const n=(NP.name||'').trim();if(!n){toast('Enter product name');return}const zs=NP.sizes.filter(z=>z.size.trim()&&+z.ppc>0);if(!zs.length){toast('Enter size and pieces in carton');return}
+    let p=NP.pid?products.find(x=>x.id===NP.pid):null;if(!p){p={id:'p'+uid(),name:n,cat:(NP.cat||'Other').trim(),hsn:NP.hsn||'',gst:NP.gst,v:[]};products.push(p)}
+    const added=zs.map(z=>{const v={id:p.id+'v'+uid(),pid:p.id,size:z.size.trim(),ppc:+z.ppc,mrp:+z.mrp||0,min:+z.ppc*2};p.v.push(v);VAR[v.id]=v;return v});
+    if(NP.from==='bill'&&IT){IT.pid=p.id;if(added.length===1){A.ivar(added[0].id)}else{IT.step='v';drawItem()}}else{closeSheet();render()}toast((NP.pid?'Size':'Product')+' added')},
   idel:()=>{S.draft.items.splice(IT.k,1);closeSheet();render()},
   /* contacts */
   pkq:q=>{PK.q=q;drawPick();const e=document.querySelector('.sheet .search input');if(e){e.focus();e.setSelectionRange(q.length,q.length)}},pkPhone:f=>{PK.phone=f;drawPick()},
@@ -264,16 +282,3 @@ async function runBackup(which,silent){const done=[],fail=[];
   if(done.length)S.lastBackup=Date.now();await IDB.set('data',snapshot());if(S.view.n==='settings')render();
   if(!silent||fail.length)toast((done.length?'Backed up to '+done.join(' and ')+'. ':'')+(fail.length?fail.join('. '):''))}
 /* settings card + restore sheet */
-function storageCard(){const c=S.cloud;const row=(k,name,desc,ok,at,avail)=>`<div class="li" style="cursor:default;align-items:flex-start"><div class="sp"><div class="t">${name}</div><div class="s">${desc}</div><div class="s">${avail?(at?'Last backup '+fd(at)+', '+ft(at):'No backup yet'):'<span class="out">Not available in this view</span>'}</div></div><button class="btn ${c[k]?'':'ghost'} sm" onclick="A.stTog('${k}')" ${avail?'':'disabled'}>${c[k]?'On':'Off'}</button></div>`;
-  return `<div class="card"><b>Where your data is saved</b>
-  <div class="li" style="cursor:default"><div class="sp"><div class="t">This phone</div><div class="s" id="locst">${localLine()}</div><div class="s">Always on. Every entry is saved instantly and works without internet.</div></div><span class="pill green">Always</span></div>
-  <div class="li" style="cursor:default;align-items:flex-start"><div class="sp"><div class="t">Backup file</div><div class="s">Save a backup file to Google Drive, WhatsApp, e-mail or your computer. Restore it on this or a new phone.</div><div class="s">${S.lastFileBackup?'Last saved '+fd(S.lastFileBackup)+', '+ft(S.lastFileBackup):'Not saved yet'}</div></div></div>
-  <div class="btns"><button class="btn" onclick="A.fileBackup()">Save backup file</button><button class="btn ghost" onclick="document.getElementById('rsf').click()">Restore from file</button></div><input type="file" id="rsf" accept=".json,application/json" style="display:none" onchange="A.fileRestore(this.files[0]);this.value=''">
-  ${MCP||DBC?`${row('drive','Google Drive','A backup file in your own Google Drive.',c.driveOk,c.driveAt,!!MCP)}
-  ${row('server','App server (Khata cloud)','Private copy only your login can read. Keeps the last 7 backups.',c.serverOk,c.serverAt,!!DBC)}
-  <div class="btns"><button class="btn ghost" onclick="A.backup()">Back up to cloud</button><button class="btn ghost" onclick="A.restoreMenu()">Restore from cloud</button></div>
-  <button class="btn ghost" style="margin-top:10px" onclick="A.tog('autoBackup')">Automatic daily cloud backup: ${S.autoBackup?'On':'Off'}</button>`:''}
-  <div class="small mute" style="margin-top:8px">A safety copy is also kept on this phone every day (last 7 days). It is removed if the app is uninstalled, so save a backup file regularly.</div>
-  <div class="small mute" style="margin-top:8px">Backups include all bills, khata, stock, staff and settings of both books.</div></div>`}
-let RS=null;
-function drawRestore(){const src=RS.src;sheet(`<h2>Restore a backup</h2><div class="seg"><button class="${src==='drive'?'on':''}" onclick="A.rsSrc('drive')">Google Drive</button><button class="${src==='server'?'on':''}" onclick="A.rsSrc('server')">App server</button></div>

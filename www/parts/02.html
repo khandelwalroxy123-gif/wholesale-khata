@@ -1,3 +1,33 @@
+      if(frac>0){const mode=x.cid==='c4'?'cheque':pick(['cash','upi','upi','cash']);b.pays.push({id:uid(),cid:x.cid,dir:x.type==='sale'?'in':'out',amt:Math.round(tot*frac),mode,date:x.date+ri(0,Math.min(6,Math.max(0,age-.5)))*DAY,note:'Against '+x.no,chq:mode==='cheque'?{no:String(ri(100000,999999)),bank:pick(['SBI','HDFC','Bank of Baroda']),due:x.date+ri(5,12)*DAY,st:'cleared'}:null})}
+    });
+    // pending cheques
+    if(bk==='daily'){
+      b.pays.push({id:uid(),cid:'c4',dir:'in',amt:38500,mode:'cheque',date:today0-2*DAY+11*3600e3,note:'Post-dated cheque',chq:{no:'448821',bank:'HDFC',due:today0+1*DAY,st:'pending'}});
+      b.pays.push({id:uid(),cid:'c4',dir:'in',amt:42000,mode:'cheque',date:today0-1*DAY+16*3600e3,note:'Post-dated cheque',chq:{no:'448822',bank:'HDFC',due:today0+9*DAY,st:'pending'}});
+      b.pays.push({id:uid(),cid:'v1',dir:'out',amt:55000,mode:'cheque',date:today0-3*DAY,note:'Given to vendor',chq:{no:'110045',bank:'SBI',due:today0+2*DAY,st:'pending'}});
+    }
+    // expenses
+    for(let d=95;d>=0;d--){
+      const day=today0-d*DAY;const dt=new Date(day);
+      if(rnd()<.8)b.exps.push({id:uid(),head:'Tea & snacks',amt:ri(4,9)*10,date:day+17*3600e3,note:''});
+      if(dt.getDate()===5){b.exps.push({id:uid(),head:'Electricity bill',amt:ri(2800,4200),date:day+12*3600e3,note:'MPEB'});b.exps.push({id:uid(),head:'Water bill',amt:450,date:day+12*3600e3,note:'Nagar Nigam'});b.exps.push({id:uid(),head:'Shop rent',amt:bk==='gst'?0:18000,date:day+11*3600e3,note:'Godown + shop'})}
+      if(dt.getDate()===1&&bk==='daily'){b.exps.push({id:uid(),head:'Worker salary',amt:12000+10000+9000+11700,date:day+18*3600e3,note:'Monthly salary'})}
+      if(rnd()<.06)b.exps.push({id:uid(),head:pick(['Repair','Other','Transport']),amt:ri(3,25)*50,date:day+15*3600e3,note:pick(['Tempo','Shutter repair','Stationery','Loading labour'])});
+    }
+    b.exps=b.exps.filter(e=>e.amt>0);
+    // opening stock so that current stock looks real
+    const targ={p0v1:30,p3v2:25,p5v0:20,p9v0:14,p6v0:18,p11v1:110};
+    Object.keys(VAR).forEach(vid=>{
+      const V=VAR[vid];let p=0,s=0;
+      b.bills.forEach(x=>{if(x.status==='draft'||x.status==='cancelled')return;x.items.forEach(i=>{if(i.vid===vid){const q=pcs(i);x.type==='purchase'?p+=q:s+=q}})});
+      const target=targ[vid]??V.ppc*ri(4,16)+ri(0,V.ppc-1);
+      b.open[vid]=Math.max(0,target-p+s);
+    });
+  });
+  ['daily','gst'].forEach(bk=>S.books[bk].bills.forEach(x=>x.items.forEach(i=>i.ppc=VAR[i.vid].ppc)));
+  // staff
+  const st=[['Ramesh Yadav','9000000401','monthly',12000,'Godown in-charge'],['Suresh Kumar','9000000402','monthly',10000,'Delivery'],['Raju','9000000403','daily',450,'Loading'],['Pinky Verma','9000000404','monthly',9000,'Accounts']];
+  S.staff=st.map((x,i)=>({id:'s'+i,name:x[0],phone:x[1],pay:x[2],rate:x[3],role:x[4],att:{},ot:{},adv:[]}));
   S.staff.forEach((s,i)=>{for(let d=40;d>=0;d--){const t=today0-d*DAY;const dt=new Date(t);if(dt.getDay()===0)continue;if(d===0&&i>1)continue;const r=rnd();s.att[dkey(t)]=r<.86?'P':r<.92?'H':r<.96?'L':'A';if(rnd()<.12)s.ot[dkey(t)]=ri(1,3)}});
   S.staff[0].adv.push({date:today0-12*DAY,amt:2000,note:'Family function'});
   S.staff[2].adv.push({date:today0-6*DAY,amt:1000,note:''});
@@ -272,18 +302,3 @@ V.staffd=v=>{const s=S.staff.find(x=>x.id===v.sid);v.title=s.name;const ym=v.ym|
   let cells=['S','M','T','W','T','F','S'].map(d=>`<div class="h">${d}</div>`).join('')+'<div></div>'.repeat(first);
   for(let d=1;d<=days;d++){const k=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');const a=s.att[k];const sun=new Date(y,m,d).getDay()===0;const fut=new Date(y,m,d).getTime()>today0;cells+=`<button class="d ${a||''} ${sun||fut?'S':''}" onclick="A.cyc('${s.id}','${k}')" ${fut?'disabled':''} aria-label="${d} ${a?AT[a]:''}">${d}${s.ot[k]?'<sup style="font-size:9px">+'+s.ot[k]+'</sup>':''}</button>`}
   const pm=m===0?[y-1,11]:[y,m-1],nm=m===11?[y+1,0]:[y,m+1];
-  const slip=`Salary slip – ${MON[m]} ${y}\n${s.name} (${s.role})\nPresent ${sl.P}, Half ${sl.H}, Leave ${sl.L}, Absent ${sl.A}, OT ${sl.ot} hrs\nEarned ${inr(sl.earned)}\nAdvance ${inr(sl.adv)}\nPayable ${inr(sl.net)}\n– ${S.shop.name}`;
-  return backBtn()+`<div class="row"><h2 class="sp">${esc(s.name)}</h2><span class="small mute">Ph ${s.phone}</span></div>
-  <div class="card"><div class="row" style="margin-bottom:8px"><button class="btn ghost sm" onclick="A.setv('ym',[${pm}])">‹</button><b class="sp" style="text-align:center">${MON[m]} ${y}</b><button class="btn ghost sm" onclick="A.setv('ym',[${nm}])" ${y===NOW.getFullYear()&&m===NOW.getMonth()?'disabled':''}>›</button></div><div class="cal">${cells}</div>
-  <div class="small mute" style="margin-top:8px">Tap a day to change: Present → Half → Absent → Leave → blank. +n = overtime hours.</div></div>
-  <div class="card"><b>Salary for ${MON[m]}</b><table class="t" style="margin-top:6px"><tbody>
-  <tr><td>Present / half / leave / absent</td><td class="r num">${sl.P} / ${sl.H} / ${sl.L} / ${sl.A}</td></tr><tr><td>Per day</td><td class="r num">${inr(sl.perDay)}</td></tr><tr><td>Overtime</td><td class="r num">${sl.ot} hrs</td></tr><tr><td>Earned</td><td class="r num">${inr(sl.earned)}</td></tr><tr><td>Advance taken</td><td class="r num out">− ${inr(sl.adv)}</td></tr><tr><td><b>Payable</b></td><td class="r num"><b>${inr(sl.net)}</b></td></tr></tbody></table>
-  <div class="btns"><button class="btn" onclick="A.paySalary('${s.id}',${sl.net},'${MON[m]} ${y}')">Pay salary</button>${waBtn(s.phone,slip,'Send slip')}</div></div>
-  <div class="card"><div class="row"><b class="sp">Advances</b><button class="btn ghost sm" onclick="A.advance('${s.id}')">+ Give advance</button></div>${s.adv.slice().reverse().map(a=>`<div class="li" style="padding:8px 2px"><div class="sp">${fd(a.date)}${a.note?' · '+esc(a.note):''}</div><b class="num">${inr(a.amt)}</b></div>`).join('')||'<div class="mute small">No advances.</div>'}
-  <button class="btn ghost sm" style="margin-top:8px" onclick="A.ot('${s.id}')">+ Add overtime today</button></div>`};
-/* ---------- stock ---------- */
-V.stock=v=>{v.title=T('stock');const f=v.f||'all';let list=Object.keys(VAR).map(vid=>({vid,s:stockOf(vid),ls:lastSaleDate(vid)}));
-  const dead=o=>!o.ls||(today0-o.ls)/DAY>45;
-  if(f==='low')list=list.filter(o=>o.s<VAR[o.vid].min);if(f==='dead')list=list.filter(dead);
-  const val=Object.keys(VAR).reduce((a,vid)=>a+stockOf(vid)*avgCost(vid),0);
-  const low=Object.keys(VAR).filter(v=>stockOf(v)<VAR[v].min);const byV={};low.forEach(vid=>{const r=rateRows(vid,'purchase');const best=r.slice(0,10).sort((a,b)=>perPc(a.i)-perPc(b.i))[0];const vd=best?best.x.cid:'v1';(byV[vd]=byV[vd]||[]).push(vid)});

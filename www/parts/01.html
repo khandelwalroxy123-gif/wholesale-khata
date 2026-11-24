@@ -311,6 +311,33 @@ html.glass .search input,html.glass .search input:not([type=checkbox]){backgroun
 .pfit{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:6px;display:flex;flex-direction:column;gap:4px;cursor:pointer;font:inherit;color:inherit}
 .pfit img{width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:10px}
 .pfit span{font-size:11px;line-height:1.25;max-height:2.5em;overflow:hidden;text-align:left}
+
+/* MONO – black, white and grey glass; only notifications carry colour */
+@media screen{
+html.glass{--ink:light-dark(#000,#fff);--mute:light-dark(#555,#a3a3a3);--book:light-dark(#111,#f2f2f2);--book2:light-dark(#000,#d4d4d4);--gold:light-dark(#111,#fff);--gold2:light-dark(#111,#fff);--bg:light-dark(#f4f4f4,#000);--card:light-dark(#fff,#141414);--soft:light-dark(#efefef,#1c1c1c)}
+html.glass body{background:light-dark(#e6e6e6,#000)}
+html.glass .glassbg{background:light-dark(linear-gradient(170deg,#fafafa,#ececec 55%,#e2e2e2),linear-gradient(170deg,#0b0b0b,#000 60%,#070707))}
+html.glass .glassbg i{opacity:light-dark(.9,.5)}
+html.glass .glassbg i:nth-child(1){background:light-dark(#fff,#2a2a2a)}
+html.glass .glassbg i:nth-child(2){background:light-dark(#d6d6d6,#1a1a1a)}
+html.glass .glassbg i:nth-child(3){background:light-dark(#ffffff,#222)}
+html.glass .glassbg i:nth-child(4){background:light-dark(#cfcfcf,#151515)}
+html.glass .hero{background:var(--gl)}
+html.glass .btn{background:linear-gradient(180deg,light-dark(#3a3a3a,#fff),light-dark(#0a0a0a,#dcdcdc));color:light-dark(#fff,#000);box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 10px 22px -10px rgba(0,0,0,.55)}
+html.glass .btn.ghost{background:var(--gl);color:var(--ink)}
+html.glass .bot .plus{background:radial-gradient(circle at 30% 25%,light-dark(#555,#fff),light-dark(#000,#d0d0d0) 70%);color:light-dark(#fff,#000);box-shadow:0 0 0 4px light-dark(rgba(255,255,255,.7),rgba(0,0,0,.7)),0 12px 24px -8px rgba(0,0,0,.6)}
+html.glass .lockscr{background:light-dark(linear-gradient(170deg,#fafafa,#e8e8e8),linear-gradient(170deg,#0b0b0b,#000))}
+html.glass .alert{color:var(--ink)}
+html.glass .gststrip{background:var(--gl);color:var(--ink)}
+}
+/* notification centre */
+.bell.on{color:light-dark(#000,#fff)}
+.bell .bdg{background:#ff3b30;box-shadow:0 0 0 2px light-dark(#fff,#000);animation:bdgpop .35s ease-out}
+@keyframes bdgpop{0%{transform:scale(.4)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+.nt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:18px;margin-bottom:10px;cursor:pointer;color:#fff;background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:0 10px 22px -12px var(--c2)}
+.nt .ni{width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.22);display:grid;place-items:center;flex:none;font-size:18px}
+.nt b{display:block;font-size:16px}.nt span{font-size:13.5px;opacity:.92;line-height:1.35}
+.nt .nn{margin-left:auto;background:rgba(255,255,255,.25);border-radius:99px;padding:2px 10px;font-weight:700;font-size:14px;align-self:center}
 </style>
 </head>
 <body>
@@ -427,33 +454,3 @@ function gen(){
       let frac=age>14?(rnd()<.96?1:.5):age>5?(rnd()<.7?1:.5):(rnd()<.45?1:0);
       if(x.cid==='c4'&&age<12)frac=0;
       if(x.cid==='c7'&&age<50&&age>32)frac=.4;
-      if(frac>0){const mode=x.cid==='c4'?'cheque':pick(['cash','upi','upi','cash']);b.pays.push({id:uid(),cid:x.cid,dir:x.type==='sale'?'in':'out',amt:Math.round(tot*frac),mode,date:x.date+ri(0,Math.min(6,Math.max(0,age-.5)))*DAY,note:'Against '+x.no,chq:mode==='cheque'?{no:String(ri(100000,999999)),bank:pick(['SBI','HDFC','Bank of Baroda']),due:x.date+ri(5,12)*DAY,st:'cleared'}:null})}
-    });
-    // pending cheques
-    if(bk==='daily'){
-      b.pays.push({id:uid(),cid:'c4',dir:'in',amt:38500,mode:'cheque',date:today0-2*DAY+11*3600e3,note:'Post-dated cheque',chq:{no:'448821',bank:'HDFC',due:today0+1*DAY,st:'pending'}});
-      b.pays.push({id:uid(),cid:'c4',dir:'in',amt:42000,mode:'cheque',date:today0-1*DAY+16*3600e3,note:'Post-dated cheque',chq:{no:'448822',bank:'HDFC',due:today0+9*DAY,st:'pending'}});
-      b.pays.push({id:uid(),cid:'v1',dir:'out',amt:55000,mode:'cheque',date:today0-3*DAY,note:'Given to vendor',chq:{no:'110045',bank:'SBI',due:today0+2*DAY,st:'pending'}});
-    }
-    // expenses
-    for(let d=95;d>=0;d--){
-      const day=today0-d*DAY;const dt=new Date(day);
-      if(rnd()<.8)b.exps.push({id:uid(),head:'Tea & snacks',amt:ri(4,9)*10,date:day+17*3600e3,note:''});
-      if(dt.getDate()===5){b.exps.push({id:uid(),head:'Electricity bill',amt:ri(2800,4200),date:day+12*3600e3,note:'MPEB'});b.exps.push({id:uid(),head:'Water bill',amt:450,date:day+12*3600e3,note:'Nagar Nigam'});b.exps.push({id:uid(),head:'Shop rent',amt:bk==='gst'?0:18000,date:day+11*3600e3,note:'Godown + shop'})}
-      if(dt.getDate()===1&&bk==='daily'){b.exps.push({id:uid(),head:'Worker salary',amt:12000+10000+9000+11700,date:day+18*3600e3,note:'Monthly salary'})}
-      if(rnd()<.06)b.exps.push({id:uid(),head:pick(['Repair','Other','Transport']),amt:ri(3,25)*50,date:day+15*3600e3,note:pick(['Tempo','Shutter repair','Stationery','Loading labour'])});
-    }
-    b.exps=b.exps.filter(e=>e.amt>0);
-    // opening stock so that current stock looks real
-    const targ={p0v1:30,p3v2:25,p5v0:20,p9v0:14,p6v0:18,p11v1:110};
-    Object.keys(VAR).forEach(vid=>{
-      const V=VAR[vid];let p=0,s=0;
-      b.bills.forEach(x=>{if(x.status==='draft'||x.status==='cancelled')return;x.items.forEach(i=>{if(i.vid===vid){const q=pcs(i);x.type==='purchase'?p+=q:s+=q}})});
-      const target=targ[vid]??V.ppc*ri(4,16)+ri(0,V.ppc-1);
-      b.open[vid]=Math.max(0,target-p+s);
-    });
-  });
-  ['daily','gst'].forEach(bk=>S.books[bk].bills.forEach(x=>x.items.forEach(i=>i.ppc=VAR[i.vid].ppc)));
-  // staff
-  const st=[['Ramesh Yadav','9000000401','monthly',12000,'Godown in-charge'],['Suresh Kumar','9000000402','monthly',10000,'Delivery'],['Raju','9000000403','daily',450,'Loading'],['Pinky Verma','9000000404','monthly',9000,'Accounts']];
-  S.staff=st.map((x,i)=>({id:'s'+i,name:x[0],phone:x[1],pay:x[2],rate:x[3],role:x[4],att:{},ot:{},adv:[]}));

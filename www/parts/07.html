@@ -1,3 +1,17 @@
+V.admin=v=>{v.title=L('Admin','एडमिन');if(!acIsAdmin())return backBtn()+`<div class="card">${L('Not available.','उपलब्ध नहीं।')}</div>`;const a=ACC.admin;
+  if(!a){setTimeout(acAdminLoad,0);return backBtn()+`<div class="card mute">${L('Loading…','लोड हो रहा है…')}</div>`}
+  if(a.loading)return backBtn()+`<div class="card mute">${L('Loading…','लोड हो रहा है…')}</div>`;
+  if(a.err)return backBtn()+`<div class="warnbox">${esc(a.err)}</div><button class="btn" onclick="A.acAdminLoad()">${L('Try again','फिर कोशिश करें')}</button>`;
+  const now=Date.now(),us=a.users.map(u=>({...u,st:acUserState(u)}));const cnt=k=>us.filter(u=>k==='paid'?['monthly','yearly','five','paid'].includes(u.st.k):u.st.k===k).length;
+  const soon=us.filter(u=>u.st.k==='trial'&&u.st.until-now<7*DAY).length;const nb=a.buys.filter(b=>b.status==='new').length;
+  const q=a.q.toLowerCase();const list=us.filter(u=>(a.f==='all'||(a.f==='paid'?['monthly','yearly','five','paid'].includes(u.st.k):a.f==='soon'?u.st.k==='trial'&&u.st.until-now<7*DAY:u.st.k===a.f))&&(!q||[u.name,u.shop,u.phone,u.email].join(' ').toLowerCase().includes(q)));
+  const chip=k=>`<span class="pill ${k==='trial'?'amber':k==='ended'||k==='blocked'?'red':'green'}">${k==='ended'?L('Ended','खत्म'):acKindName(k)}</span>`;
+  return backBtn()+`<div class="stats"><div class="stat"><div class="l">${L('Accounts','खाते')}</div><div class="big num">${us.length}</div></div><div class="stat"><div class="l">${L('Paid','पेड')}</div><div class="big num in">${cnt('paid')}</div></div></div>
+  <div class="stats"><div class="stat"><div class="l">${L('On trial','ट्रायल पर')}</div><div class="big num">${cnt('trial')}</div></div><div class="stat"><div class="l">${L('Ended','खत्म')}</div><div class="big num out">${cnt('ended')}</div></div></div>
+  ${nb?`<div class="alert" onclick="A.acAdminBuys()"><b>${nb} ${L('new purchase','नई खरीद')}${nb>1?'s':''}</b> · ${L('match them in the store console','स्टोर कंसोल में मिलाएँ')}<span class="sp"></span>›</div>`:''}
+  <div class="btns"><button class="btn" onclick="A.acCompNew()">${L('Give free access','मुफ़्त एक्सेस दें')}</button><button class="btn ghost" onclick="A.acFull()">${L('Full admin page','पूरा एडमिन पेज')}</button></div>
+  ${acCompList()}
+  <div class="search"><input placeholder="${L('Search name, shop, phone, email','नाम, दुकान, फ़ोन, ईमेल खोजें')}" value="${esc(a.q)}" oninput="A.acAq(this.value)" autocomplete="off"></div>
   <div class="seg">${[['all',L('All','सभी')],['trial',L('Trial','ट्रायल')],['soon',L('Ending','खत्म होने वाले')+(soon?' '+soon:'')],['paid',L('Paid','पेड')],['comp',L('Free','मुफ़्त')],['ended',L('Ended','खत्म')]].map(([k,l])=>`<button class="${a.f===k?'on':''}" onclick="A.acAf('${k}')">${l}</button>`).join('')}</div>
   <div class="card" id="aclist">${list.length?list.map(u=>`<div class="li" onclick="A.acAu('${u.id}')"><div class="sp"><div class="t">${esc(u.shop||u.name||u.email)}</div><div class="s">${esc(u.name||'')} · ${esc(u.phone||'')} · ${L('since','से')} ${fd(onTs(u.createdAt)||now)}${u.lastSeen?' · '+L('seen','देखा')+' '+fd(onTs(u.lastSeen)):''}</div></div><div style="text-align:right">${chip(u.st.k)}<div class="small mute">${u.st.until>now?Math.ceil((u.st.until-now)/DAY)+'d':''}</div></div></div>`).join(''):`<div class="mute small">${L('No accounts here.','यहाँ कोई खाता नहीं।')}</div>`}</div>
   <button class="btn ghost" onclick="A.acAdminLoad()">${L('Refresh','रिफ्रेश')}</button>
@@ -42,9 +56,9 @@ async function acCompSave(){const e=$('#cp_e').value.trim().toLowerCase(),k=($('
 
 /* ---- alerts: badge counts and phone notifications ---- */
 const acCount=()=>S.online&&ONL.on?ONL.reqs.length+ONL.orders.filter(o=>o.status==='placed').length:0;
-function acDecorate(){const n=acCount();const row=document.querySelector('#hdr .toprow');
-  if(row&&S.online&&!row.querySelector('.bell')){const b=document.createElement('button');b.className='ib bell';b.setAttribute('aria-label','Online orders');b.onclick=()=>A.go('online');
-    b.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0112 0c0 7 3 8 3 8H3s3-1 3-8M10.3 21a1.9 1.9 0 003.4 0"/></svg>'+(n?`<i class="bdg">${n>99?'99+':n}</i>`:'');const f=row.querySelector('.ib');f?row.insertBefore(b,f):row.appendChild(b)}
+function acDecorate(){const n=acCount();const row=document.querySelector('#hdr .toprow');const old=row&&row.querySelector('.bell');if(old)old.remove();
+  if(row&&!S.locked){const nn=ntCount();const b=document.createElement('button');b.className='ib bell'+(nn?' on':'');b.setAttribute('aria-label',L('Notifications','सूचनाएँ'));b.onclick=()=>A.notifs();
+    b.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0112 0c0 7 3 8 3 8H3s3-1 3-8M10.3 21a1.9 1.9 0 003.4 0"/></svg>'+(nn?`<i class="bdg">${nn>99?'99+':nn}</i>`:'');const f=row.querySelector('.ib');f?row.insertBefore(b,f):row.appendChild(b)}
   const more=document.querySelectorAll('#nav button')[4];if(more){const o=more.querySelector('.bdg');if(o)o.remove();if(n)more.insertAdjacentHTML('beforeend',`<i class="bdg">${n>99?'99+':n}</i>`)}}
 const _acAR=window.__afterRender;window.__afterRender=()=>{try{_acAR&&_acAR()}catch(e){}try{acDecorate()}catch(e){}};
 let acNid=1;
@@ -196,13 +210,3 @@ V.dvg=v=>{v.title=L('Daily vs GST','डेली बनाम GST');if(!RK_OK||D
   const notIn=[...r.sale.notIn,...r.purchase.notIn].sort((a,b)=>b.date-a.date),gOnly=[...r.sale.gOnly,...r.purchase.gOnly].sort((a,b)=>b.date-a.date);
   return backBtn()+`<div class="small mute" style="margin:-4px 0 10px">${esc(S.shop.name)} · ${esc(r.label)} · ${L('private report','प्राइवेट रिपोर्ट')}</div>
   <div class="seg noprint">${[['m',L('Month','महीना')],['lm',L('Last','पिछला')],['fy','FY'],['all',L('All','सभी')],['c',L('Dates','तारीख')]].map(([k,l])=>`<button class="${p===k?'on':''}" onclick="A.setv('p','${k}')">${l}</button>`).join('')}</div>
-  ${p==='c'?`<div class="g2 noprint"><label class="f"><span>${L('From','से')}</span><input class="inp" type="date" value="${v.a||new Date(today0-29*DAY).toISOString().slice(0,10)}" onchange="A.setv('a',this.value)"></label><label class="f"><span>${L('To','तक')}</span><input class="inp" type="date" value="${v.z||new Date(today0).toISOString().slice(0,10)}" onchange="A.setv('z',this.value)"></label></div>`:''}
-  ${blk('sale',L('Sales','बिक्री'))}${blk('purchase',L('Purchases','खरीद'))}
-  <div class="card"><b>${L('Daily bills not in GST book','डेली बिल जो GST बुक में नहीं')} (${notIn.length})</b>${list(notIn,'daily',true)}</div>
-  <div class="card"><b>${L('Bills made only in GST book','केवल GST बुक में बने बिल')} (${gOnly.length})</b>${list(gOnly,'gst',false)}</div>
-  <div class="btns noprint"><button class="btn" onclick="A.dvgXlsx()">${L('Excel file','Excel फ़ाइल')}</button><button class="btn ghost" onclick="A.printBill()">${L('Save PDF','PDF सेव करें')}</button></div>
-  <div class="small mute noprint" style="margin-top:8px">${L('Only you can open this report, with your security key. It is made on this phone; nothing is sent online.','यह रिपोर्ट केवल आप अपनी सुरक्षा की से खोल सकते हैं। यह इसी फ़ोन पर बनती है।')}</div>`};
-function dvgXlsx(){const v=S.view;const r=dvgData(v);const row=(t,o)=>[[t,'Daily book','GST book'],['Bills',o.dN,o.gN],['Value before tax',o.dAmt,o.gTax],['GST','',o.gGst],['Total with GST','',o.gTot],['Difference (Daily − GST value)',o.diff,''],['Daily bills added to GST',o.linkedN,''],['Daily bills not added',o.notIn.length,''],['Bills made only in GST book','',o.gOnly.length]];
-  const s1=[[S.shop.name+' – Daily vs GST – '+r.label,'',''],...row('Sales',r.sale),['','',''],...row('Purchases',r.purchase)];
-  const bills=(xs,bk)=>[['Date','Bill no.','Type','Party / vendor','GSTIN','Value before tax','GST','Total','Linked bill'],...xs.sort((a,b)=>a.date-b.date).map(x=>{const t=billTotal(x,bk);const c=cOf(x.cid);return [xd(x.date),x.no,x.type==='sale'?'Sale':'Purchase',c.name,c.gstin||'',t.sub,bk==='gst'?t.tax:'',t.grand,x.toGst?x.toGst.no:x.fromDaily?x.fromDaily.no:'']})];
-  const [a,z]=dvgRange(v);const inR=x=>live(x)&&x.date>=a&&x.date<z;

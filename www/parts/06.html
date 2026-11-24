@@ -1,3 +1,13 @@
+  <div class="card"><div class="row"><div class="sp"><b>${S.online.open!==false?'Taking orders':'Closed for orders'}</b><div class="small mute">Price list updated ${S.online.pubAt?fd(S.online.pubAt)+', '+ft(S.online.pubAt):'—'} · bills go to ${S.online.book==='gst'?'GST book (as drafts)':'Daily book'}</div><div class="small mute">Retail: ${S.online.autoRetail?'allowed automatically':'you allow each visit'} · Wholesale: ${S.online.autoWholesale?'allowed automatically':'you allow each visit'}</div></div><button class="btn ghost sm" onclick="A.onOpen()">${S.online.open!==false?'Close':'Open'}</button></div></div>
+  ${ONL.reqs.length?`<h3>Waiting for you (${ONL.reqs.length})</h3><div class="card">${ONL.reqs.map(r=>`<div class="li" onclick="A.onReq('${r.id}')"><div class="av">${esc((r.name||'?')[0])}</div><div class="sp"><div class="t">${esc(r.name)}</div><div class="s">${esc(r.phone)} · ${r.want==='wholesale'?'wholesale link':'retail link'}</div></div><span class="pill">Allow?</span></div>`).join('')}</div>`:''}
+  <h3>Orders</h3><div class="seg">${[['active','Open'],['done','Done'],['all','All']].map(([k,l])=>`<button class="${f===k?'on':''}" onclick="A.setv('f','${k}')">${l}</button>`).join('')}</div>
+  <div class="card">${os.length?os.map(o=>`<div class="li" onclick="A.go('onorder',{id:'${o.id}'})"><div class="sp"><div class="t">${esc(o.name)} <span class="mute small">${onNo(o)}</span></div><div class="s">${ON_LABEL[o.status]||o.status} · ${o.payMode==='upi'?'UPI':'Cash'} · ${ON_PAY[o.payStatus]||''}</div></div><b class="num">${inr(o.total||0)}</b></div>`).join(''):'<div class="mute small">No orders here.</div>'}</div>
+  ${card('retail')}${card('wholesale')}
+  <div class="card"><b>Who can order</b><div class="small mute" style="margin:2px 0 10px">“Ask me” means you allow every visit yourself. “Allow automatically” lets anyone with that link see its prices and order at once – you still accept each order.</div>
+  ${['retail','wholesale'].map(t=>{const on=!!S.online[t==='retail'?'autoRetail':'autoWholesale'];return `<div class="small" style="font-weight:600;margin-bottom:4px">${t==='retail'?'Retail link':'Wholesale link'}</div><div class="seg" style="margin-bottom:10px"><button class="${!on?'on':''}" onclick="A.onAuto('${t}',false)">Ask me each time</button><button class="${on?'on':''}" onclick="A.onAuto('${t}',true)">Allow automatically</button></div>`}).join('')}</div>
+  <div class="card"><b>Settings</b>
+  <label class="f"><span>UPI ID</span><input class="inp" id="on_upi2" value="${esc(S.online.upi||'')}"></label>
+  <div class="seg" style="margin:4px 0 10px"><button class="${(S.online.book||'daily')==='daily'?'on':''}" onclick="A.onBook('daily')">Bills in Daily book</button><button class="${S.online.book==='gst'?'on':''}" onclick="A.onBook('gst')">GST book (drafts)</button></div>
   <div class="btns"><button class="btn ghost" onclick="A.onSaveSet()">Save</button><button class="btn ghost" onclick="A.go('onprices')">Price list</button></div>
   <button class="btn ghost" style="margin-top:10px" onclick="A.onPub()">Update price list now</button>
   <button class="btn danger" style="margin-top:10px" onclick="A.onDelete()">Delete online shop</button></div>`};
@@ -250,17 +260,3 @@ async function acAdminLoad(){if(!acIsAdmin())return;ACC.admin={loading:true,user
   ACC.admin.loading=false;if(S.view.n==='admin')render()}
 function acUserState(u){const now=Date.now(),c=onTs(u.createdAt)||now,te=c+(PLAN.trialDays+(u.extraDays||0))*DAY,pu=onTs(u.planUntil);
   if(u.blocked)return {k:'blocked',until:0};const cp=((ACC.admin&&ACC.admin.comps)||[]).find(x=>x.id===String(u.email||'').toLowerCase()&&!x.revoked);if(cp){const cu=cp.until?onTs(cp.until):4102444800000;if(cu>now&&cu>=Math.max(te,pu))return {k:'comp',until:cu}}if(pu>now&&pu>=te)return {k:u.plan||'paid',until:pu};if(te>now)return {k:'trial',until:te};return {k:'ended',until:Math.max(te,pu)}}
-V.admin=v=>{v.title=L('Admin','एडमिन');if(!acIsAdmin())return backBtn()+`<div class="card">${L('Not available.','उपलब्ध नहीं।')}</div>`;const a=ACC.admin;
-  if(!a){setTimeout(acAdminLoad,0);return backBtn()+`<div class="card mute">${L('Loading…','लोड हो रहा है…')}</div>`}
-  if(a.loading)return backBtn()+`<div class="card mute">${L('Loading…','लोड हो रहा है…')}</div>`;
-  if(a.err)return backBtn()+`<div class="warnbox">${esc(a.err)}</div><button class="btn" onclick="A.acAdminLoad()">${L('Try again','फिर कोशिश करें')}</button>`;
-  const now=Date.now(),us=a.users.map(u=>({...u,st:acUserState(u)}));const cnt=k=>us.filter(u=>k==='paid'?['monthly','yearly','five','paid'].includes(u.st.k):u.st.k===k).length;
-  const soon=us.filter(u=>u.st.k==='trial'&&u.st.until-now<7*DAY).length;const nb=a.buys.filter(b=>b.status==='new').length;
-  const q=a.q.toLowerCase();const list=us.filter(u=>(a.f==='all'||(a.f==='paid'?['monthly','yearly','five','paid'].includes(u.st.k):a.f==='soon'?u.st.k==='trial'&&u.st.until-now<7*DAY:u.st.k===a.f))&&(!q||[u.name,u.shop,u.phone,u.email].join(' ').toLowerCase().includes(q)));
-  const chip=k=>`<span class="pill ${k==='trial'?'amber':k==='ended'||k==='blocked'?'red':'green'}">${k==='ended'?L('Ended','खत्म'):acKindName(k)}</span>`;
-  return backBtn()+`<div class="stats"><div class="stat"><div class="l">${L('Accounts','खाते')}</div><div class="big num">${us.length}</div></div><div class="stat"><div class="l">${L('Paid','पेड')}</div><div class="big num in">${cnt('paid')}</div></div></div>
-  <div class="stats"><div class="stat"><div class="l">${L('On trial','ट्रायल पर')}</div><div class="big num">${cnt('trial')}</div></div><div class="stat"><div class="l">${L('Ended','खत्म')}</div><div class="big num out">${cnt('ended')}</div></div></div>
-  ${nb?`<div class="alert" onclick="A.acAdminBuys()"><b>${nb} ${L('new purchase','नई खरीद')}${nb>1?'s':''}</b> · ${L('match them in the store console','स्टोर कंसोल में मिलाएँ')}<span class="sp"></span>›</div>`:''}
-  <div class="btns"><button class="btn" onclick="A.acCompNew()">${L('Give free access','मुफ़्त एक्सेस दें')}</button><button class="btn ghost" onclick="A.acFull()">${L('Full admin page','पूरा एडमिन पेज')}</button></div>
-  ${acCompList()}
-  <div class="search"><input placeholder="${L('Search name, shop, phone, email','नाम, दुकान, फ़ोन, ईमेल खोजें')}" value="${esc(a.q)}" oninput="A.acAq(this.value)" autocomplete="off"></div>

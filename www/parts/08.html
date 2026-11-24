@@ -1,3 +1,13 @@
+  ${p==='c'?`<div class="g2 noprint"><label class="f"><span>${L('From','से')}</span><input class="inp" type="date" value="${v.a||new Date(today0-29*DAY).toISOString().slice(0,10)}" onchange="A.setv('a',this.value)"></label><label class="f"><span>${L('To','तक')}</span><input class="inp" type="date" value="${v.z||new Date(today0).toISOString().slice(0,10)}" onchange="A.setv('z',this.value)"></label></div>`:''}
+  ${blk('sale',L('Sales','बिक्री'))}${blk('purchase',L('Purchases','खरीद'))}
+  <div class="card"><b>${L('Daily bills not in GST book','डेली बिल जो GST बुक में नहीं')} (${notIn.length})</b>${list(notIn,'daily',true)}</div>
+  <div class="card"><b>${L('Bills made only in GST book','केवल GST बुक में बने बिल')} (${gOnly.length})</b>${list(gOnly,'gst',false)}</div>
+  <div class="btns noprint"><button class="btn" onclick="A.dvgXlsx()">${L('Excel file','Excel फ़ाइल')}</button><button class="btn ghost" onclick="A.printBill()">${L('Save PDF','PDF सेव करें')}</button></div>
+  <div class="small mute noprint" style="margin-top:8px">${L('Only you can open this report, with your security key. It is made on this phone; nothing is sent online.','यह रिपोर्ट केवल आप अपनी सुरक्षा की से खोल सकते हैं। यह इसी फ़ोन पर बनती है।')}</div>`};
+function dvgXlsx(){const v=S.view;const r=dvgData(v);const row=(t,o)=>[[t,'Daily book','GST book'],['Bills',o.dN,o.gN],['Value before tax',o.dAmt,o.gTax],['GST','',o.gGst],['Total with GST','',o.gTot],['Difference (Daily − GST value)',o.diff,''],['Daily bills added to GST',o.linkedN,''],['Daily bills not added',o.notIn.length,''],['Bills made only in GST book','',o.gOnly.length]];
+  const s1=[[S.shop.name+' – Daily vs GST – '+r.label,'',''],...row('Sales',r.sale),['','',''],...row('Purchases',r.purchase)];
+  const bills=(xs,bk)=>[['Date','Bill no.','Type','Party / vendor','GSTIN','Value before tax','GST','Total','Linked bill'],...xs.sort((a,b)=>a.date-b.date).map(x=>{const t=billTotal(x,bk);const c=cOf(x.cid);return [xd(x.date),x.no,x.type==='sale'?'Sale':'Purchase',c.name,c.gstin||'',t.sub,bk==='gst'?t.tax:'',t.grand,x.toGst?x.toGst.no:x.fromDaily?x.fromDaily.no:'']})];
+  const [a,z]=dvgRange(v);const inR=x=>live(x)&&x.date>=a&&x.date<z;
   xlsxSave('Daily-vs-GST',[{name:'Summary',rows:s1,widths:[34,16,16],bold:[0,10]},{name:'Daily not in GST',rows:bills([...r.sale.notIn,...r.purchase.notIn],'daily'),widths:[12,12,10,26,18,16,12,14,14]},{name:'GST only',rows:bills([...r.sale.gOnly,...r.purchase.gOnly],'gst'),widths:[12,18,10,26,18,16,12,14,14]},{name:'All Daily bills',rows:bills(S.books.daily.bills.filter(inR),'daily'),widths:[12,12,10,26,18,16,12,14,14]},{name:'All GST bills',rows:bills(S.books.gst.bills.filter(inR),'gst'),widths:[12,18,10,26,18,16,12,14,14]}])}
 
 /* ---- PDF and Excel on the other reports ---- */
@@ -89,6 +99,27 @@ Object.assign(A,{setLook:k=>{LOOK=k;try{localStorage.setItem('wk_look',k)}catch(
 /* empty books: offer the sample shop on the home screen */
 const _hEmpty=V.home;V.home=v=>{const h=_hEmpty(v);const n=S.books.daily.bills.length+S.books.gst.bills.length;if(n)return h;
   return `<div class="card" style="text-align:center"><b>${L('Your books are empty','आपकी बही खाली है')}</b><div class="small mute" style="margin:4px 0 10px">${L('Load a sample shop with bills, parties, stock and khata to try every feature. You can clear it later from Settings → Start fresh.','बिल, पार्टी, स्टॉक और खाते वाली नमूना दुकान लोड करें और हर सुविधा आज़माएँ। बाद में सेटिंग → नए सिरे से शुरू से हटा सकते हैं।')}</div><button class="btn" onclick="A.resetSample()">${L('Load sample data','नमूना डेटा लोड करें')}</button></div>`+h};
+/* notification centre: everything that needs attention, counted on the bell */
+function ntList(){const out=[];try{const b=B();const today=today0;
+  if(S.online&&ONL.on){const r=ONL.reqs.length,o=ONL.orders.filter(x=>x.status==='placed').length;
+    if(r)out.push({n:r,c:['#34c759','#1f8f3f'],i:'👤',t:L(`${r} customer request${r>1?'s':''}`,`${r} ग्राहक अनुरोध`),s:L('Customers want to join your online shop','ग्राहक आपकी ऑनलाइन दुकान से जुड़ना चाहते हैं'),go:"A.go('online')"});
+    if(o)out.push({n:o,c:['#30b0c7','#1a7f92'],i:'🛒',t:L(`${o} new order${o>1?'s':''}`,`${o} नए ऑर्डर`),s:L('Online orders waiting for you','ऑनलाइन ऑर्डर आपका इंतज़ार कर रहे हैं'),go:"A.go('online')"})}
+  const chq=b.pays.filter(p=>p.chq&&p.chq.st==='pending'&&p.chq.due<=today+3*DAY);
+  if(chq.length)out.push({n:chq.length,c:['#0a84ff','#0055c4'],i:'🧾',t:L(`${chq.length} cheque${chq.length>1?'s':''} due`,`${chq.length} चेक की तारीख़`),s:chq.slice(0,3).map(p=>esc(cOf(p.cid).name.split(' ')[0])+' '+inr(p.amt)+' · '+fd(p.chq.due)).join(', '),go:"A.go('cheques')"});
+  const over=contacts.filter(c=>c.type==='party'&&balance(c.id)>0&&ageing(c.id).oldest&&(today-ageing(c.id).oldest)/DAY>30);
+  if(over.length)out.push({n:over.length,c:['#ff453a','#c41e14'],i:'₹',t:L(`${over.length} ${over.length>1?'parties owe':'party owes'} money 30+ days`,`${over.length} पार्टी पर 30+ दिन से बाकी`),s:over.slice(0,3).map(c=>esc(c.name)).join(', '),go:"A.tab('khata')"});
+  const low=Object.keys(VAR).filter(v=>stockOf(v)<VAR[v].min);
+  if(low.length)out.push({n:low.length,c:['#ff9f0a','#c66a00'],i:'📦',t:L(`${low.length} item${low.length>1?'s':''} low in stock`,`${low.length} सामान का स्टॉक कम`),s:low.slice(0,3).map(v=>esc(vname(v))).join(', '),go:"A.go('stock',{f:'low'})"});
+  const pend=b.bills.filter(x=>live(x)&&x.del!=='received');
+  if(pend.length)out.push({n:pend.length,c:['#bf5af2','#8a2bc2'],i:'🚚',t:L(`${pend.length} deliver${pend.length>1?'ies':'y'} not confirmed`,`${pend.length} डिलीवरी की पुष्टि बाकी`),s:L('Mark them received when the goods arrive','माल पहुँचने पर पहुँचा हुआ मार्क करें'),go:"A.go('delivery')"});
+  const dr=b.bills.filter(x=>x.status==='draft');
+  if(dr.length)out.push({n:dr.length,c:['#64d2ff','#2a8fc4'],i:'📝',t:L(`${dr.length} draft bill${dr.length>1?'s':''}`,`${dr.length} ड्राफ़्ट बिल`),s:L('Waiting to be issued','जारी होने बाकी'),go:"A.tab('bills')"});
+}catch(e){}return out}
+const ntCount=()=>ntList().reduce((a,x)=>a+x.n,0);
+function ntSheet(){const l=ntList();sheet(`<h2>${L('Notifications','सूचनाएँ')}</h2>${l.length?l.map(x=>`<div class="nt" style="--c1:${x.c[0]};--c2:${x.c[1]}" onclick="A.closeSheet();${x.go}"><div class="ni">${x.i}</div><div><b>${x.t}</b><span>${x.s}</span></div><div class="nn">${x.n}</div></div>`).join(''):`<div class="mute" style="text-align:center;padding:30px 0">${L('All clear. Nothing needs you right now.','सब ठीक है। अभी कुछ बाकी नहीं।')}</div>`}`)}
+A.notifs=ntSheet;
+/* keep the bell number current between screens, e.g. when online orders arrive */
+let ntLast=-1;setInterval(()=>{if(document.hidden||!booted)return;const n=ntCount();if(n!==ntLast){ntLast=n;try{acDecorate()}catch(e){}}},15000);
 /* ---------- boot ---------- */
 try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
 (async()=>{let d=null,readErr=false,ok=false,recovered='';
