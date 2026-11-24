@@ -107,6 +107,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if (member() && request.auth.uid == uid) || isAdmin();
       allow create: if member() && request.auth.uid == uid
+        && !exists(/databases/$(database)/documents/removed/$(uid))
         && request.resource.data.keys().hasOnly(['email','name','shop','phone','createdAt','lastSeen','appVersion','platform'])
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.createdAt == request.time;
@@ -129,6 +130,12 @@ service cloud.firestore {
     // email can read it only after verifying the email, so nobody can claim someone else's gift.
     match /comps/{email} {
       allow read: if isAdmin() || (member() && request.auth.token.email == email && request.auth.token.email_verified == true);
+      allow write: if isAdmin();
+    }
+
+    // Accounts removed by the admin: the person can no longer use the app with that login.
+    match /removed/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow write: if isAdmin();
     }
   }

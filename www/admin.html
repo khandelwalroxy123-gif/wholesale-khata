@@ -59,7 +59,7 @@ const fd=t=>{if(!t)return '-';const d=new Date(t);return d.getDate()+' '+MON[d.g
 const inr=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
 if(!firebase.apps.length)firebase.initializeApp(window.WK_FIREBASE);
 const au=firebase.auth(),db=firebase.firestore(),TS=firebase.firestore.Timestamp,SV=firebase.firestore.FieldValue.serverTimestamp;
-const D={tab:'overview',users:[],buys:[],comps:[],shops:[],orders:{},q:'',f:'all'};
+const D={tab:'overview',users:[],buys:[],comps:[],shops:[],orders:{},removed:[],q:'',f:'all'};
 const KN={trial:'Free trial',monthly:'Monthly',yearly:'Yearly',five:'5-Year Plan',paid:'Paid',comp:'Free (complimentary)',blocked:'On hold',ended:'Ended'};
 const KC={trial:'a',monthly:'g',yearly:'g',five:'g',paid:'g',comp:'b',blocked:'r',ended:'r'};
 function st(u){const now=Date.now(),c=ms(u.createdAt)||now,te=c+(TRIAL+(u.extraDays||0))*DAY,pu=ms(u.planUntil);
@@ -84,7 +84,7 @@ au.onAuthStateChanged(async u=>{if(!u||u.isAnonymous)return login();
   $('#who').innerHTML=esc(u.email)+' · <a href="#" id="out">Sign out</a>';$('#out').onclick=e=>{e.preventDefault();au.signOut()};load()});
 
 async function load(){$('#main').innerHTML='<p class="mute">Loading everything…</p>';
-  try{const [u,p,c,s]=await Promise.all([db.collection('users').get(),db.collection('purchases').get(),db.collection('comps').get(),db.collection('shops').get()]);
+  try{const [u,p,c,s,rm]=await Promise.all([db.collection('users').get(),db.collection('purchases').get(),db.collection('comps').get(),db.collection('shops').get(),db.collection('removed').get()]);D.removed=rm.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at||0)-(a.at||0));
     D.users=u.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.createdAt)-ms(a.createdAt));
     D.buys=p.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.createdAt)-ms(a.createdAt));
     D.comps=c.docs.map(d=>({id:d.id,...d.data()}));D.shops=s.docs.map(d=>({id:d.id,...d.data()}));
@@ -92,10 +92,10 @@ async function load(){$('#main').innerHTML='<p class="mute">Loading everything�
       D.orders[sh.id]=o.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.createdAt)-ms(a.createdAt));sh.reqs=r.docs.filter(d=>d.data().status==='pending').length}catch(e){D.orders[sh.id]=[]}}))}
   catch(e){$('#main').innerHTML=`<div class="msg err" style="display:block">${/permission/i.test(e.message)?'The database refused: make sure the latest firestore.rules are published and your email is verified.':esc(e.message)}</div>`;return}
   tabs();show()}
-function tabs(){const t=[['overview','Overview'],['accounts','Accounts ('+D.users.length+')'],['free','Free access'],['buys','Purchases'+(D.buys.filter(b=>b.status==='new').length?' ('+D.buys.filter(b=>b.status==='new').length+' new)':'')],['shops','Online shops ('+D.shops.length+')']];
+function tabs(){const t=[['overview','Overview'],['accounts','Accounts ('+D.users.length+')'],['free','Free access'],['buys','Purchases'+(D.buys.filter(b=>b.status==='new').length?' ('+D.buys.filter(b=>b.status==='new').length+' new)':'')],['shops','Online shops ('+D.shops.length+')'],['removed','Removed ('+D.removed.length+')']];
   $('#tabs').style.display='flex';$('#tabs').innerHTML=t.map(([k,l])=>`<button class="${D.tab===k?'on':''}" data-t="${k}">${l}</button>`).join('')+`<button data-t="reload" title="Reload">⟳</button>`;
   $('#tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(b.dataset.t==='reload')return load();D.tab=b.dataset.t;tabs();show()})}
-function show(){closeP();({overview,accounts,free,buys,shops})[D.tab]()}
+function show(){closeP();({overview,accounts,free,buys,shops,removed})[D.tab]()}
 
 function overview(){const now=Date.now(),us=D.users.map(u=>({...u,s:st(u)}));const n=k=>us.filter(u=>u.s.k===k).length;
   const joined=d=>us.filter(u=>now-ms(u.createdAt)<d*DAY).length;const act=d=>us.filter(u=>now-ms(u.lastSeen)<d*DAY).length;
@@ -125,7 +125,7 @@ function user(id){const u=D.users.find(x=>x.id===id);if(!u)return;const s=st(u),
   p.innerHTML=`<div class="tools"><h2 style="margin:0">${esc(u.shop||u.name)}</h2><span class="sp"></span><button class="btn ghost" id="x">Close</button></div>
   <div>${esc(u.name)} · <a href="tel:${esc(u.phone)}">${esc(u.phone)}</a> · <a href="https://wa.me/91${esc(u.phone)}" target="_blank" rel="noopener">WhatsApp</a> · <a href="mailto:${esc(u.email)}">${esc(u.email)}</a></div>
   <div class="box">${pill(s.k)} ${s.k==='ended'?'ended '+fd(s.until):'till '+till(s)}<div class="small mute" style="margin-top:6px">Joined ${fd(ms(u.createdAt))} · last seen ${fd(ms(u.lastSeen))} · ${esc(u.platform||'')} ${esc(u.appVersion||'')}${u.extraDays?' · +'+u.extraDays+' trial days':''}</div></div>
-  <div class="row2"><button class="btn ghost" data-a="t7">+7 trial days</button><button class="btn ghost" data-a="m1">+1 month</button><button class="btn ghost" data-a="y1">+1 year</button><button class="btn ghost" data-a="five">Give 5-Year Plan</button><button class="btn ghost" data-a="comp">Free access…</button><button class="btn ${u.blocked?'':'bad'}" data-a="${u.blocked?'unblock':'block'}">${u.blocked?'Remove hold':'Put on hold'}</button></div>
+  <div class="row2"><button class="btn ghost" data-a="t7">+7 trial days</button><button class="btn ghost" data-a="m1">+1 month</button><button class="btn ghost" data-a="y1">+1 year</button><button class="btn ghost" data-a="five">Give 5-Year Plan</button><button class="btn ghost" data-a="comp">Free access…</button><button class="btn ${u.blocked?'':'ghost'}" data-a="${u.blocked?'unblock':'block'}">${u.blocked?'Remove hold':'Put on hold'}</button><button class="btn bad" data-a="remove">Remove account</button></div>
   <div class="box"><b>Note</b> <span class="small mute">(only you see this)</span><textarea id="nt" rows="2" style="width:100%;margin-top:6px">${esc(u.note||'')}</textarea><button class="btn" data-a="note">Save note</button></div>
   <div class="box"><b>Store purchases</b>${buys.length?buys.map(b=>`<div class="small">${esc(b.product)} · ${esc(b.orderId)} · ${esc((b.purchaseDate||'').slice(0,10))} · ${esc(b.platform||'android')} · ${esc(b.status)}</div>`).join(''):'<div class="small mute">None</div>'}</div>
   <div class="box"><b>Online shop</b>${shops.length?shops.map(sh=>`<div class="small">${esc(sh.name)} · ${sh.open?'open':'closed'} · ${(D.orders[sh.id]||[]).length} orders · <a href="#" data-shop="${sh.id}">see orders</a></div>`).join(''):'<div class="small mute">Not using online orders</div>'}</div>`;
@@ -138,6 +138,8 @@ async function act(u,a){const now=Date.now();let d={};const base=Math.max(now,ms
   else if(a==='five'){if(!confirm('Give the 5-Year Plan from today? Use this when they paid you directly.'))return;const t=new Date();t.setFullYear(t.getFullYear()+5);d={plan:'five',planUntil:TS.fromMillis(t.getTime())}}
   else if(a==='comp')return compForm(u.email);
   else if(a==='block'){if(!confirm('Put on hold? They can still view their books but cannot add entries.'))return;d={blocked:true}}
+  else if(a==='remove'){if(!confirm('Remove '+(u.shop||u.name||'')+' ('+(u.email||'')+')?\n\nThey will no longer be able to sign in. Their online shop and orders are deleted. Store purchase records are kept for tax. Books on their own phone stay there. You can allow them again from the Removed tab.'))return;
+    try{await removeAccount(u);D.users=D.users.filter(x=>x.id!==u.id);D.shops=D.shops.filter(s=>s.ownerUid!==u.id);closeP();tabs();show()}catch(e){alert(e.message)}return}
   else if(a==='unblock')d={blocked:false};else if(a==='note')d={note:$('#nt').value.trim().slice(0,500)};
   try{await db.doc('users/'+u.id).update(d);Object.assign(u,d);user(u.id);if(D.tab==='accounts')accounts(),user(u.id)}catch(e){alert(e.message)}}
 
@@ -153,6 +155,15 @@ function compForm(email){const p=$('#panel');p.classList.add('on');p.innerHTML=`
     try{const doc={email:e,until,note:n,revoked:false,by:au.currentUser.email,createdAt:SV()};await db.doc('comps/'+e).set(doc);
       const u=D.users.find(x=>String(x.email||'').toLowerCase()===e);if(u){const pu=until||TS.fromMillis(FOREVER);await db.doc('users/'+u.id).update({plan:'comp',planUntil:pu});Object.assign(u,{plan:'comp',planUntil:pu})}
       const i=D.comps.findIndex(x=>x.id===e);const row={id:e,...doc};i<0?D.comps.push(row):D.comps[i]=row;closeP();tabs();show()}catch(x){alert(x.message)}}}
+async function removeAccount(u){const uid=u.id,email=String(u.email||'').toLowerCase();const row={email,name:u.name||'',shop:u.shop||'',phone:u.phone||'',by:au.currentUser.email,at:Date.now()};
+  await db.doc('removed/'+uid).set(row);
+  for(const s of D.shops.filter(x=>x.ownerUid===uid)){for(const c of ['orders','sessions']){const q=await db.collection('shops/'+s.id+'/'+c).get();for(const d of q.docs)await d.ref.delete().catch(()=>{})}
+    for(const k of ['retail','wholesale'])await db.doc('shops/'+s.id+'/catalog/'+k).delete().catch(()=>{});await db.doc('shops/'+s.id).delete().catch(()=>{})}
+  if(email){await db.doc('comps/'+email).delete().catch(()=>{});D.comps=D.comps.filter(x=>x.id!==email)}
+  await db.doc('users/'+uid).delete();D.removed.unshift({id:uid,...row})}
+function removed(){$('#main').innerHTML=`<p class="small mute">These logins can no longer use the app. "Allow again" lets them sign in; they start a new free trial unless you give them a plan or free access. To delete the login itself, use Firebase console → Authentication.</p>
+  <div class="wrap"><table><tr><th>Shop</th><th>Name</th><th>Phone</th><th>Email</th><th>Removed</th><th></th></tr>${D.removed.map(x=>`<tr><td><b>${esc(x.shop)}</b></td><td>${esc(x.name)}</td><td>${esc(x.phone)}</td><td>${esc(x.email)}</td><td class="small">${fd(x.at)}</td><td><button class="btn ghost" data-allow="${esc(x.id)}">Allow again</button></td></tr>`).join('')||'<tr><td colspan="6" class="mute">No removed accounts.</td></tr>'}</table></div>`;
+  document.querySelectorAll('[data-allow]').forEach(b=>b.onclick=async()=>{if(!confirm('Allow this login to use the app again?'))return;try{await db.doc('removed/'+b.dataset.allow).delete();D.removed=D.removed.filter(x=>x.id!==b.dataset.allow);tabs();removed()}catch(e){alert(e.message)}})}
 function free(){const now=Date.now();const c=D.comps.filter(x=>!x.revoked);
   $('#main').innerHTML=`<div class="tools"><button class="btn" id="add">Give free access</button><span class="mute small">For family, staff, partners or demo shops. They use the app fully with no payment.</span></div>
   <div class="wrap"><table><tr><th>Email</th><th>Till</th><th>Account</th><th>Note</th><th>Given</th><th></th></tr>${c.map(x=>{const u=D.users.find(u=>String(u.email||'').toLowerCase()===x.id);const un=x.until?ms(x.until):0;

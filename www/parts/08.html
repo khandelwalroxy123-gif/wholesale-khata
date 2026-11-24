@@ -1,3 +1,19 @@
+const _cpSet=V.settings;V.settings=v=>{const h=_cpSet(v);const btn=`<button class="btn ghost" style="margin-top:8px" onclick="A.copies()">${L('Restore a copy kept on this phone','फ़ोन पर रखी कॉपी रिस्टोर करें')}</button>`;const i=h.indexOf('<div class="card"><b>Data on this phone</b>');if(i<0)return h;const j=h.indexOf('</div>',h.indexOf('<div class="btns">',i));return j<0?h:h.slice(0,j+6)+btn+h.slice(j+6)};
+window.__SAFE={IDB,phoneCopy};
+Object.assign(A,{copies:copiesSheet,copyRestore:k=>ask(L('Restore this copy?','यह कॉपी रिस्टोर करें?'),L('It replaces the data on this phone now. The current data is saved first as a copy.','यह अभी के डेटा की जगह लेगी। मौजूदा डेटा पहले कॉपी के रूप में सेव होगा।'),L('Restore','रिस्टोर'),async()=>{try{const d=await IDB.get(k);if(!d)throw new Error('missing');if(!LOAD_FAIL)await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());closeSheet();render(true);toast(L('Copy restored','कॉपी रिस्टोर हुई'))}catch(e){toast(L('Could not restore: ','रिस्टोर नहीं हुआ: ')+errMsg(e))}},true)});
+
+/* ---------- boot ---------- */
+try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
+(async()=>{let d=null,readErr=false,ok=false,recovered='';
+  try{d=await IDB.get('data')}catch(e){readErr=true}
+  if(d){try{restoreData(d);ok=true}catch(e){
+    /* keep the unreadable copy untouched, then try the newest copy kept on the phone */
+    try{await IDB.set('rescue_'+Date.now(),d)}catch(x){}
+    const keys=[...(((await IDB.get('auto_keys').catch(()=>null))||[]).slice().reverse()),...((await IDB.get('update_keys').catch(()=>null))||[]).slice().reverse()];
+    for(const k of keys){try{const c=await IDB.get(k);if(c){restoreData(c);ok=true;recovered=k;break}}catch(x){}}
+    if(!ok)LOAD_FAIL=true}}
+  else if(readErr)LOAD_FAIL=true;
+  if(!ok)gen();
   if(ok){try{const pv=localStorage.getItem('wk_ver');if(pv!==APP_VERSION){const k='before_update_'+(pv||'old');await IDB.set(k,snapshot());const uk=(await IDB.get('update_keys'))||[];if(!uk.includes(k))uk.push(k);while(uk.length>3){await IDB.set(uk.shift(),null)}await IDB.set('update_keys',uk);localStorage.setItem('wk_ver',APP_VERSION)}}catch(e){}}
   else if(!LOAD_FAIL){try{localStorage.setItem('wk_ver',APP_VERSION)}catch(e){}}
   booted=true;render(true);saveLocal();autoB();acBoot();

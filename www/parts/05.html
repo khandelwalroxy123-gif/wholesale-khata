@@ -1,8 +1,3 @@
-function autoB(){setTimeout(()=>{phoneCopy();if(!S.autoBackup)return;if(Date.now()-(S.lastBackup||0)<20*3600e3)return;const w=[];if(S.cloud.drive&&S.cloud.driveOk&&MCP)w.push('drive');if(S.cloud.server&&S.cloud.serverOk&&DBC)w.push('server');if(w.length)runBackup(w,true)},6000)}
-
-/* ---------- app guide with voice ---------- */
-const GUIDE=[
-{ic:'stock',c:'#7d1d2c',go:"A.tab('home')",
  en:['Welcome to your shop in your pocket','This app replaces the bill book, khata diary, stock register, attendance register and calculator. Every sale, purchase, payment and expense goes in once, and stock, khata and profit update by themselves.','No more searching diaries. Your whole business is on one phone, safe and up to date.'],
  hi:['आपकी दुकान अब आपकी जेब में','यह ऐप बिल बुक, खाता डायरी, स्टॉक रजिस्टर, हाज़िरी रजिस्टर और कैलकुलेटर, सबका काम करता है। हर बिक्री, खरीद, पेमेंट और खर्चा एक बार डालिए, स्टॉक, खाता और मुनाफ़ा अपने आप अपडेट हो जाते हैं।','डायरी ढूँढने का झंझट ख़त्म। पूरा कारोबार एक फ़ोन में, सुरक्षित और हमेशा ताज़ा।']},
 {ic:'bills',c:'#173a6b',go:"A.tab('home')",icn:'expense',
@@ -224,3 +219,7 @@ Object.assign(A,{
   onRetry:()=>{ONL.err='';onStart();render()},
   onReset:()=>ask('Make a new shop link?','Old links and QR codes will stop working. Share the new ones with your customers.','Make new link',async()=>{S.online.shopId=Array.from(crypto.getRandomValues(new Uint8Array(8))).map(b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join('');S.online.ownerUid=null;S.online.pubSig='';S.online.map={};ONL.err='';saveLocal();await onStart();render()}),
   onReq:id=>onReqSheet(id),onApprove,onDeny,
+  onAccept:id=>onAccept(id),onStatus:(id,st)=>onSetStatus(id,st),onPaid:id=>onPaid(id),
+  onCancel:id=>ask('Cancel this order?','The customer will see it as cancelled. If a bill was made, it is kept on record as cancelled.','Cancel order',()=>onSetStatus(id,'cancelled'),true),
+  onOpen:async()=>{S.online.open=S.online.open===false;await onPublish(true).catch(e=>toast(errMsg(e)));render()},
+  onBook:b=>{S.online.book=b;saveLocal();render()},

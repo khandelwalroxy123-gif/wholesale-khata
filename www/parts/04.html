@@ -1,4 +1,3 @@
-  backup:()=>{const p=$('#bkp');p.style.display='block';const i=p.querySelector('i');let w=0;const tm=setInterval(()=>{w+=20;i.style.width=w+'%';if(w>=100){clearInterval(tm);S.lastBackup=Date.now();render();toast('Backed up to Google Drive (simulated in preview)')}},250)},
   changePin:()=>sheet(`<h2>Change PIN</h2><label class="f"><span>New 4-digit PIN</span><input class="inp" id="np" inputmode="numeric" maxlength="4" type="password"></label><button class="btn" onclick="A.savePin()">${T('save')}</button>`),
   savePin:()=>{const v=$('#np').value;if(!/^\d{4}$/.test(v)){toast('PIN must be 4 digits');return}S.pin=v;closeSheet();toast('PIN changed')},
   saveShop:()=>{S.shop.name=$('#sh_n').value;S.shop.addr=$('#sh_a').value;S.shop.phone=$('#sh_p').value;S.shop.gstin=$('#sh_g').value;render();toast('Shop details saved')},
@@ -270,3 +269,8 @@ async function phoneCopy(){try{const k='auto_'+dkey(today0);await IDB.set(k,snap
 function restoreFromText(txt){let d;try{d=JSON.parse(txt)}catch(e){toast('This is not a Wholesale Khata backup file');return}
   if(!d||d.app!=='wholesale-khata'){toast('This is not a Wholesale Khata backup file');return}
   ask('Restore this backup?','Data from '+(d.savedAt?fdy(d.savedAt)+', '+ft(d.savedAt):'this file')+' will replace what is on this phone now. A copy of the current data is kept on the phone first.','Restore',async()=>{try{await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());render(true);toast('Backup restored')}catch(e){toast('Restore failed: '+errMsg(e))}},true)}
+function autoB(){setTimeout(()=>{phoneCopy();if(!S.autoBackup)return;if(Date.now()-(S.lastBackup||0)<20*3600e3)return;const w=[];if(S.cloud.drive&&S.cloud.driveOk&&MCP)w.push('drive');if(S.cloud.server&&S.cloud.serverOk&&DBC)w.push('server');if(w.length)runBackup(w,true)},6000)}
+
+/* ---------- app guide with voice ---------- */
+const GUIDE=[
+{ic:'stock',c:'#7d1d2c',go:"A.tab('home')",
