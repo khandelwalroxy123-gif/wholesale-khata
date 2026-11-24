@@ -69,12 +69,12 @@ Wholesale Khata is a simple billing and accounts app for wholesalers of daily-us
 • PIN and fingerprint lock; save a backup file to Drive or WhatsApp and restore on any phone
 • Online orders: share a Retail and a Wholesale link or QR; you allow each visit, customers order, pay cash or UPI and track live; bills are made automatically
 • Sign in with email; your books stay on your phone – no ads
-• 30 days free, then ₹499/month or the 5-Year Plan (₹20,000, valid 5 years)
+• 30 days free, then ₹199/month, ₹1,499/year, or the 5-Year Plan (₹4,999, valid 5 years)
 
 Create a free account to start your 30-day trial. The app can start with a sample shop so you can try it; choose Start fresh to begin with your own data.
 
 **Hindi (add as a translation, hi-IN):**
-होलसेल खाता – रोज़मर्रा का पैक्ड सामान बेचने वाले होलसेलर के लिए बिलिंग, स्टॉक, खाता, स्टाफ़ और मुनाफ़ा का आसान ऐप। बिना इंटरनेट और हिंदी में चलता है। दैनिक बही और GST बही अलग, कार्टन + खुले पीस में बिल, हर पार्टी के पुराने रेट, बकाया कितने दिन से, चेक, डिलीवरी, खर्चे, स्टाफ़ हाज़िरी और वेतन, मुनाफ़ा-नुकसान रिपोर्ट, आवाज़ से एंट्री, PIN/फ़िंगरप्रिंट लॉक। 30 दिन फ्री, फिर ₹499/महीना या 5 साल का प्लान ₹20,000। आपकी बही सिर्फ़ आपके फ़ोन में रहती है।
+होलसेल खाता – रोज़मर्रा का पैक्ड सामान बेचने वाले होलसेलर के लिए बिलिंग, स्टॉक, खाता, स्टाफ़ और मुनाफ़ा का आसान ऐप। बिना इंटरनेट और हिंदी में चलता है। दैनिक बही और GST बही अलग, कार्टन + खुले पीस में बिल, हर पार्टी के पुराने रेट, बकाया कितने दिन से, चेक, डिलीवरी, खर्चे, स्टाफ़ हाज़िरी और वेतन, मुनाफ़ा-नुकसान रिपोर्ट, आवाज़ से एंट्री, PIN/फ़िंगरप्रिंट लॉक। 30 दिन फ्री, फिर ₹199/महीना, ₹1,499/साल या 5 साल का प्लान ₹4,999। आपकी बही सिर्फ़ आपके फ़ोन में रहती है।
 
 **Graphics (in `store/`):** `icon-512.png`, `feature-graphic-1024x500.png`, phone screenshots `screenshot-1…8.png` (1080×1920).
 
@@ -93,7 +93,7 @@ Create a free account to start your 30-day trial. The app can start with a sampl
 | COVID-19 / Health | No |
 | Government app | No |
 | Financial features | Bookkeeping and ordering; payments are made in the customer's own UPI app → "My app doesn't provide any financial features" |
-| Subscriptions / in-app products | Create `wk_monthly` (base plan `monthly-499`, ₹499/month) and `wk_5year` (one-time ₹20,000) in Monetize. Plans are bought only through Google Play Billing inside the app. |
+| Subscriptions / in-app products | Create `wk_monthly` (base plan `monthly-199`, ₹199/month), `wk_yearly` (base plan `yearly-1499`, ₹1,499/year) and `wk_5year` (one-time ₹4,999) in Monetize. Plans are bought only through Google Play Billing inside the app. |
 | Data safety | See below |
 | Permissions declarations | None needed. Notifications (Android 13+) are asked for only when Online orders are on. The exact-alarm permission is removed in the build. |
 

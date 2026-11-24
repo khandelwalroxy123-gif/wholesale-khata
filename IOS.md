@@ -20,8 +20,8 @@ Open <https://khandelwalroxy123-gif.github.io/wholesale-khata/> in **Safari** �
 
 ## 3. In-app purchases (must use Apple's payment on iPhone)
 App → Monetization:
-- **Subscriptions** → group "Wholesale Khata Plans" → product ID **`wk_monthly`**, 1 month, price ₹499 (choose the ₹499 tier).
-- **In-App Purchases** → **Non-Consumable**, product ID **`wk_5year`**, price ₹20,000 tier. Description: "Full access for 5 years from the date of purchase. Does not renew."
+- **Subscriptions** → group "Wholesale Khata Plans" → product **`wk_monthly`**, 1 month, ₹199 tier; product **`wk_yearly`**, 1 year, ₹1,499 tier (optional introductory offer ₹999 for the first year).
+- **In-App Purchases** → **Non-Consumable**, product ID **`wk_5year`**, price ₹4,999 tier. Description: "Full access for 5 years from the date of purchase. Does not renew."
   (The app counts the 5 years itself; Apple has no fixed-term one-time type.)
 - Also sign the **Paid Apps agreement** (Business → Agreements) and add bank and tax details, or purchases will not work.
 

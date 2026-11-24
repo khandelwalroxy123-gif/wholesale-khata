@@ -71,8 +71,9 @@ In the app: **More → Online orders · link & QR** → enter your UPI ID → **
 - **Full admin page:** <https://khandelwalroxy123-gif.github.io/wholesale-khata/admin.html> – sign in with the admin email and password (same as the app). Tabs: Overview (counts, sign-ups, use, money), Accounts (search, CSV download, trial days, month, 5-Year Plan, hold, notes), Free access, Purchases, Online shops (with their orders). Also opens from the app: Settings → Admin → Full admin page.
 - **Free (complimentary) access:** Admin → Give free access → email + 1 month / 1 year / 5 years / no end date. An existing account gets it at once; someone new gets it after signing up with that email and verifying it. Remove it any time.
 - **Google Play products** to create in Play Console → Monetize (after the first upload):
-  - Subscription `wk_monthly`, base plan `monthly-499`, auto-renewing monthly, ₹499.
-  - One-time product `wk_5year`, ₹20,000 (valid 5 years – the app counts it from the purchase date).
+  - Subscription `wk_monthly`, base plan `monthly-199`, auto-renewing monthly, ₹199.
+  - Subscription `wk_yearly`, base plan `yearly-1499`, auto-renewing yearly, ₹1,499. Optional launch offer: an introductory price of ₹999 for the first year (Play Console → the base plan → Add offer).
+  - One-time product `wk_5year`, ₹4,999 (valid 5 years – the app counts it from the purchase date).
 - Purchases are confirmed by Google Play on the phone and listed under **Admin → new purchases** to match with Play Console → Order management.
 
 ## What waits for the Blaze (pay-as-you-go) plan
