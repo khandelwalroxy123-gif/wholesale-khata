@@ -1,3 +1,35 @@
+  ${RS.loading?'<div class="prog"><i style="width:60%"></i></div><div class="mute">Looking for backups…</div>':RS.err?`<div class="warnbox">${esc(RS.err)}</div>`:RS.list.length?RS.list.map((f,k)=>`<div class="li" onclick="A.rsPick(${k})"><div class="sp"><div class="t">${f.at?fdy(f.at)+', '+ft(f.at):esc(f.title)}</div><div class="s">${esc(f.title)}</div></div><span class="chev">›</span></div>`).join(''):'<div class="mute">No backups found here yet.</div>'}
+  <div class="small mute" style="margin-top:10px">Restoring replaces the data on this phone. A copy of the current data is kept on the phone first.</div>`)}
+async function loadRestoreList(){RS.loading=true;RS.err='';drawRestore();try{RS.list=RS.src==='drive'?await listDrive():await listServer()}catch(e){RS.err=errMsg(e);RS.list=[]}RS.loading=false;drawRestore()}
+Object.assign(A,{
+  fileBackup:async()=>{try{await saveBackupFile();if(!IS_APP)toast('Backup file downloaded')}catch(e){if(!(e&&/cancel/i.test(String(e.message||e))))toast('Could not save the backup file')}},
+  fileRestore:f=>{if(!f)return;const r=new FileReader();r.onload=()=>restoreFromText(String(r.result||''));r.onerror=()=>toast('Could not read the file');r.readAsText(f)},
+  stTog:k=>{S.cloud[k]=!S.cloud[k];render()},
+  backup:()=>{const w=[];if(S.cloud.drive&&MCP)w.push('drive');if(S.cloud.server&&DBC)w.push('server');if(!w.length){toast('Turn on Google Drive or App server first. Data is already saved on the phone.');return}toast('Backing up…');runBackup(w)},
+  restoreMenu:()=>{RS={src:MCP&&S.cloud.drive?'drive':'server',list:[],loading:false,err:''};loadRestoreList()},
+  rsSrc:s=>{RS.src=s;loadRestoreList()},
+  rsPick:k=>{const f=RS.list[k];ask('Restore this backup?',`Data from ${f.at?fdy(f.at)+', '+ft(f.at):esc(f.title)} will replace what is on this phone now.`,'Restore',async()=>{try{toast('Restoring…');const d=RS.src==='drive'?await readDrive(f.id):await readServer(f);await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());render(true);toast('Backup restored')}catch(e){toast('Restore failed: '+errMsg(e))}},true)},
+  resetSample:()=>ask('Load sample data again?','Everything on this phone is replaced with the sample shop data.','Load sample',async()=>{LOAD_FAIL=false;await IDB.set('before_restore',snapshot());S.books={daily:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[]},gst:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[]}};products.splice(0,products.length,...JSON.parse(JSON.stringify(PR_BASE)));Object.keys(VAR).forEach(k=>delete VAR[k]);products.forEach(p=>p.v.forEach(v=>VAR[v.id]=v));contacts.splice(0,contacts.length,...JSON.parse(JSON.stringify(CT_BASE)));seed=7;gen();S.view={n:'home'};S.stack=[];S.tab='home';render(true);toast('Sample data loaded')},true),
+  startFresh:()=>ask('Start fresh?','All bills, payments, expenses, parties, vendors and staff are removed. Your product list stays, with zero stock. A copy of the current data is kept on the phone first.','Start fresh',async()=>{await IDB.set('before_restore',snapshot());S.books={daily:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[],cns:[]},gst:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[],cns:[]}};contacts.splice(0,contacts.length);S.staff=[];S.view={n:'home'};S.stack=[];S.tab='home';render(true);toast('Fresh books ready');if(S.pin==='1234')setTimeout(()=>A.changePin(),400)},true)
+});
+/* settings view: put storage card first */
+const _settings=V.settings;V.settings=v=>{const h=_settings(v);const i=h.indexOf('<div class="card"><b>Backup to Google Drive</b>');if(i<0)return h;const j=h.indexOf('<div class="card"><b>App lock</b>');
+  return h.slice(0,i)+storageCard()+`<div class="card"><b>Privacy</b><div class="small mute">Your books stay on this phone. ${S.online?'Online orders, customer requests and your price list are kept in the app\'s online database so customers can order and track.':'Your login and plan dates are kept online; nothing from your books is sent.'} Version ${APP_VERSION}.</div><button class="btn ghost" style="margin-top:8px" onclick="A.acDoc('privacy')">Read the privacy policy</button></div><div class="card"><b>Data on this phone</b><div class="small mute">Start using the app for real, or bring back the sample shop.</div><div class="btns"><button class="btn ghost" onclick="A.startFresh()">Start fresh</button><button class="btn ghost" onclick="A.resetSample()">Load sample data</button></div></div>`+h.slice(j)};
+/* backup file: works in the Android app and in any browser */
+function bkName(){const d=new Date();return 'WholesaleKhata-backup-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.json'}
+async function saveBackupFile(){const json=JSON.stringify(snapshot());const name=bkName();
+  if(IS_APP&&NFS&&NSH){const w=await NFS.writeFile({path:name,data:json,directory:'CACHE',encoding:'utf8'});await NSH.share({title:'Wholesale Khata backup',text:'Wholesale Khata backup file',files:[w.uri],dialogTitle:'Save backup to Drive, WhatsApp or Files'});}
+  else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
+  S.lastFileBackup=Date.now();S.lastBackup=Date.now();saveLocal();if(S.view.n==='settings')render()}
+async function phoneCopy(){try{const k='auto_'+dkey(today0);await IDB.set(k,snapshot());const keys=(await IDB.get('auto_keys'))||[];if(!keys.includes(k))keys.push(k);while(keys.length>7){const old=keys.shift();await IDB.set(old,null)}await IDB.set('auto_keys',keys)}catch(e){}}
+function restoreFromText(txt){let d;try{d=JSON.parse(txt)}catch(e){toast('This is not a Wholesale Khata backup file');return}
+  if(!d||d.app!=='wholesale-khata'){toast('This is not a Wholesale Khata backup file');return}
+  ask('Restore this backup?','Data from '+(d.savedAt?fdy(d.savedAt)+', '+ft(d.savedAt):'this file')+' will replace what is on this phone now. A copy of the current data is kept on the phone first.','Restore',async()=>{try{await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());render(true);toast('Backup restored')}catch(e){toast('Restore failed: '+errMsg(e))}},true)}
+function autoB(){setTimeout(()=>{phoneCopy();if(!S.autoBackup)return;if(Date.now()-(S.lastBackup||0)<20*3600e3)return;const w=[];if(S.cloud.drive&&S.cloud.driveOk&&MCP)w.push('drive');if(S.cloud.server&&S.cloud.serverOk&&DBC)w.push('server');if(w.length)runBackup(w,true)},6000)}
+
+/* ---------- app guide with voice ---------- */
+const GUIDE=[
+{ic:'stock',c:'#7d1d2c',go:"A.tab('home')",
  en:['Welcome to your shop in your pocket','This app replaces the bill book, khata diary, stock register, attendance register and calculator. Every sale, purchase, payment and expense goes in once, and stock, khata and profit update by themselves.','No more searching diaries. Your whole business is on one phone, safe and up to date.'],
  hi:['आपकी दुकान अब आपकी जेब में','यह ऐप बिल बुक, खाता डायरी, स्टॉक रजिस्टर, हाज़िरी रजिस्टर और कैलकुलेटर, सबका काम करता है। हर बिक्री, खरीद, पेमेंट और खर्चा एक बार डालिए, स्टॉक, खाता और मुनाफ़ा अपने आप अपडेट हो जाते हैं।','डायरी ढूँढने का झंझट ख़त्म। पूरा कारोबार एक फ़ोन में, सुरक्षित और हमेशा ताज़ा।']},
 {ic:'bills',c:'#173a6b',go:"A.tab('home')",icn:'expense',
@@ -187,39 +219,3 @@ V.online=v=>{v.title='Online orders';const cfg=onCfg();
   <div class="card"><b>Settings</b>
   <label class="f"><span>UPI ID</span><input class="inp" id="on_upi2" value="${esc(S.online.upi||'')}"></label>
   <div class="seg" style="margin:4px 0 10px"><button class="${(S.online.book||'daily')==='daily'?'on':''}" onclick="A.onBook('daily')">Bills in Daily book</button><button class="${S.online.book==='gst'?'on':''}" onclick="A.onBook('gst')">GST book (drafts)</button></div>
-  <div class="btns"><button class="btn ghost" onclick="A.onSaveSet()">Save</button><button class="btn ghost" onclick="A.go('onprices')">Price list</button></div>
-  <button class="btn ghost" style="margin-top:10px" onclick="A.onPub()">Update price list now</button>
-  <button class="btn danger" style="margin-top:10px" onclick="A.onDelete()">Delete online shop</button></div>`};
-V.onorder=v=>{const o=ONL.orders.find(x=>x.id===v.id);v.title='Order';if(!o)return backBtn()+`<div class="card mute">Order not found.</div>`;
-  const b=onBillOf(o);const i=ON_STEPS.indexOf(o.status);const next=o.status==='cancelled'?null:ON_STEPS[i+1];
-  const items=o.bill?o.bill.items:(o.items||[]).map(it=>({name:(VAR[it.vid]?vname(it.vid):it.name+' '+(it.size||'')),unit:it.unit,qty:it.qty,rate:VAR[it.vid]?onPrice(it.vid,o.tier,it.unit==='ctn'?'ctn':'pcs'):it.rate,amt:0}));
-  return backBtn()+`<h2>${esc(o.name)} <span class="mute small">${onNo(o)}</span></h2><div class="small mute" style="margin:-6px 0 10px">${fd(onTs(o.createdAt)||Date.now())}, ${ft(onTs(o.createdAt)||Date.now())} · ${o.tier==='wholesale'?'Wholesale':'Retail'} prices</div>
-  <div class="card"><div class="small">${esc(o.phone)}${o.delivery==='pickup'?' · Pickup from shop':' · Deliver to: '+esc(o.address||'')}</div>${o.note?`<div class="small mute">Note: ${esc(o.note)}</div>`:''}<div class="btns" style="margin-top:8px"><a class="btn ghost sm" style="display:grid;place-items:center;text-decoration:none" href="tel:${esc(o.phone)}">Call</a>${waBtn(String(o.phone).replace(/\D/g,'').slice(-10),'Hello '+(o.name||'')+', about your order '+onNo(o)+' from '+S.shop.name+'.','WhatsApp')}</div></div>
-  <div class="card"><table class="t"><tbody>${items.map(x=>`<tr><td>${esc(x.name)}<div class="small mute">${x.qty} ${x.unit==='ctn'?'ctn':'pcs'} × ${inr2(x.rate)}</div></td><td class="r num">${inr2(x.qty*x.rate)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="r num"><b>${inr(o.total||items.reduce((s,x)=>s+x.qty*x.rate,0))}</b></td></tr></tbody></table>
-  ${o.clientTotal&&o.bill&&Math.abs(o.clientTotal-o.bill.total)>1?`<div class="warnbox">Customer's cart showed ${inr(o.clientTotal)}; the bill uses your prices.</div>`:''}</div>
-  <div class="card"><b>${ON_LABEL[o.status]||o.status}</b><div class="small mute">Payment: ${o.payMode==='upi'?'UPI':'Cash'} · ${ON_PAY[o.payStatus]||''}${o.utr?' · UTR '+esc(o.utr):''}</div>
-  ${b?`<div class="li" onclick="A.go('bill',{id:'${b.x.id}'})" style="padding:8px 2px"><div class="sp"><div class="t">Bill ${esc(b.x.no)}</div><div class="s">${b.book==='gst'?'GST book (draft – issue it when ready)':'Daily book'}</div></div><span class="chev">›</span></div>`:''}
-  ${o.status==='placed'?`<div class="btns" style="margin-top:8px"><button class="btn green" onclick="A.onAccept('${o.id}')">Accept & make bill</button><button class="btn ghost" onclick="A.onCancel('${o.id}')">Decline</button></div>`:''}
-  ${next&&o.status!=='placed'?`<button class="btn" style="margin-top:8px" onclick="A.onStatus('${o.id}','${next}')">Mark: ${ON_LABEL[next]}</button>`:''}
-  ${o.payStatus!=='paid'&&b&&o.status!=='cancelled'?`<button class="btn ghost" style="margin-top:8px" onclick="A.onPaid('${o.id}')">${o.payMode==='upi'?'UPI payment received':'Cash received'} (${inr(o.total||0)})</button>`:''}
-  ${!['placed','delivered','cancelled'].includes(o.status)?`<button class="btn ghost" style="margin-top:8px" onclick="A.onCancel('${o.id}')">Cancel order</button>`:''}</div>`};
-V.onprices=v=>{v.title='Price list';const q=(v.q||'').toLowerCase();const P=S.online.prices=S.online.prices||{};
-  return backBtn()+`<h2>Price list for customers</h2><div class="small mute" style="margin:-6px 0 10px">Leave blank to use the usual rate. Hidden items are not shown to customers.</div>
-  <div class="search"><input placeholder="${esc(T('searchp'))}" value="${esc(v.q||'')}" oninput="A.onPq(this.value)" autocomplete="off"></div><div id="onpl">${onPriceRows(q)}</div>
-  <button class="btn" style="margin-top:10px" onclick="A.onPub()">Save and update price list</button>`};
-function onPriceRows(q){const P=S.online.prices||{};let h='';products.forEach(p=>p.v.forEach(v=>{if(q&&!(p.name+' '+v.size+' '+p.cat).toLowerCase().includes(q))return;const o=P[v.id]||{};
-  h+=`<div class="card"><div class="row"><div class="sp"><b>${esc(p.name)} ${esc(v.size)}</b><div class="small mute">MRP ${inr2(v.mrp)} · ${v.ppc} pcs/ctn</div></div><button class="btn ghost sm" onclick="A.onHide('${v.id}')">${o.hide?'Hidden':'Shown'}</button></div>
-  <div class="g2" style="margin-top:6px"><label class="f"><span>Retail /pc</span><input class="inp" inputmode="decimal" placeholder="${defRate(v.id,'sale','pcs','retail')}" value="${o.r||''}" onchange="A.onP('${v.id}','r',this.value)"></label><label class="f"><span>Wholesale /ctn</span><input class="inp" inputmode="decimal" placeholder="${defRate(v.id,'sale','ctn','wholesale')}" value="${o.wc||''}" onchange="A.onP('${v.id}','wc',this.value)"></label></div>
-  <label class="f"><span>Wholesale /pc (loose)</span><input class="inp" inputmode="decimal" placeholder="${defRate(v.id,'sale','pcs','wholesale')}" value="${o.wp||''}" onchange="A.onP('${v.id}','wp',this.value)"></label></div>`}));return h||'<div class="card mute">No product found.</div>'}
-TITLES.online=()=>'Online orders';TITLES.onorder=()=>'Order';TITLES.onprices=()=>'Price list';
-
-Object.assign(A,{
-  onCreate:async()=>{const upi=($('#on_upi').value||'').trim();if(upi&&!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(upi)){toast('UPI ID looks wrong (like name@okaxis)');return}
-    S.online={shopId:Array.from(crypto.getRandomValues(new Uint8Array(8))).map(b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join(''),upi,upiName:S.shop.name,open:true,book:'daily',prices:{},map:{}};saveLocal();render();await onStart();if(ONL.on)toast('Online shop is ready. Share the links or QR.')},
-  onRetry:()=>{ONL.err='';onStart();render()},
-  onReset:()=>ask('Make a new shop link?','Old links and QR codes will stop working. Share the new ones with your customers.','Make new link',async()=>{S.online.shopId=Array.from(crypto.getRandomValues(new Uint8Array(8))).map(b=>'abcdefghjkmnpqrstuvwxyz23456789'[b%31]).join('');S.online.ownerUid=null;S.online.pubSig='';S.online.map={};ONL.err='';saveLocal();await onStart();render()}),
-  onReq:id=>onReqSheet(id),onApprove,onDeny,
-  onAccept:id=>onAccept(id),onStatus:(id,st)=>onSetStatus(id,st),onPaid:id=>onPaid(id),
-  onCancel:id=>ask('Cancel this order?','The customer will see it as cancelled. If a bill was made, it is kept on record as cancelled.','Cancel order',()=>onSetStatus(id,'cancelled'),true),
-  onOpen:async()=>{S.online.open=S.online.open===false;await onPublish(true).catch(e=>toast(errMsg(e)));render()},
-  onBook:b=>{S.online.book=b;saveLocal();render()},

@@ -1,3 +1,56 @@
+  S.staff.forEach((s,i)=>{for(let d=40;d>=0;d--){const t=today0-d*DAY;const dt=new Date(t);if(dt.getDay()===0)continue;if(d===0&&i>1)continue;const r=rnd();s.att[dkey(t)]=r<.86?'P':r<.92?'H':r<.96?'L':'A';if(rnd()<.12)s.ot[dkey(t)]=ri(1,3)}});
+  S.staff[0].adv.push({date:today0-12*DAY,amt:2000,note:'Family function'});
+  S.staff[2].adv.push({date:today0-6*DAY,amt:1000,note:''});
+  S.staff[1].adv.push({date:today0-3*DAY,amt:1500,note:'Bike repair'});
+}
+
+/* ---------- calculations ---------- */
+const ppcOf=i=>i.ppc||VAR[i.vid].ppc;
+const pcs=i=>i.unit==='ctn'?i.qty*ppcOf(i):i.qty;
+const perPc=i=>i.unit==='ctn'?i.rate/ppcOf(i):i.rate;
+const live=x=>x.status!=='draft'&&x.status!=='cancelled';
+const cOf=id=>contacts.find(c=>c.id===id)||{name:'Unknown',phone:''};
+function billTotal(x,bk){
+  bk=bk||S.book;let sub=0,tax=0;const igst=bk==='gst'&&cOf(x.cid).gstin&&cOf(x.cid).gstin.slice(0,2)!==S.shop.state;
+  x.items.forEach(i=>{const a=i.qty*i.rate;sub+=a;if(bk==='gst')tax+=a*prodOf(i.vid).gst/100});
+  return {sub,tax,igst,grand:Math.round(sub+tax)};
+}
+function stockOf(vid,bk){
+  const b=S.books[bk||S.book];let q=b.open[vid]||0;
+  b.bills.forEach(x=>{if(!live(x))return;x.items.forEach(i=>{if(i.vid===vid)q+=x.type==='purchase'?pcs(i):-pcs(i)})});
+  (b.cns||[]).forEach(cn=>cn.items.forEach(i=>{if(i.vid===vid)q+=pcs(i)}));
+  return q;
+}
+const fq=(q,vid)=>{const p=VAR[vid].ppc;const c=Math.floor(Math.abs(q)/p),r=Math.abs(q)%p;const sg=q<0?'-':'';return sg+(c?c+' '+(S.lang==='hi'?'पेटी':'ctn'):'')+(c&&r?' + ':'')+(r||!c?r+' '+(S.lang==='hi'?'पीस':'pcs'):'')};
+function avgCost(vid,bk){let q=0,v=0;S.books[bk||S.book].bills.forEach(x=>{if(x.type!=='purchase'||!live(x))return;x.items.forEach(i=>{if(i.vid===vid){q+=pcs(i);v+=i.qty*i.rate}})});return q?v/q:VAR[vid].mrp*.78}
+function lastBuy(vid){const b=B().bills.filter(x=>x.type==='purchase'&&live(x));for(let k=b.length-1;k>=0;k--){const i=b[k].items.find(i=>i.vid===vid);if(i)return perPc(i)}return avgCost(vid)}
+function balance(cid,bk){
+  const b=S.books[bk||S.book];const c=cOf(cid);let bal=b.cOpen[cid]||0;
+  b.bills.forEach(x=>{if(x.cid===cid&&live(x))bal+=billTotal(x,bk).grand});
+  (b.cns||[]).forEach(cn=>{if(cn.cid===cid)bal-=cn.amt});
+  b.pays.forEach(p=>{if(p.cid===cid&&!(p.chq&&p.chq.st==='bounced'))bal-=p.amt});
+  return bal; // party: + means he must get; vendor: + means he must give
+}
+function ageing(cid){
+  const b=B();let paid=b.pays.filter(p=>p.cid===cid&&!(p.chq&&p.chq.st==='bounced')).reduce((a,p)=>a+p.amt,0)+(b.cns||[]).filter(c=>c.cid===cid).reduce((a,c)=>a+c.amt,0);
+  const bk=[0,0,0,0];let oldest=null;
+  const op=b.cOpen[cid]||0;if(op>0){if(paid>=op)paid-=op;else{bk[3]+=op-paid;paid=0;oldest=today0-91*DAY}}
+  b.bills.filter(x=>x.cid===cid&&live(x)).forEach(x=>{const g=billTotal(x).grand;let due=g;if(paid>=g){paid-=g;due=0}else{due=g-paid;paid=0}
+    if(due>0){const a=(today0-x.date)/DAY;bk[a<30?0:a<60?1:a<90?2:3]+=due;if(oldest===null)oldest=x.date}});
+  return {bk,oldest};
+}
+function profitOf(x){if(x.type!=='sale'||!live(x))return 0;let p=0;x.items.forEach(i=>p+=pcs(i)*(perPc(i)-avgCost(i.vid)));return p}
+function lastSaleDate(vid){const b=B().bills;for(let k=b.length-1;k>=0;k--){if(b[k].type==='sale'&&live(b[k])&&b[k].items.some(i=>i.vid===vid))return b[k].date}return null}
+function rateRows(vid,type){const r=[];B().bills.forEach(x=>{if(x.type!==type||x.status==='cancelled')return;x.items.forEach(i=>{if(i.vid===vid)r.push({x,i})})});return r.sort((a,b)=>b.x.date-a.x.date)}
+function lastRateFor(vid,cid,type,unit){const r=rateRows(vid,type).filter(o=>o.x.cid===cid);const u=r.find(o=>o.i.unit===unit);if(u)return u.i.rate;if(r[0]){const p=perPc(r[0].i);return unit==='ctn'?Math.round(p*VAR[vid].ppc):Math.round(p*2)/2}return null}
+function defRate(vid,type,unit,rt){const V=VAR[vid];const p=type==='purchase'?lastBuy(vid):V.mrp*(rt==='retail'?.95:.86);return unit==='ctn'?Math.round(p*V.ppc):Math.round(p*2)/2}
+
+/* ---------- shell ---------- */
+const IP={sale:'<path d="M3 7h12l5 5-5 5H3z"/><circle cx="8" cy="12" r="1.6"/>',purchase:'<path d="M2 6h12v10H2z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',payment:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M16 11h5v4h-5a2 2 0 010-4z"/><path d="M6 6l9-3 2 3"/>',expense:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',attendance:'<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/>',stock:'<path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',upload:'<path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v5h16v-5"/>',voice:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>',reports:'<path d="M4 20V11M10 20V5M16 20v-6M2 20h20"/>',delivery:'<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a3.5 3.5 0 000-7H9a3.5 3.5 0 010-7h7"/>',cheques:'<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 14h6M15 10h3M6 10h4"/>',settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',staff:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0114 0"/><path d="M16 4.5a3.5 3.5 0 010 7M18 20a7 7 0 00-2.5-5.4"/>',up:'<path d="M7 17L17 7M9 7h8v8"/>',down:'<path d="M17 7L7 17M15 17H7V9"/>'};
+const svg=(n,w)=>`<svg viewBox="0 0 24 24" width="${w||24}" height="${w||24}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${IP[n]||''}</svg>`;
+const icT=(n,c)=>/^rgba/.test(c)?`<span class="ic" style="background:${c}">${svg(n)}</span>`:`<span class="ic tint" style="--c:${c}">${svg(n)}</span>`;
+const AVC=['#7d1d2c','#173a6b','#8a6a1f','#1f6b52','#6b3a7d','#a34a1f','#2f5d7c','#5a5a2a'];
+const avs=n=>{let h=0;for(const ch of String(n))h=(h*31+ch.charCodeAt(0))%997;const c=AVC[h%AVC.length];return `style="background:color-mix(in srgb,${c} 13%,transparent);color:light-dark(${c},color-mix(in srgb,${c} 40%,#fff))"`};
 const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],DOWH=['रवि','सोम','मंगल','बुध','गुरु','शुक्र','शनि'];const dow=i=>(S.lang==='hi'?DOWH:DOW)[i];
 
 const ICON={
@@ -91,7 +144,7 @@ V.home=()=>{
 function searchRes(q){
   q=q.toLowerCase().trim();const r=products.filter(p=>(p.name+' '+p.cat).toLowerCase().includes(q)||p.v.some(v=>v.size.toLowerCase().includes(q)));
   if(!r.length)return `<div class="card mute">No product found for “${esc(q)}”.</div>`;
-  return '<div class="card">'+r.map(p=>{const st=p.v.reduce((a,v)=>a+(stockOf(v.id)<v.min?1:0),0);return `<div class="li" onclick="A.go('product',{pid:'${p.id}'})"><div class="av" ${avs(p.cat)}>${esc(p.name[0])}</div><div class="sp"><div class="t">${esc(p.name)}</div><div class="s">${esc(p.cat)} · ${p.v.length} size${p.v.length>1?'s':''}${st?` · <span class="out">${st} low</span>`:''}</div></div><span class="chev">›</span></div>`}).join('')+'</div>';
+  return '<div class="card">'+r.map(p=>{const st=p.v.reduce((a,v)=>a+(stockOf(v.id)<v.min?1:0),0);return `<div class="li" onclick="A.go('product',{pid:'${p.id}'})">${pThumb(p)}<div class="sp"><div class="t">${esc(p.name)}</div><div class="s">${esc(p.cat)} · ${p.v.length} size${p.v.length>1?'s':''}${st?` · <span class="out">${st} low</span>`:''}</div></div><span class="chev">›</span></div>`}).join('')+'</div>';
 }
 const psearch=v=>{S.view.q=v;$('#sres').innerHTML=v?searchRes(v):'';$('#homebody').style.display=v?'none':''};
 function billLi(x){
@@ -234,29 +287,3 @@ V.stock=v=>{v.title=T('stock');const f=v.f||'all';let list=Object.keys(VAR).map(
   if(f==='low')list=list.filter(o=>o.s<VAR[o.vid].min);if(f==='dead')list=list.filter(dead);
   const val=Object.keys(VAR).reduce((a,vid)=>a+stockOf(vid)*avgCost(vid),0);
   const low=Object.keys(VAR).filter(v=>stockOf(v)<VAR[v].min);const byV={};low.forEach(vid=>{const r=rateRows(vid,'purchase');const best=r.slice(0,10).sort((a,b)=>perPc(a.i)-perPc(b.i))[0];const vd=best?best.x.cid:'v1';(byV[vd]=byV[vd]||[]).push(vid)});
-  return backBtn()+`<div class="row"><h2 class="sp">Stock</h2><button class="btn ghost sm" onclick="A.newProduct('stock')">+ New product</button></div><div class="stat" style="margin-bottom:12px"><div class="l">Total stock value (at cost)</div><div class="big num">${inr(val)}</div></div>
-  <div class="seg"><button class="${f==='all'?'on':''}" onclick="A.setv('f','all')">${T('all')}</button><button class="${f==='low'?'on':''}" onclick="A.setv('f','low')">${T('low')} (${low.length})</button><button class="${f==='dead'?'on':''}" onclick="A.setv('f','dead')">${T('dead')}</button></div>
-  ${f==='low'&&low.length?`<div class="card"><b>Order from best-rate vendor</b>${Object.entries(byV).map(([vd,vs])=>{const c=cOf(vd);const msg=`Namaste, ${S.shop.name} order:\n${vs.map(x=>`${vname(x)} – ${Math.ceil((VAR[x].min*2-stockOf(x))/VAR[x].ppc)} ctn`).join('\n')}\nPlease send today.`;return `<div class="li" style="padding:8px 2px"><div class="sp"><div class="t">${esc(c.name)}</div><div class="s">${vs.length} item${vs.length>1?'s':''}</div></div><a class="btn green sm" style="text-decoration:none;display:grid;place-items:center" href="${wa(c.phone,msg)}" target="_blank" rel="noopener">Order</a></div>`}).join('')}</div>`:''}
-  ${f==='dead'?'<div class="small mute" style="margin-bottom:8px">No sale in the last 45 days. Money is stuck in these.</div>':''}
-  <div class="card">${list.map(o=>`<div class="li" onclick="A.go('variant',{vid:'${o.vid}'})"><div class="sp"><div class="t">${esc(vname(o.vid))}</div><div class="s">Min ${fq(VAR[o.vid].min,o.vid)} · last sold ${o.ls?ago(o.ls):'never'}</div></div><div class="num ${o.s<VAR[o.vid].min?'out':''}" style="font-weight:700">${fq(o.s,o.vid)}</div></div>`).join('')||'<div class="mute">Nothing here.</div>'}</div>`};
-/* ---------- reports ---------- */
-V.reports=v=>{v.title=T('reports');const p=v.p||'day';const b=B();
-  const start=p==='day'?today0:p==='week'?today0-6*DAY:new Date(NOW.getFullYear(),NOW.getMonth(),1).getTime();
-  const bl=b.bills.filter(x=>live(x)&&x.date>=start);const sales=bl.filter(x=>x.type==='sale');
-  const sale=sales.reduce((s,x)=>s+billTotal(x).sub,0),pur=bl.filter(x=>x.type==='purchase').reduce((s,x)=>s+billTotal(x).sub,0);
-  const gp=sales.reduce((s,x)=>s+profitOf(x),0);const tr=bl.reduce((s,x)=>s+(x.transport||0),0);const ex=b.exps.filter(e=>e.date>=start).reduce((s,e)=>s+e.amt,0);const net=gp-tr-ex;
-  // chart buckets
-  const bk=[];if(p==='day'){for(let d=13;d>=0;d--)bk.push({l:d===0?'Today':String(new Date(today0-d*DAY).getDate()),a:today0-d*DAY,z:today0-(d-1)*DAY})}else if(p==='week'){for(let w=7;w>=0;w--)bk.push({l:w===0?'This wk':fd(today0-(w*7+6)*DAY),a:today0-(w*7+6)*DAY,z:today0-(w*7-1)*DAY})}else{for(let m=2;m>=0;m--){const a=new Date(NOW.getFullYear(),NOW.getMonth()-m,1).getTime(),z=new Date(NOW.getFullYear(),NOW.getMonth()-m+1,1).getTime();bk.push({l:MON[new Date(a).getMonth()],a,z})}}
-  bk.forEach(k=>{const xs=b.bills.filter(x=>live(x)&&x.date>=k.a&&x.date<k.z);k.p=xs.reduce((s,x)=>s+profitOf(x),0)-xs.reduce((s,x)=>s+(x.transport||0),0)-b.exps.filter(e=>e.date>=k.a&&e.date<k.z).reduce((s,e)=>s+e.amt,0);k.s=xs.filter(x=>x.type==='sale').reduce((s,x)=>s+billTotal(x).sub,0)});
-  const mx=Math.max(1,...bk.map(k=>Math.abs(k.p)));
-  const byP={},byC={},byVd={};sales.forEach(x=>{x.items.forEach(i=>{const pr=prodOf(i.vid).name;const pf=pcs(i)*(perPc(i)-avgCost(i.vid));byP[pr]=(byP[pr]||0)+pf;byC[x.cid]=(byC[x.cid]||0)+pf})});
-  bl.filter(x=>x.type==='purchase').forEach(x=>{const o=byVd[x.cid]=byVd[x.cid]||{amt:0,diff:0,n:0};x.items.forEach(i=>{o.amt+=i.qty*i.rate;o.diff+=(perPc(i)-avgCost(i.vid))/avgCost(i.vid);o.n++})});
-  const barList=(obj,nm)=>{const e=Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,8);const m=Math.max(1,...e.map(x=>Math.abs(x[1])));return e.map(([k,a])=>`<div class="br"><span class="nm">${esc(nm?nm(k):k)}</span><div class="tr"><div class="fl ${a<0?'neg':''}" style="width:${Math.abs(a)/m*100}%"></div></div><span class="num">${inr(a)}</span></div>`).join('')||'<div class="mute small">No sales in this period.</div>'};
-  const summ=`${S.shop.name} – ${p==='day'?'Today':p==='week'?'Last 7 days':'This month'} (${S.book==='gst'?'GST':'Daily'} book)\nSale ${inr(sale)}\nPurchase ${inr(pur)}\nGross profit ${inr(gp)}\nTransport ${inr(tr)}\nExpenses ${inr(ex)}\nNet profit ${inr(net)}`;
-  return backBtn()+`<div class="seg"><button class="${p==='day'?'on':''}" onclick="A.setv('p','day')">Daily</button><button class="${p==='week'?'on':''}" onclick="A.setv('p','week')">Weekly</button><button class="${p==='month'?'on':''}" onclick="A.setv('p','month')">Monthly</button></div>
-  <h2>${net>=0?'Net profit':'Net loss'} <span class="num ${net>=0?'in':'out'}">${inr(Math.abs(net))}</span></h2>
-  <div class="card"><table class="t"><tbody><tr><td>Sale (before tax)</td><td class="r num">${inr(sale)}</td></tr><tr><td>Purchase (before tax)</td><td class="r num">${inr(pur)}</td></tr><tr><td>Gross profit on goods sold</td><td class="r num in">${inr(gp)}</td></tr><tr><td>Transport cost</td><td class="r num out">− ${inr(tr)}</td></tr><tr><td>Expenses</td><td class="r num out">− ${inr(ex)}</td></tr><tr><td><b>Net</b></td><td class="r num"><b>${inr(net)}</b></td></tr></tbody></table></div>
-  <div class="card"><b>Net profit by ${p==='day'?'day':p==='week'?'week':'month'}</b><div class="chart">${bk.map(k=>`<div class="c" title="${inr(k.p)}"><span class="tag num" style="position:absolute;top:-16px;font-size:10px">${Math.abs(k.p)>=1000?Math.round(k.p/1000)+'k':Math.round(k.p)}</span><i class="${k.p<0?'neg':''}" style="height:${Math.abs(k.p)/mx*100}%"></i></div>`).join('')}</div><div class="xl">${bk.map(k=>`<span>${k.l}</span>`).join('')}</div></div>
-  <h3>Profit by product</h3><div class="card bars">${barList(byP)}</div>
-  <h3>Profit by party</h3><div class="card bars">${barList(byC,k=>cOf(k).name)}</div>
-  <h3>Purchase by vendor</h3><div class="card">${Object.entries(byVd).map(([k,o])=>{const d=o.diff/o.n*100;return `<div class="li" style="padding:9px 2px"><div class="sp"><div class="t">${esc(cOf(k).name)}</div><div class="s">${d<=0?'<span class="in">'+Math.abs(d).toFixed(1)+'% cheaper</span>':'<span class="out">'+d.toFixed(1)+'% costlier</span>'} than your average rate</div></div><b class="num">${inr(o.amt)}</b></div>`}).join('')||'<div class="mute small">No purchases in this period.</div>'}</div>

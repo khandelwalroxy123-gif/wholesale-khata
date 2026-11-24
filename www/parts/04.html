@@ -1,3 +1,38 @@
+  idel:()=>{S.draft.items.splice(IT.k,1);closeSheet();render()},
+  /* contacts */
+  pkq:q=>{PK.q=q;drawPick();const e=document.querySelector('.sheet .search input');if(e){e.focus();e.setSelectionRange(q.length,q.length)}},pkPhone:f=>{PK.phone=f;drawPick()},
+  pkSel:id=>{closeSheet();if(PK.mode==='bill'){S.draft.cid=id;render()}},
+  newContact:(t,keep)=>{if(!keep||!PK)PK={mode:'new',type:t,q:'',phone:false};contactForm({type:t,name:'',phone:'',address:'',gstin:'',remark:'',limit:''},true)},
+  fromPhone:(n,p)=>{PK.phone=false;contactForm({type:PK.type,name:n,phone:p,address:CF&&CF.isNew?(CF.address||''):'',gstin:'',remark:'',limit:''},true)},
+  cfType:t=>{CF.type=t;CF.name=$('#cf_n').value;CF.phone=$('#cf_p').value;CF.address=$('#cf_ad').value;contactForm(CF,CF.isNew)},
+  cfSave:()=>{const err=m=>{const e=$('#cf_err');e.textContent=m;e.style.display='block'};const n=$('#cf_n').value.trim();if(!n){err('Enter name');return}const ph=$('#cf_p').value.replace(/\D/g,'').slice(-10);if(ph.length!==10){err('Enter a 10 digit phone number');return}
+    const dup=contacts.find(c=>c.phone===ph&&c.id!==CF.id);if(dup){err('This number is already saved as '+dup.name);return}
+    const o={name:n,phone:ph,address:$('#cf_ad').value.trim(),gstin:$('#cf_g').value.trim().toUpperCase(),remark:$('#cf_r').value,limit:$('#cf_l')?+$('#cf_l').value||0:0,type:CF.type};
+    if(CF.isNew){const c={id:'c'+uid(),...o};contacts.push(c);closeSheet();if(PK&&PK.mode==='bill'&&S.draft){S.draft.cid=c.id;render();toast('Added '+n)}else{render();toast('Added '+n)}}else{Object.assign(contacts.find(c=>c.id===CF.id),o);closeSheet();render();toast('Saved')}},
+  editContact:id=>contactForm(cOf(id),false),
+  /* payments */
+  pfset:(k,val)=>{PF[k]=val;drawPay()},pfin:(k,val)=>{PF[k]=val},
+  pfSave:()=>{if(!PF.cid){toast('Choose who');return}const a=+PF.amt;if(!(a>0)){toast('Enter amount');return}const c=cOf(PF.cid);
+    B().pays.push({id:uid(),cid:PF.cid,dir:c.type==='party'?'in':'out',amt:a,mode:PF.mode,date:Date.now(),note:PF.note,chq:PF.mode==='cheque'?{no:PF.no,bank:PF.bank,due:PF.due?new Date(PF.due).getTime():today0,st:'pending'}:null});
+    const msg=`${S.shop.name}: ${c.type==='party'?'Received':'Paid'} ${inr(a)} by ${PF.mode} on ${fdy(NOW)}. Balance now ${inr(balance(c.id))}. Thank you.`;
+    sheet(`<h2>Payment saved</h2><p>${c.type==='party'?'Received':'Paid'} <b>${inr(a)}</b> ${c.type==='party'?'from':'to'} ${esc(c.name)}. New balance <b>${inr(balance(c.id))}</b>.</p>${waBtn(c.phone,msg,'Send receipt on WhatsApp')}<button class="btn ghost" style="margin-top:10px" onclick="A.closeSheet()">Done</button>`);render()},
+  efset:(k,val)=>{EF[k]=val;EF.amt=$('#ef_a')?$('#ef_a').value:EF.amt;drawExp()},efin:(k,val)=>{EF[k]=val},
+  efSave:()=>{const a=+EF.amt;if(!(a>0)){toast('Enter amount');return}B().exps.push({id:uid(),head:EF.head,amt:a,date:Date.now(),note:EF.note});closeSheet();render();toast('Expense saved')},
+  /* upload */
+  upRead:f=>{if(!f)return;closeSheet();newBill('purchase');S.draft.file=f;S.draft.vinv='';render();toast('File noted: '+f+'. Now add the items from the bill.')},upMap:(k,v)=>{UP.rows[k].vid=v;drawUp()},
+  upSave:()=>{const b=S.books.gst;const x={id:uid(),type:'purchase',no:nextNo('purchase'),date:Date.now(),cid:UP.vendor,items:UP.rows.map(r=>({vid:r.vid,unit:r.unit,qty:r.qty,rate:r.rate,rt:'wholesale'})),transport:0,status:'issued',del:'pending',delBy:'',vinv:UP.inv,file:UP.file};b.bills.push(x);closeSheet();S.stack=[{n:S.tab}];S.view={n:'bill',id:x.id};render(true);toast('Purchase bill saved from PDF · mark received when goods arrive')},
+  /* credit note */
+  cnq:(k,d)=>{const x=B().bills.find(b=>b.id===CN.ref);CN.q[k]=Math.max(0,Math.min(x.items[k].qty,CN.q[k]+d));drawCN()},cnr:v=>{CN.reason=v},
+  cnSave:()=>{const b=B();const x=b.bills.find(y=>y.id===CN.ref);const items=x.items.map((i,k)=>({...i,qty:CN.q[k]})).filter(i=>i.qty>0);if(!items.length){toast('Choose returned quantity');return}
+    b.cns=b.cns||[];const amt=Math.round(items.reduce((s,i)=>s+i.qty*i.rate*(1+prodOf(i.vid).gst/100),0));b.cns.push({id:uid(),no:'CN/26-27/'+String(b.cns.length+1).padStart(4,'0'),ref:x.id,cid:x.cid,date:Date.now(),items,amt,reason:CN.reason});closeSheet();render();toast('Credit note made · stock and balance updated')},
+  /* voice */
+  mic:()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;const b=$('#micb');if(!R){toast('Microphone works in the phone app. Type or tap an example here.');return}try{const r=new R();r.lang=S.lang==='hi'?'hi-IN':'en-IN';b.classList.add('on');r.onresult=e=>{$('#vtxt').value=e.results[0][0].transcript;b.classList.remove('on')};r.onerror=()=>{b.classList.remove('on');toast('Microphone not available here. Type instead.')};r.onend=()=>b.classList.remove('on');r.start()}catch(e){toast('Microphone not available here. Type instead.')}},
+  parseVoice:()=>{const t=$('#vtxt').value;S.view.txt=t;S.view.r=parseVoice(t);render()},
+  voiceBill:()=>{const r=S.view.r;S.draft={type:'sale',cid:r.cid,items:[{vid:r.vid,unit:r.unit,qty:r.qty,rate:r.rate,rt:'wholesale'}],transport:0,paid:0,mode:'cash',date:Date.now(),vinv:''};go('billform')},
+  /* settings */
+  tog:k=>{S[k]=!S[k];render()},
+  fingerTog:async()=>{if(S.finger){S.finger=false;render();return}if(!BIO){toast(L('Fingerprint needs the app installed on the phone.','फ़िंगरप्रिंट के लिए फ़ोन में ऐप इंस्टॉल होना चाहिए।'));return}try{const a=await BIO.isAvailable({useFallback:false});if(!a||!a.isAvailable){toast(bioWhy(a));return}await BIO.verifyIdentity({reason:'Turn on fingerprint unlock',title:L('Confirm fingerprint','फ़िंगरप्रिंट की पुष्टि करें'),subtitle:L('Touch the fingerprint sensor','फ़िंगरप्रिंट सेंसर छुएँ'),negativeButtonText:L('Cancel','रद्द करें')});S.finger=true;render();toast(L('Fingerprint unlock is on','फ़िंगरप्रिंट लॉक चालू'))}catch(e){toast(L('Fingerprint not confirmed','फ़िंगरप्रिंट की पुष्टि नहीं हुई'))}},
+  backup:()=>{const p=$('#bkp');p.style.display='block';const i=p.querySelector('i');let w=0;const tm=setInterval(()=>{w+=20;i.style.width=w+'%';if(w>=100){clearInterval(tm);S.lastBackup=Date.now();render();toast('Backed up to Google Drive (simulated in preview)')}},250)},
   changePin:()=>sheet(`<h2>Change PIN</h2><label class="f"><span>New 4-digit PIN</span><input class="inp" id="np" inputmode="numeric" maxlength="4" type="password"></label><button class="btn" onclick="A.savePin()">${T('save')}</button>`),
   savePin:()=>{const v=$('#np').value;if(!/^\d{4}$/.test(v)){toast('PIN must be 4 digits');return}S.pin=v;closeSheet();toast('PIN changed')},
   saveShop:()=>{S.shop.name=$('#sh_n').value;S.shop.addr=$('#sh_a').value;S.shop.phone=$('#sh_p').value;S.shop.gstin=$('#sh_g').value;render();toast('Shop details saved')},
@@ -242,35 +277,3 @@ function storageCard(){const c=S.cloud;const row=(k,name,desc,ok,at,avail)=>`<di
   <div class="small mute" style="margin-top:8px">Backups include all bills, khata, stock, staff and settings of both books.</div></div>`}
 let RS=null;
 function drawRestore(){const src=RS.src;sheet(`<h2>Restore a backup</h2><div class="seg"><button class="${src==='drive'?'on':''}" onclick="A.rsSrc('drive')">Google Drive</button><button class="${src==='server'?'on':''}" onclick="A.rsSrc('server')">App server</button></div>
-  ${RS.loading?'<div class="prog"><i style="width:60%"></i></div><div class="mute">Looking for backups…</div>':RS.err?`<div class="warnbox">${esc(RS.err)}</div>`:RS.list.length?RS.list.map((f,k)=>`<div class="li" onclick="A.rsPick(${k})"><div class="sp"><div class="t">${f.at?fdy(f.at)+', '+ft(f.at):esc(f.title)}</div><div class="s">${esc(f.title)}</div></div><span class="chev">›</span></div>`).join(''):'<div class="mute">No backups found here yet.</div>'}
-  <div class="small mute" style="margin-top:10px">Restoring replaces the data on this phone. A copy of the current data is kept on the phone first.</div>`)}
-async function loadRestoreList(){RS.loading=true;RS.err='';drawRestore();try{RS.list=RS.src==='drive'?await listDrive():await listServer()}catch(e){RS.err=errMsg(e);RS.list=[]}RS.loading=false;drawRestore()}
-Object.assign(A,{
-  fileBackup:async()=>{try{await saveBackupFile();if(!IS_APP)toast('Backup file downloaded')}catch(e){if(!(e&&/cancel/i.test(String(e.message||e))))toast('Could not save the backup file')}},
-  fileRestore:f=>{if(!f)return;const r=new FileReader();r.onload=()=>restoreFromText(String(r.result||''));r.onerror=()=>toast('Could not read the file');r.readAsText(f)},
-  stTog:k=>{S.cloud[k]=!S.cloud[k];render()},
-  backup:()=>{const w=[];if(S.cloud.drive&&MCP)w.push('drive');if(S.cloud.server&&DBC)w.push('server');if(!w.length){toast('Turn on Google Drive or App server first. Data is already saved on the phone.');return}toast('Backing up…');runBackup(w)},
-  restoreMenu:()=>{RS={src:MCP&&S.cloud.drive?'drive':'server',list:[],loading:false,err:''};loadRestoreList()},
-  rsSrc:s=>{RS.src=s;loadRestoreList()},
-  rsPick:k=>{const f=RS.list[k];ask('Restore this backup?',`Data from ${f.at?fdy(f.at)+', '+ft(f.at):esc(f.title)} will replace what is on this phone now.`,'Restore',async()=>{try{toast('Restoring…');const d=RS.src==='drive'?await readDrive(f.id):await readServer(f);await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());render(true);toast('Backup restored')}catch(e){toast('Restore failed: '+errMsg(e))}},true)},
-  resetSample:()=>ask('Load sample data again?','Everything on this phone is replaced with the sample shop data.','Load sample',async()=>{LOAD_FAIL=false;await IDB.set('before_restore',snapshot());S.books={daily:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[]},gst:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[]}};products.splice(0,products.length,...JSON.parse(JSON.stringify(PR_BASE)));Object.keys(VAR).forEach(k=>delete VAR[k]);products.forEach(p=>p.v.forEach(v=>VAR[v.id]=v));contacts.splice(0,contacts.length,...JSON.parse(JSON.stringify(CT_BASE)));seed=7;gen();S.view={n:'home'};S.stack=[];S.tab='home';render(true);toast('Sample data loaded')},true),
-  startFresh:()=>ask('Start fresh?','All bills, payments, expenses, parties, vendors and staff are removed. Your product list stays, with zero stock. A copy of the current data is kept on the phone first.','Start fresh',async()=>{await IDB.set('before_restore',snapshot());S.books={daily:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[],cns:[]},gst:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[],cns:[]}};contacts.splice(0,contacts.length);S.staff=[];S.view={n:'home'};S.stack=[];S.tab='home';render(true);toast('Fresh books ready');if(S.pin==='1234')setTimeout(()=>A.changePin(),400)},true)
-});
-/* settings view: put storage card first */
-const _settings=V.settings;V.settings=v=>{const h=_settings(v);const i=h.indexOf('<div class="card"><b>Backup to Google Drive</b>');if(i<0)return h;const j=h.indexOf('<div class="card"><b>App lock</b>');
-  return h.slice(0,i)+storageCard()+`<div class="card"><b>Privacy</b><div class="small mute">Your books stay on this phone. ${S.online?'Online orders, customer requests and your price list are kept in the app\'s online database so customers can order and track.':'Your login and plan dates are kept online; nothing from your books is sent.'} Version ${APP_VERSION}.</div><button class="btn ghost" style="margin-top:8px" onclick="A.acDoc('privacy')">Read the privacy policy</button></div><div class="card"><b>Data on this phone</b><div class="small mute">Start using the app for real, or bring back the sample shop.</div><div class="btns"><button class="btn ghost" onclick="A.startFresh()">Start fresh</button><button class="btn ghost" onclick="A.resetSample()">Load sample data</button></div></div>`+h.slice(j)};
-/* backup file: works in the Android app and in any browser */
-function bkName(){const d=new Date();return 'WholesaleKhata-backup-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.json'}
-async function saveBackupFile(){const json=JSON.stringify(snapshot());const name=bkName();
-  if(IS_APP&&NFS&&NSH){const w=await NFS.writeFile({path:name,data:json,directory:'CACHE',encoding:'utf8'});await NSH.share({title:'Wholesale Khata backup',text:'Wholesale Khata backup file',files:[w.uri],dialogTitle:'Save backup to Drive, WhatsApp or Files'});}
-  else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
-  S.lastFileBackup=Date.now();S.lastBackup=Date.now();saveLocal();if(S.view.n==='settings')render()}
-async function phoneCopy(){try{const k='auto_'+dkey(today0);await IDB.set(k,snapshot());const keys=(await IDB.get('auto_keys'))||[];if(!keys.includes(k))keys.push(k);while(keys.length>7){const old=keys.shift();await IDB.set(old,null)}await IDB.set('auto_keys',keys)}catch(e){}}
-function restoreFromText(txt){let d;try{d=JSON.parse(txt)}catch(e){toast('This is not a Wholesale Khata backup file');return}
-  if(!d||d.app!=='wholesale-khata'){toast('This is not a Wholesale Khata backup file');return}
-  ask('Restore this backup?','Data from '+(d.savedAt?fdy(d.savedAt)+', '+ft(d.savedAt):'this file')+' will replace what is on this phone now. A copy of the current data is kept on the phone first.','Restore',async()=>{try{await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());render(true);toast('Backup restored')}catch(e){toast('Restore failed: '+errMsg(e))}},true)}
-function autoB(){setTimeout(()=>{phoneCopy();if(!S.autoBackup)return;if(Date.now()-(S.lastBackup||0)<20*3600e3)return;const w=[];if(S.cloud.drive&&S.cloud.driveOk&&MCP)w.push('drive');if(S.cloud.server&&S.cloud.serverOk&&DBC)w.push('server');if(w.length)runBackup(w,true)},6000)}
-
-/* ---------- app guide with voice ---------- */
-const GUIDE=[
-{ic:'stock',c:'#7d1d2c',go:"A.tab('home')",

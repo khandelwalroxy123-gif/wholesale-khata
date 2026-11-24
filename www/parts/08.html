@@ -1,7 +1,91 @@
+  xlsxSave('Daily-vs-GST',[{name:'Summary',rows:s1,widths:[34,16,16],bold:[0,10]},{name:'Daily not in GST',rows:bills([...r.sale.notIn,...r.purchase.notIn],'daily'),widths:[12,12,10,26,18,16,12,14,14]},{name:'GST only',rows:bills([...r.sale.gOnly,...r.purchase.gOnly],'gst'),widths:[12,18,10,26,18,16,12,14,14]},{name:'All Daily bills',rows:bills(S.books.daily.bills.filter(inR),'daily'),widths:[12,12,10,26,18,16,12,14,14]},{name:'All GST bills',rows:bills(S.books.gst.bills.filter(inR),'gst'),widths:[12,18,10,26,18,16,12,14,14]}])}
+
+/* ---- PDF and Excel on the other reports ---- */
+const repBtns=(xl)=>`<div class="btns noprint" style="margin-top:12px">${xl?`<button class="btn ghost" onclick="${xl}">${L('Excel file','Excel फ़ाइल')}</button>`:''}<button class="btn ghost" onclick="A.printBill()">${L('Save PDF','PDF सेव करें')}</button></div>`;
+[['stock','A.xlStock()'],['expenses','A.xlExp()'],['staff',''],['cheques',''],['delivery',''],['khata','A.xlKhata()']].forEach(([n,xl])=>{const f=V[n];if(typeof f!=='function')return;V[n]=v=>{const h=f(v);return h&&!/printBill\(\)/.test(h)?h+repBtns(xl):h}});
+const _repV=V.reports;V.reports=v=>{const h=_repV(v);return h.includes('A.xlRep()')?h:h.replace('<button class="btn" onclick="A.printBill()">Print / PDF</button>',`<button class="btn" onclick="A.printBill()">${L('Save PDF','PDF सेव करें')}</button><button class="btn ghost" onclick="A.xlRep()">${L('Excel file','Excel फ़ाइल')}</button>`)};
+const bkNm=()=>S.book==='gst'?'GST':'Daily';
+function xlStock(){const rows=[['Product','Size','Stock (pcs)','Stock','Avg cost / pc','Stock value']];products.forEach(p=>p.v.forEach(V_=>{const q=stockOf(V_.id),c=avgCost(V_.id);rows.push([p.name,V_.size,q,fq(q,V_.id),c,q*c])}));xlsxSave('Stock-'+bkNm(),[{name:'Stock',rows,widths:[28,12,12,16,14,14]}])}
+function xlExp(){const rows=[['Date','Head','Note','Amount']];B().exps.slice().sort((a,b)=>a.date-b.date).forEach(e=>rows.push([xd(e.date),e.head||'',e.note||'',e.amt]));xlsxSave('Expenses-'+bkNm(),[{name:'Expenses',rows,widths:[12,22,28,12]}])}
+function xlKhata(){const rows=[['Name','Type','Phone','GSTIN','Balance']];contacts.forEach(c=>rows.push([c.name,c.type==='party'?'Party':'Vendor',c.phone||'',c.gstin||'',balance(c.id)]));xlsxSave('Khata-'+bkNm(),[{name:'Khata',rows,widths:[28,10,14,18,14]}])}
+function xlRep(){const b=B();const rows=[['Date','Bill no.','Type','Party / vendor','Value before tax','GST','Total','Profit']];b.bills.filter(live).sort((a,c)=>a.date-c.date).forEach(x=>{const t=billTotal(x);rows.push([xd(x.date),x.no,x.type==='sale'?'Sale':'Purchase',cOf(x.cid).name,t.sub,S.book==='gst'?t.tax:'',t.grand,x.type==='sale'?profitOf(x):''])});
+  const ex=[['Date','Head','Note','Amount'],...b.exps.slice().sort((a,c)=>a.date-c.date).map(e=>[xd(e.date),e.head||'',e.note||'',e.amt])];xlsxSave('Report-'+bkNm(),[{name:'Bills',rows,widths:[12,16,10,26,16,12,14,12]},{name:'Expenses',rows:ex,widths:[12,22,28,12]}])}
+
+/* settings: private reports card */
+const _dvgSet=V.settings;V.settings=v=>{const h=_dvgSet(v);const card=`<div class="card"><b>${L('User security','यूज़र सुरक्षा')}</b><div class="small mute">${L('The GST book and private reports open only with your security key (separate from the app PIN).','GST बुक और प्राइवेट रिपोर्ट केवल आपकी सुरक्षा की से खुलती हैं (ऐप PIN से अलग)।')}</div>
+  <div class="btns"><button class="btn ${S.book==='gst'?'ghost':''}" onclick="A.setBook('${S.book==='gst'?'daily':'gst'}')">${S.book==='gst'?L('Close GST book','GST बुक बंद करें'):L('Open GST book','GST बुक खोलें')}</button><button class="btn ghost" onclick="A.dvgReport()">${L('Daily vs GST report','डेली बनाम GST रिपोर्ट')}</button></div>
+  <div class="btns"><button class="btn ghost" onclick="A.rkSet()">${S.rkey?L('Change security key','सुरक्षा की बदलें'):L('Set security key','सुरक्षा की बनाएँ')}</button>${S.rkey?`<button class="btn ghost" onclick="A.rkForgot()">${L('Forgot key?','की भूल गए?')}</button>`:''}</div></div>`;
+  const i=h.indexOf('<div class="card"><b>App lock</b>');return i<0?h+card:h.slice(0,i)+card+h.slice(i)};
+Object.assign(A,{dvgTog:()=>{const d=S.draft;if(!d)return;d.toGst=!d.toGst;const y=$('#main').scrollTop;render();$('#main').scrollTop=y},
+  dvgOpen:(bk,id)=>{const go_=()=>{if(S.book!==bk){S.book=bk}S.stack.push(S.view);S.view={n:'bill',id};render(true)};if(bk==='gst'&&S.book!=='gst'&&!window.__gstGate(go_))return;go_()},
+  dvgAdd:id=>{const x=S.books.daily.bills.find(b=>b.id===id);if(!x||x.toGst)return;const gx=dvgDupInGst(x);
+    const go_=()=>{const g=copyToGst(x);render();toast(L(`Added to GST book as ${g.no}`,`GST बुक में ${g.no} के रूप में जुड़ा`))};
+    gx?ask(L('Already in the GST book?','पहले से GST बुक में?'),L(`The GST book already has ${gx.no} for ${cOf(gx.cid).name} with the same items or amount. Add again?`,`GST बुक में ${gx.no} पहले से है। फिर भी जोड़ें?`),L('Add again','फिर भी जोड़ें'),go_):go_()},
+  dvgReport:dvgOpenReport,dvgXlsx,rkSet:()=>{RK_NEXT=null;rkSheet('set')},rkGo,rkForgot,
+  rkReset:()=>{const e=$('#rke');if(($('#rkp')||{}).value!==S.pin){e.textContent=L('Wrong PIN.','गलत PIN।');e.style.display='block';return}S.rkey=null;saveLocal();rkSheet('set')},
+  xlStock,xlExp,xlKhata,xlRep});
+window.__DVG={copyToGst,makeXlsx,dvgData};
+
+
+/* restore one of the copies kept on this phone (daily copies, copies made before each update, safety copies) */
+async function phoneCopies(){const out=[];const add=async(k,label)=>{try{const d=await IDB.get(k);if(d&&d.app==='wholesale-khata')out.push({k,label,at:d.savedAt||0,bills:((d.books&&d.books.daily&&d.books.daily.bills)||[]).length})}catch(e){}};
+  for(const k of ((await IDB.get('auto_keys'))||[]).slice().reverse())await add(k,L('Daily copy','रोज़ की कॉपी'));
+  for(const k of ((await IDB.get('update_keys'))||[]).slice().reverse())await add(k,L('Before app update','ऐप अपडेट से पहले'));
+  for(const k of ['before_restore'])await add(k,L('Before last restore / start fresh','पिछले रिस्टोर से पहले'));return out}
+async function copiesSheet(){const cs=await phoneCopies();
+  sheet(`<h2>${L('Restore a copy','कॉपी रिस्टोर करें')}</h2><p class="small mute">${L('The app keeps copies on this phone: one per day (last 7), one before each app update, and one before any restore. Your current data is saved first.','ऐप इस फ़ोन पर कॉपी रखता है: रोज़ एक (पिछले 7), हर अपडेट से पहले एक, और हर रिस्टोर से पहले एक।')}</p>
+  ${cs.length?cs.map(c=>`<div class="li"><div class="sp"><div class="t">${esc(c.label)}</div><div class="s">${c.at?fdy(c.at)+', '+ft(c.at):''} · ${c.bills} ${L('Daily bills','डेली बिल')}</div></div><button class="btn ghost" style="width:auto;padding:0 14px" onclick="A.copyRestore('${c.k}')">${L('Restore','रिस्टोर')}</button></div>`).join(''):`<div class="small mute">${L('No copies yet.','अभी कोई कॉपी नहीं।')}</div>`}`)}
 const _cpSet=V.settings;V.settings=v=>{const h=_cpSet(v);const btn=`<button class="btn ghost" style="margin-top:8px" onclick="A.copies()">${L('Restore a copy kept on this phone','फ़ोन पर रखी कॉपी रिस्टोर करें')}</button>`;const i=h.indexOf('<div class="card"><b>Data on this phone</b>');if(i<0)return h;const j=h.indexOf('</div>',h.indexOf('<div class="btns">',i));return j<0?h:h.slice(0,j+6)+btn+h.slice(j+6)};
 window.__SAFE={IDB,phoneCopy};
 Object.assign(A,{copies:copiesSheet,copyRestore:k=>ask(L('Restore this copy?','यह कॉपी रिस्टोर करें?'),L('It replaces the data on this phone now. The current data is saved first as a copy.','यह अभी के डेटा की जगह लेगी। मौजूदा डेटा पहले कॉपी के रूप में सेव होगा।'),L('Restore','रिस्टोर'),async()=>{try{const d=await IDB.get(k);if(!d)throw new Error('missing');if(!LOAD_FAIL)await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());closeSheet();render(true);toast(L('Copy restored','कॉपी रिस्टोर हुई'))}catch(e){toast(L('Could not restore: ','रिस्टोर नहीं हुआ: ')+errMsg(e))}},true)});
 
+/* ---------- look: liquid glass (default) or classic; product pictures ---------- */
+let LOOK='glass';try{LOOK=localStorage.getItem('wk_look')||'glass'}catch(e){}
+function applyLook(){const g=LOOK!=='classic';document.documentElement.classList.toggle('glass',g);if(g&&!document.querySelector('.glassbg')){const d=document.createElement('div');d.className='glassbg';d.innerHTML='<i></i><i></i><i></i><i></i>';($('#app')||document.body).prepend(d)}}
+applyLook();
+const _lookSet=V.settings;V.settings=v=>{const h=_lookSet(v);const card=`<div class="card"><b>${L('Look','दिखावट')}</b><div class="small mute" style="margin-bottom:8px">${L('Glass is modern and see-through. Classic is plain and a little faster on old phones.','ग्लास आधुनिक और पारदर्शी है। क्लासिक सादा है और पुराने फ़ोन पर थोड़ा तेज़।')}</div><div class="seg" style="margin:0">${[['glass',L('Glass','ग्लास')],['classic',L('Classic','क्लासिक')]].map(([k,l])=>`<button class="${LOOK===k?'on':''}" onclick="A.setLook('${k}')">${l}</button>`).join('')}</div></div>`;
+  const i=h.indexOf('<div class="card"><b>User security</b>');return i<0?card+h:h.slice(0,i)+card+h.slice(i)};
+
+/* original drawings by product type, used until a real photo is added */
+const PSHAPE={detergent:'box',biscuit:'pack',salt:'pack',tea:'pack',atta:'pack',flour:'pack',rice:'pack',sugar:'pack',namkeen:'pack',chips:'pack',masala:'pack',shampoo:'bottle',oil:'bottle',cleaner:'bottle',lotion:'bottle',handwash:'bottle',juice:'bottle',toothpaste:'tube',cream:'tube',soap:'bar',dishwash:'bar',chocolate:'bar'};
+const PCOL={box:['#4f8df7','#1d4ed8'],pack:['#f6a93b','#c2410c'],bottle:['#e86aa6','#9d174d'],tube:['#f05252','#991b1b'],bar:['#34c38f','#047857']};
+const pKind=p=>{const s=(p.cat+' '+p.name).toLowerCase();for(const k in PSHAPE)if(s.includes(k))return PSHAPE[k];return 'box'};
+function pHue(p){let h=0;for(const c of p.name)h=(h*31+c.charCodeAt(0))%360;return h}
+function pIll(p){const k=pKind(p);let [c1,c2]=PCOL[k];const cat=(p.cat||'').toLowerCase();
+  if(cat.includes('salt')){c1='#94a3b8';c2='#334155'}else if(cat.includes('dish')){c1='#a3e635';c2='#4d7c0f'}else if(cat.includes('clean')){c1='#a78bfa';c2='#5b21b6'}else if(cat.includes('biscuit')){c1='#fbbf24';c2='#b45309'}
+  const id='g'+p.id.replace(/\W/g,'');const L1=esc((p.name.split(' ')[0]||'').slice(0,7));
+  const body={box:`<path d="M19 18h26l3 6v28a3 3 0 0 1-3 3H19a3 3 0 0 1-3-3V24z" fill="url(#${id}a)"/><path d="M16 24h32" stroke="rgba(255,255,255,.55)" stroke-width="1.2"/><rect x="20" y="32" width="24" height="10" rx="3" fill="rgba(255,255,255,.9)"/>`,
+    pack:`<path d="M18 14l2.6 3 2.6-3 2.6 3 2.6-3 2.6 3 2.6-3 2.6 3 2.6-3 2.6 3 2.6-3V50a5 5 0 0 1-5 5H23a5 5 0 0 1-5-5z" fill="url(#${id}a)"/><rect x="21" y="30" width="22" height="11" rx="3" fill="rgba(255,255,255,.9)"/>`,
+    bottle:`<rect x="27" y="9" width="10" height="6" rx="2" fill="${c2}"/><path d="M28 15h8v5c6 2 9 6 9 11v19a5 5 0 0 1-5 5H24a5 5 0 0 1-5-5V31c0-5 3-9 9-11z" fill="url(#${id}a)"/><rect x="22" y="33" width="20" height="11" rx="3" fill="rgba(255,255,255,.9)"/>`,
+    tube:`<rect x="27" y="48" width="10" height="7" rx="2" fill="${c2}"/><path d="M17 12h30l-6 36H23z" fill="url(#${id}a)"/><path d="M17 12h30v3H17z" fill="${c2}"/><rect x="22" y="24" width="20" height="10" rx="3" fill="rgba(255,255,255,.9)"/>`,
+    bar:`<path d="M12 30c0-4 3-7 7-7h26c4 0 7 3 7 7v10c0 4-3 7-7 7H19c-4 0-7-3-7-7z" fill="url(#${id}a)"/><rect x="18" y="30" width="28" height="10" rx="3" fill="rgba(255,255,255,.9)"/>`}[k];
+  const ty={box:40,pack:38.5,bottle:41,tube:31.5,bar:37.5}[k];
+  return `<svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="${id}a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient><linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+    <ellipse cx="32" cy="57" rx="17" ry="2.6" fill="rgba(0,0,0,.14)"/>${body}<text x="32" y="${ty}" text-anchor="middle" font-size="6.2" font-weight="700" font-family="Hind,sans-serif" fill="${c2}">${L1}</text></svg>`}
+const pThumb=(p,cls)=>p?`<div class="pimg ${cls||''}">${p.img?`<img src="${esc(p.img)}" alt="" loading="lazy" onerror="this.remove()">`:pIll(p)}</div>`:'';
+
+/* photos: own photo from camera/gallery, or a free photo from Open Food Facts / Open Products Facts */
+function shrinkImg(src,max){return new Promise((ok,no)=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{try{const s=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.82))}catch(e){no(e)}};im.onerror=no;im.src=src})}
+function pPhoto(pid){const p=products.find(x=>x.id===pid);if(!p)return;const f=document.createElement('input');f.type='file';f.accept='image/*';
+  f.onchange=async()=>{const file=f.files&&f.files[0];if(!file)return;try{const url=URL.createObjectURL(file);p.img=await shrinkImg(url,360);URL.revokeObjectURL(url);p.imgBy='';saveLocal();render();toast(L('Photo saved','फ़ोटो सेव हुई'))}catch(e){toast(L('Could not use this picture','यह फ़ोटो नहीं लग सकी'))}};f.click()}
+let PFX={pid:null,q:'',res:null,busy:false,err:''};
+const OFF=['https://world.openfoodfacts.org','https://world.openproductsfacts.org','https://world.openbeautyfacts.org'];
+async function pfSearch(){PFX.busy=true;PFX.err='';PFX.res=null;drawPF();const q=encodeURIComponent(PFX.q.trim());
+  const one=async base=>{try{const r=await fetch(`${base}/cgi/search.pl?search_terms=${q}&search_simple=1&action=process&json=1&page_size=12&fields=product_name,brands,image_front_small_url,image_front_url,code`);const j=await r.json();return (j.products||[]).filter(x=>x.image_front_small_url).map(x=>({n:[x.brands,x.product_name].filter(Boolean).join(' · '),s:x.image_front_small_url,b:x.image_front_url||x.image_front_small_url,src:base.includes('beauty')?'Open Beauty Facts':base.includes('products')?'Open Products Facts':'Open Food Facts'}))}catch(e){return null}};
+  const all=await Promise.all(OFF.map(one));PFX.busy=false;if(all.every(x=>x===null)){PFX.err=L('No internet, or the photo library is not reachable now.','इंटरनेट नहीं है या फ़ोटो लाइब्रेरी अभी नहीं खुल रही।');PFX.res=[]}else PFX.res=all.filter(Boolean).flat().slice(0,24);drawPF()}
+function drawPF(){const p=products.find(x=>x.id===PFX.pid);if(!p)return;
+  sheet(`<h2>${L('Find a photo','फ़ोटो खोजें')}</h2><div class="small mute" style="margin:-4px 0 10px">${L('Free photos shared by the public on Open Food Facts and Open Products Facts. Pick the one that matches your product.','Open Food Facts पर लोगों द्वारा साझा की गई मुफ़्त फ़ोटो। अपने सामान से मिलती फ़ोटो चुनें।')}</div>
+  <div class="search"><input id="pfq" value="${esc(PFX.q)}" onkeydown="if(event.key==='Enter'){A.pfGo(this.value)}" autocomplete="off"></div><button class="btn" style="margin-bottom:12px" onclick="A.pfGo(document.getElementById('pfq').value)">${L('Search','खोजें')}</button>
+  ${PFX.busy?`<div class="mute small">${L('Searching…','खोज रहे हैं…')}</div>`:PFX.err?`<div class="warnbox">${esc(PFX.err)}</div>`:PFX.res?(PFX.res.length?`<div class="pfgrid">${PFX.res.map((r,i)=>`<button class="pfit" onclick="A.pfUse(${i})"><img src="${esc(r.s)}" alt="" loading="lazy"><span>${esc(r.n||'')}</span></button>`).join('')}</div>`:`<div class="mute small">${L('No photos found. Try a shorter name, e.g. the brand.','कोई फ़ोटो नहीं मिली। छोटा नाम लिखें, जैसे ब्रांड।')}</div>`):''}
+  <div class="small mute" style="margin-top:12px">${L('Photos: Open Food Facts contributors, licence CC BY-SA. The product name you search is sent to that website.','फ़ोटो: Open Food Facts योगदानकर्ता, लाइसेंस CC BY-SA। खोजा गया नाम उस वेबसाइट पर जाता है।')}</div>`)}
+async function pfUse(i){const r=PFX.res&&PFX.res[i];const p=products.find(x=>x.id===PFX.pid);if(!r||!p)return;toast(L('Saving photo…','फ़ोटो सेव हो रही है…'));
+  try{p.img=await shrinkImg(r.b,360)}catch(e){p.img=r.s}p.imgBy=r.src+' · CC BY-SA';saveLocal();closeSheet();render();toast(L('Photo added','फ़ोटो जुड़ गई'))}
+/* product page: big picture with photo buttons */
+const _pV=V.product;V.product=v=>{const h=_pV(v);const p=products.find(x=>x.id===v.pid);if(!p)return h;
+  const top=`<div class="phero">${pThumb(p,'big')}<div class="pact"><button class="btn ghost sm" onclick="A.pPhoto('${p.id}')">${p.img?L('Change photo','फ़ोटो बदलें'):L('Add photo','फ़ोटो जोड़ें')}</button><button class="btn ghost sm" onclick="A.pFind('${p.id}')">${L('Find photo online','ऑनलाइन फ़ोटो खोजें')}</button>${p.img?`<button class="lnk" style="padding:6px 0" onclick="A.pNoPhoto('${p.id}')">${L('Remove photo','फ़ोटो हटाएँ')}</button>`:''}</div>${p.img&&p.imgBy?`<div class="pby">${L('Photo','फ़ोटो')}: ${esc(p.imgBy)}</div>`:''}</div>`;
+  const i=h.indexOf('<h2>');return i<0?top+h:h.slice(0,i)+top+h.slice(i)};
+Object.assign(A,{setLook:k=>{LOOK=k;try{localStorage.setItem('wk_look',k)}catch(e){}applyLook();render()},pPhoto,pFind:pid=>{const p=products.find(x=>x.id===pid);PFX={pid,q:p?p.name:'',res:null,busy:false,err:''};drawPF();if(PFX.q)pfSearch()},pfGo:q=>{PFX.q=q;pfSearch()},pfUse,
+  pNoPhoto:pid=>{const p=products.find(x=>x.id===pid);if(!p)return;delete p.img;delete p.imgBy;saveLocal();render()}});
 /* ---------- boot ---------- */
 try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
 (async()=>{let d=null,readErr=false,ok=false,recovered='';
