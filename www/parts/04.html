@@ -1,3 +1,4 @@
+  backup:()=>{const p=$('#bkp');p.style.display='block';const i=p.querySelector('i');let w=0;const tm=setInterval(()=>{w+=20;i.style.width=w+'%';if(w>=100){clearInterval(tm);S.lastBackup=Date.now();render();toast('Backed up to Google Drive (simulated in preview)')}},250)},
   changePin:()=>sheet(`<h2>Change PIN</h2><label class="f"><span>New 4-digit PIN</span><input class="inp" id="np" inputmode="numeric" maxlength="4" type="password"></label><button class="btn" onclick="A.savePin()">${T('save')}</button>`),
   savePin:()=>{const v=$('#np').value;if(!/^\d{4}$/.test(v)){toast('PIN must be 4 digits');return}S.pin=v;closeSheet();toast('PIN changed')},
   saveShop:()=>{S.shop.name=$('#sh_n').value;S.shop.addr=$('#sh_a').value;S.shop.phone=$('#sh_p').value;S.shop.gstin=$('#sh_g').value;render();toast('Shop details saved')},
@@ -186,14 +187,15 @@ function snapshot(){const o={v:1,app:'wholesale-khata',savedAt:Date.now()};DATA_
 function restoreData(d){if(!d||d.app!=='wholesale-khata')throw new Error('Not a backup of this app');
   DATA_KEYS.forEach(k=>{if(d[k]!==undefined)S[k]=d[k]});
   products.splice(0,products.length,...d.products);Object.keys(VAR).forEach(k=>delete VAR[k]);products.forEach(p=>p.v.forEach(v=>VAR[v.id]=v));
-  contacts.splice(0,contacts.length,...d.contacts);S.books.daily.cns=S.books.daily.cns||[];S.books.gst.cns=S.books.gst.cns||[];
+  contacts.splice(0,contacts.length,...d.contacts);S.books=S.books||{};['daily','gst'].forEach(k=>{const b=S.books[k]=S.books[k]||{};['bills','pays','exps','cleared','cns'].forEach(f=>{if(!Array.isArray(b[f]))b[f]=[]});['open','cOpen'].forEach(f=>{if(!b[f]||typeof b[f]!=='object')b[f]={}})});if(!Array.isArray(S.staff))S.staff=[];LOAD_FAIL=false;
   S.cloud=Object.assign({drive:true,server:true,driveAt:0,serverAt:0,driveOk:false,serverOk:false},S.cloud||{});S.view={n:'home'};S.stack=[];S.tab='home'}
 /* local: IndexedDB, falls back to localStorage */
 const IDB={db:null,open(){return new Promise((res,rej)=>{try{const r=indexedDB.open('wholesale-khata',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>{this.db=r.result;res(this.db)};r.onerror=()=>rej(r.error)}catch(e){rej(e)}})},
   async get(k){try{const db=this.db||await this.open();return await new Promise((res,rej)=>{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}catch(e){try{const s=localStorage.getItem('wk_'+k);return s?JSON.parse(s):undefined}catch(e2){return undefined}}},
   async set(k,v){try{const db=this.db||await this.open();await new Promise((res,rej)=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)});return true}catch(e){try{localStorage.setItem('wk_'+k,JSON.stringify(v));return true}catch(e2){return false}}}};
 let saveT=null,booted=false;
-function saveLocal(){if(!booted)return;clearTimeout(saveT);saveT=setTimeout(async()=>{const s=snapshot();const ok=await IDB.set('data',s);if(ok){S.localAt=Date.now();S.localSize=JSON.stringify(s).length;const e=$('#locst');if(e)e.textContent=localLine()}},500)}
+let LOAD_FAIL=false;
+function saveLocal(){if(!booted||LOAD_FAIL)return;clearTimeout(saveT);saveT=setTimeout(async()=>{const s=snapshot();const ok=await IDB.set('data',s);if(ok){S.localAt=Date.now();S.localSize=JSON.stringify(s).length;const e=$('#locst');if(e)e.textContent=localLine()}},500)}
 window.__afterRender=saveLocal;
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&booted)IDB.set('data',snapshot())});
 const kb=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
@@ -252,7 +254,7 @@ Object.assign(A,{
   restoreMenu:()=>{RS={src:MCP&&S.cloud.drive?'drive':'server',list:[],loading:false,err:''};loadRestoreList()},
   rsSrc:s=>{RS.src=s;loadRestoreList()},
   rsPick:k=>{const f=RS.list[k];ask('Restore this backup?',`Data from ${f.at?fdy(f.at)+', '+ft(f.at):esc(f.title)} will replace what is on this phone now.`,'Restore',async()=>{try{toast('Restoring…');const d=RS.src==='drive'?await readDrive(f.id):await readServer(f);await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());render(true);toast('Backup restored')}catch(e){toast('Restore failed: '+errMsg(e))}},true)},
-  resetSample:()=>ask('Load sample data again?','Everything on this phone is replaced with the sample shop data.','Load sample',async()=>{await IDB.set('before_restore',snapshot());S.books={daily:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[]},gst:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[]}};products.splice(0,products.length,...JSON.parse(JSON.stringify(PR_BASE)));Object.keys(VAR).forEach(k=>delete VAR[k]);products.forEach(p=>p.v.forEach(v=>VAR[v.id]=v));contacts.splice(0,contacts.length,...JSON.parse(JSON.stringify(CT_BASE)));seed=7;gen();S.view={n:'home'};S.stack=[];S.tab='home';render(true);toast('Sample data loaded')},true),
+  resetSample:()=>ask('Load sample data again?','Everything on this phone is replaced with the sample shop data.','Load sample',async()=>{LOAD_FAIL=false;await IDB.set('before_restore',snapshot());S.books={daily:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[]},gst:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[]}};products.splice(0,products.length,...JSON.parse(JSON.stringify(PR_BASE)));Object.keys(VAR).forEach(k=>delete VAR[k]);products.forEach(p=>p.v.forEach(v=>VAR[v.id]=v));contacts.splice(0,contacts.length,...JSON.parse(JSON.stringify(CT_BASE)));seed=7;gen();S.view={n:'home'};S.stack=[];S.tab='home';render(true);toast('Sample data loaded')},true),
   startFresh:()=>ask('Start fresh?','All bills, payments, expenses, parties, vendors and staff are removed. Your product list stays, with zero stock. A copy of the current data is kept on the phone first.','Start fresh',async()=>{await IDB.set('before_restore',snapshot());S.books={daily:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[],cns:[]},gst:{bills:[],pays:[],exps:[],open:{},cOpen:{},cleared:[],cns:[]}};contacts.splice(0,contacts.length);S.staff=[];S.view={n:'home'};S.stack=[];S.tab='home';render(true);toast('Fresh books ready');if(S.pin==='1234')setTimeout(()=>A.changePin(),400)},true)
 });
 /* settings view: put storage card first */
@@ -268,9 +270,3 @@ async function phoneCopy(){try{const k='auto_'+dkey(today0);await IDB.set(k,snap
 function restoreFromText(txt){let d;try{d=JSON.parse(txt)}catch(e){toast('This is not a Wholesale Khata backup file');return}
   if(!d||d.app!=='wholesale-khata'){toast('This is not a Wholesale Khata backup file');return}
   ask('Restore this backup?','Data from '+(d.savedAt?fdy(d.savedAt)+', '+ft(d.savedAt):'this file')+' will replace what is on this phone now. A copy of the current data is kept on the phone first.','Restore',async()=>{try{await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());render(true);toast('Backup restored')}catch(e){toast('Restore failed: '+errMsg(e))}},true)}
-function autoB(){setTimeout(()=>{phoneCopy();if(!S.autoBackup)return;if(Date.now()-(S.lastBackup||0)<20*3600e3)return;const w=[];if(S.cloud.drive&&S.cloud.driveOk&&MCP)w.push('drive');if(S.cloud.server&&S.cloud.serverOk&&DBC)w.push('server');if(w.length)runBackup(w,true)},6000)}
-
-/* ---------- app guide with voice ---------- */
-const GUIDE=[
-{ic:'stock',c:'#7d1d2c',go:"A.tab('home')",
- en:['Welcome to your shop in your pocket','This app replaces the bill book, khata diary, stock register, attendance register and calculator. Every sale, purchase, payment and expense goes in once, and stock, khata and profit update by themselves.','No more searching diaries. Your whole business is on one phone, safe and up to date.'],

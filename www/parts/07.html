@@ -1,3 +1,5 @@
+function acCompNew(email){sheet(`<h2>${L('Give free access','मुफ़्त एक्सेस दें')}</h2><p class="small mute">${L('Full app, no payment. Works for an existing account or for someone who signs up later with this email (after they verify it).','पूरा ऐप, बिना भुगतान। मौजूदा खाते या बाद में इसी ईमेल से जुड़ने वाले के लिए (ईमेल सत्यापन के बाद)।')}</p>
+  <label class="f"><span>${L('Email','ईमेल')}</span><input class="inp" id="cp_e" type="email" value="${esc(email||'')}"></label>
   <div class="seg" id="cp_d">${COMP_D.map(([k,l],i)=>`<button class="${i===1?'on':''}" data-k="${k}" onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));this.classList.add('on')">${l()}</button>`).join('')}</div>
   <label class="f"><span>${L('Note (only you see this)','नोट (केवल आपको दिखेगा)')}</span><input class="inp" id="cp_n" placeholder="${L('e.g. family, staff, demo shop','जैसे परिवार, स्टाफ़, डेमो दुकान')}"></label>
   <div class="warnbox" id="cp_err" style="display:none"></div><button class="btn" onclick="A.acCompSave()">${L('Give access','एक्सेस दें')}</button>`)}
@@ -203,10 +205,28 @@ Object.assign(A,{dvgTog:()=>{const d=S.draft;if(!d)return;d.toGst=!d.toGst;const
   xlStock,xlExp,xlKhata,xlRep});
 window.__DVG={copyToGst,makeXlsx,dvgData};
 
+
+/* restore one of the copies kept on this phone (daily copies, copies made before each update, safety copies) */
+async function phoneCopies(){const out=[];const add=async(k,label)=>{try{const d=await IDB.get(k);if(d&&d.app==='wholesale-khata')out.push({k,label,at:d.savedAt||0,bills:((d.books&&d.books.daily&&d.books.daily.bills)||[]).length})}catch(e){}};
+  for(const k of ((await IDB.get('auto_keys'))||[]).slice().reverse())await add(k,L('Daily copy','रोज़ की कॉपी'));
+  for(const k of ((await IDB.get('update_keys'))||[]).slice().reverse())await add(k,L('Before app update','ऐप अपडेट से पहले'));
+  for(const k of ['before_restore'])await add(k,L('Before last restore / start fresh','पिछले रिस्टोर से पहले'));return out}
+async function copiesSheet(){const cs=await phoneCopies();
+  sheet(`<h2>${L('Restore a copy','कॉपी रिस्टोर करें')}</h2><p class="small mute">${L('The app keeps copies on this phone: one per day (last 7), one before each app update, and one before any restore. Your current data is saved first.','ऐप इस फ़ोन पर कॉपी रखता है: रोज़ एक (पिछले 7), हर अपडेट से पहले एक, और हर रिस्टोर से पहले एक।')}</p>
+  ${cs.length?cs.map(c=>`<div class="li"><div class="sp"><div class="t">${esc(c.label)}</div><div class="s">${c.at?fdy(c.at)+', '+ft(c.at):''} · ${c.bills} ${L('Daily bills','डेली बिल')}</div></div><button class="btn ghost" style="width:auto;padding:0 14px" onclick="A.copyRestore('${c.k}')">${L('Restore','रिस्टोर')}</button></div>`).join(''):`<div class="small mute">${L('No copies yet.','अभी कोई कॉपी नहीं।')}</div>`}`)}
+const _cpSet=V.settings;V.settings=v=>{const h=_cpSet(v);const btn=`<button class="btn ghost" style="margin-top:8px" onclick="A.copies()">${L('Restore a copy kept on this phone','फ़ोन पर रखी कॉपी रिस्टोर करें')}</button>`;const i=h.indexOf('<div class="card"><b>Data on this phone</b>');if(i<0)return h;const j=h.indexOf('</div>',h.indexOf('<div class="btns">',i));return j<0?h:h.slice(0,j+6)+btn+h.slice(j+6)};
+window.__SAFE={IDB,phoneCopy};
+Object.assign(A,{copies:copiesSheet,copyRestore:k=>ask(L('Restore this copy?','यह कॉपी रिस्टोर करें?'),L('It replaces the data on this phone now. The current data is saved first as a copy.','यह अभी के डेटा की जगह लेगी। मौजूदा डेटा पहले कॉपी के रूप में सेव होगा।'),L('Restore','रिस्टोर'),async()=>{try{const d=await IDB.get(k);if(!d)throw new Error('missing');if(!LOAD_FAIL)await IDB.set('before_restore',snapshot());restoreData(d);await IDB.set('data',snapshot());closeSheet();render(true);toast(L('Copy restored','कॉपी रिस्टोर हुई'))}catch(e){toast(L('Could not restore: ','रिस्टोर नहीं हुआ: ')+errMsg(e))}},true)});
+
 /* ---------- boot ---------- */
 try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
-IDB.get('data').then(d=>{let ok=false;if(d){try{restoreData(d);ok=true}catch(e){}}if(!ok)gen();booted=true;render(true);saveLocal();autoB();acBoot()}).catch(()=>{gen();booted=true;render(true);acBoot()});
-}
-</script>
-</body>
-</html>
+(async()=>{let d=null,readErr=false,ok=false,recovered='';
+  try{d=await IDB.get('data')}catch(e){readErr=true}
+  if(d){try{restoreData(d);ok=true}catch(e){
+    /* keep the unreadable copy untouched, then try the newest copy kept on the phone */
+    try{await IDB.set('rescue_'+Date.now(),d)}catch(x){}
+    const keys=[...(((await IDB.get('auto_keys').catch(()=>null))||[]).slice().reverse()),...((await IDB.get('update_keys').catch(()=>null))||[]).slice().reverse()];
+    for(const k of keys){try{const c=await IDB.get(k);if(c){restoreData(c);ok=true;recovered=k;break}}catch(x){}}
+    if(!ok)LOAD_FAIL=true}}
+  else if(readErr)LOAD_FAIL=true;
+  if(!ok)gen();

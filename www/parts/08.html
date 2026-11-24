@@ -1,0 +1,9 @@
+  if(ok){try{const pv=localStorage.getItem('wk_ver');if(pv!==APP_VERSION){const k='before_update_'+(pv||'old');await IDB.set(k,snapshot());const uk=(await IDB.get('update_keys'))||[];if(!uk.includes(k))uk.push(k);while(uk.length>3){await IDB.set(uk.shift(),null)}await IDB.set('update_keys',uk);localStorage.setItem('wk_ver',APP_VERSION)}}catch(e){}}
+  else if(!LOAD_FAIL){try{localStorage.setItem('wk_ver',APP_VERSION)}catch(e){}}
+  booted=true;render(true);saveLocal();autoB();acBoot();
+  if(LOAD_FAIL)setTimeout(()=>ask(L('Saved data could not be opened','सेव डेटा नहीं खुल सका'),L('Your saved data was NOT changed. Close the app fully and open it again. If this keeps happening, use Settings → Restore a copy, or Restore from file.','आपका सेव डेटा नहीं बदला गया। ऐप पूरी तरह बंद करके फिर खोलें। बार-बार हो तो सेटिंग → कॉपी रिस्टोर करें।'),'OK',()=>{}),1200);
+  else if(recovered)setTimeout(()=>toast(L('Data restored from the copy kept on this phone','फ़ोन पर रखी कॉपी से डेटा वापस आया')),1500)})();
+}
+</script>
+</body>
+</html>

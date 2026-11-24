@@ -126,3 +126,10 @@ User-initiated sharing (WhatsApp messages, backup file through the share menu, p
 1. Push to `main` → GitHub Actions builds the APK, AAB and website.
 2. Install the APK on a real phone and try: PIN, fingerprint, a sale bill, Print/PDF, Share on WhatsApp, voice entry (allow microphone), Save backup file and Restore.
 3. Upload the AAB to the testing track, then production.
+
+## Updates must keep every user's data
+- The app's data (books, settings) lives inside the app on the phone. Android keeps it on update **only if the new APK is signed with the same key** as the installed one and has the same app ID (`com.wholesalekhata.app`).
+- Test APKs from GitHub are always signed with the fixed test key in `android-keys/debug.keystore`, so each new test APK installs over the previous one.
+- Play Store versions are signed by Google (Play App Signing) with your upload key. **Never lose the upload key** (keep `upload.jks` and its passwords in two safe places). Do not change the app ID, the WebView address or the data format without a migration.
+- People moving from a test APK to the Play Store version must make a backup file first (Settings → Save backup file), uninstall, install from Play and restore — the signing keys differ. This is a one-time step.
+- Safety nets in the app: a copy before every update (last 3), a daily copy (last 7), a copy before every restore or start fresh — all restorable from Settings → Restore a copy kept on this phone. If saved data ever can't be read, the app does not overwrite it and recovers from the newest copy.

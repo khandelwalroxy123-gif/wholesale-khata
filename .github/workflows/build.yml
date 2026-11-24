@@ -33,6 +33,8 @@ jobs:
       - name: Assemble app file from parts
         run: |
           cat www/parts/*.html > www/index.html
+          sed -i "s/const APP_VERSION='[^']*'/const APP_VERSION='${VERSION_NAME}'/" www/index.html
+          grep -o "const APP_VERSION='[^']*'" www/index.html
           ls -l www/index.html
 
       - name: Install Capacitor and plugins
@@ -128,6 +130,8 @@ jobs:
             cp app/build/outputs/bundle/release/app-release.aab ../WholesaleKhata-PlayStore.aab
             cp app/build/outputs/apk/release/app-release.apk ../WholesaleKhata.apk
           else
+            # same test signing key on every build, so each new APK installs over the old one and keeps the data
+            mkdir -p ~/.android && cp ../android-keys/debug.keystore ~/.android/debug.keystore
             ./gradlew assembleDebug --no-daemon
             cp app/build/outputs/apk/debug/app-debug.apk ../WholesaleKhata.apk
             echo "::warning::No signing key in repository secrets, so no Play Store AAB was made. See PLAY_STORE.md."

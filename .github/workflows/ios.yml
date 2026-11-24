@@ -34,7 +34,9 @@ jobs:
           sudo xcode-select -s "$X/Contents/Developer"; xcodebuild -version
 
       - name: Assemble app file from parts
-        run: cat www/parts/*.html > www/index.html
+        run: |
+          cat www/parts/*.html > www/index.html
+          sed -i '' "s/const APP_VERSION='[^']*'/const APP_VERSION='${VERSION_NAME}'/" www/index.html
 
       - name: Install Capacitor and plugins
         run: npm ci
