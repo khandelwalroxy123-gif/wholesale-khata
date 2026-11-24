@@ -1,3 +1,10 @@
+  <div class="seg" id="cp_d">${COMP_D.map(([k,l],i)=>`<button class="${i===1?'on':''}" data-k="${k}" onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));this.classList.add('on')">${l()}</button>`).join('')}</div>
+  <label class="f"><span>${L('Note (only you see this)','नोट (केवल आपको दिखेगा)')}</span><input class="inp" id="cp_n" placeholder="${L('e.g. family, staff, demo shop','जैसे परिवार, स्टाफ़, डेमो दुकान')}"></label>
+  <div class="warnbox" id="cp_err" style="display:none"></div><button class="btn" onclick="A.acCompSave()">${L('Give access','एक्सेस दें')}</button>`)}
+async function acCompSave(){const e=$('#cp_e').value.trim().toLowerCase(),k=($('#cp_d .on')||{}).dataset.k,n=$('#cp_n').value.trim().slice(0,200);const er=$('#cp_err');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){er.textContent=L('Enter a valid email.','सही ईमेल डालें।');er.style.display='block';return}
+  const yrs=COMP_D.find(x=>x[0]===k)[2];let until=null;if(yrs){const d=new Date();if(yrs<1)d.setMonth(d.getMonth()+1);else d.setFullYear(d.getFullYear()+yrs);until=ACC.fb.firestore.Timestamp.fromMillis(d.getTime())}
+  try{const doc={email:e,until,note:n,revoked:false,by:ACC.user.email,createdAt:ACC.fb.firestore.FieldValue.serverTimestamp()};await ACC.db.doc('comps/'+e).set(doc);
     const u=(ACC.admin.users||[]).find(x=>String(x.email||'').toLowerCase()===e);if(u){const pu=until||ACC.fb.firestore.Timestamp.fromMillis(4102444800000);await ACC.db.doc('users/'+u.id).update({plan:'comp',planUntil:pu,note:n||u.note||''});Object.assign(u,{plan:'comp',planUntil:pu})}
     const c=ACC.admin.comps||(ACC.admin.comps=[]);const i=c.findIndex(x=>x.id===e);const row={id:e,...doc,until:until};i<0?c.push(row):c[i]=row;closeSheet();render();toast(L('Free access given','मुफ़्त एक्सेस दिया गया'))}
   catch(x){er.textContent=acErr(x);er.style.display='block'}}
@@ -40,6 +47,156 @@ Object.assign(A,{acCompNew,acCompSave,acCompDel:id=>ask(L('Remove free access?',
     <div class="warnbox" id="acd_err" style="display:none"></div><div class="btns"><button class="btn ghost" onclick="A.closeSheet()">${T('cancel')}</button><button class="btn danger" id="acd_go" onclick="A.acDelete()">${L('Delete my account','मेरा खाता हटाएँ')}</button></div>`),
   acDelete});
 window.__AC={acLoadDoc,acPlayApply,acNotify,acState};
+
+/* ---------- Daily → GST book link, double-entry guard, Daily vs GST report, Excel / PDF ---------- */
+const dvgDay=t=>dkey(t);
+const dvgSig=items=>items.map(i=>i.vid+':'+i.unit+':'+i.qty).sort().join('|');
+function dvgSub(x){return x.items.reduce((s,i)=>s+i.qty*i.rate,0)}
+/* make the GST-book copy of a Daily-book bill (stays a separate record) */
+function copyToGst(x,pay){const ob=S.book;let gx;S.book='gst';
+  try{const dailyGrand=billTotal(x,'daily').grand;
+    gx={id:uid(),type:x.type,no:nextNo(x.type),date:x.date,cid:x.cid,items:JSON.parse(JSON.stringify(x.items)),transport:x.transport||0,status:'issued',del:x.del||'pending',delBy:x.delBy||'',vinv:x.vinv||'',fromDaily:{id:x.id,no:x.no}};
+    S.books.gst.bills.push(gx);const gGrand=billTotal(gx,'gst').grand;
+    const src=pay?(pay.paid>0?[{amt:pay.paid,mode:pay.mode}]:[]):S.books.daily.pays.filter(p=>p.note==='Against '+x.no).map(p=>({amt:p.amt,mode:p.mode}));
+    const paidSum=src.reduce((a,p)=>a+p.amt,0);
+    src.forEach(p=>{const amt=paidSum>=dailyGrand-0.5?Math.round(p.amt*gGrand/Math.max(1,paidSum)):p.amt;
+      S.books.gst.pays.push({id:uid(),cid:x.cid,dir:x.type==='sale'?'in':'out',amt,mode:p.mode,date:x.date,note:'Against '+gx.no+' (from Daily '+x.no+')',chq:p.mode==='cheque'?{no:'',bank:'',due:today0,st:'pending'}:null})});
+    x.toGst={id:gx.id,no:gx.no}}
+  finally{S.book=ob}saveLocal();return gx}
+/* same party, within 3 days, same items or same amount */
+function dvgLike(a,b){return a.cid===b.cid&&a.type===b.type&&Math.abs((a.date||Date.now())-(b.date||Date.now()))<3*DAY&&(dvgSig(a.items)===dvgSig(b.items)||Math.abs(dvgSub(a)-dvgSub(b))<1)}
+const dvgDupFromDaily=d=>S.books.daily.bills.find(x=>x.toGst&&live(x)&&dvgLike(x,{...d,date:Date.now()}));
+const dvgDupInGst=d=>S.books.gst.bills.find(x=>!x.fromDaily&&live(x)&&dvgLike(x,{...d,date:Date.now()}));
+
+/* bill form: switch in the Daily book; reminders when editing a linked bill */
+const _dvgForm=V.billform;V.billform=v=>{let h=_dvgForm(v);const d=S.draft;if(!d)return h;const i=h.indexOf('<div class="card"><table class="t">');if(i<0)return h;let card='';
+  if(S.book==='daily'&&!d.editId){const on=!!d.toGst;const tt=billTotal(d,'gst');const c=d.cid?cOf(d.cid):null;
+    card=`<div class="card" id="togst" style="${on?'border-color:var(--in)':''}"><div class="row" style="align-items:center;cursor:pointer" onclick="A.dvgTog()"><div class="sp"><b style="font-size:17px">${L('Add to GST book','GST बुक में भी जोड़ें')}</b><div class="small mute">${d.type==='sale'?L('Same bill is also saved as a GST bill, kept separate','यही बिल GST बिल के रूप में भी अलग से सेव होगा'):L('For a purchase with a GST invoice from the vendor','विक्रेता के GST बिल वाली खरीद के लिए')}</div></div><span class="tgl ${on?'on':''}" role="switch" aria-checked="${on}"><i></i></span></div>
+    ${on?`<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px">${d.type==='sale'?`<div class="small mute">${L('Party GSTIN','पार्टी GSTIN')}</div><div style="font-weight:600;margin-bottom:8px">${c&&c.gstin?esc(c.gstin):L('Not added · bill goes as B2C','नहीं जोड़ा · बिल B2C के रूप में जाएगा')}</div>`:`<label class="f"><span>${L('Vendor invoice no.','विक्रेता बिल नंबर')}</span><input class="inp" value="${esc(d.vinv||'')}" oninput="S_.draft.vinv=this.value" placeholder="e.g. HUL/2026/4481"></label>`}
+    <table class="t"><tbody><tr><td>${L('Taxable value','कर योग्य मूल्य')}</td><td class="r num">${inr2(tt.sub)}</td></tr><tr><td>${tt.igst?'IGST':'CGST + SGST'}</td><td class="r num">${inr2(tt.tax)}</td></tr><tr><td><b>${L('GST bill total','GST बिल कुल')}</b></td><td class="r num"><b>${inr2(tt.grand)}</b></td></tr></tbody></table>
+    <div class="infobox">${L('It goes straight into the GST book as an issued bill with its own number, marked “From Daily book”. Both books stay separate.','यह सीधे GST बुक में अपने नंबर के साथ जारी बिल के रूप में जाएगा, “डेली बुक से” चिह्नित। दोनों बुक अलग रहेंगी।')}</div></div>`:''}</div>`}
+  else if(d.editId){const x=B().bills.find(b=>b.id===d.editId);const ln=x&&(x.toGst||x.fromDaily);
+    if(ln)card=`<div class="infobox" style="margin-bottom:12px">${x.toGst?L(`This bill is also in the GST book as ${x.toGst.no}. Changing it here does not change the GST bill.`,`यह बिल GST बुक में ${x.toGst.no} के रूप में भी है। यहाँ बदलने से GST बिल नहीं बदलेगा।`):L(`This GST bill came from Daily book bill ${x.fromDaily.no}. Changing it here does not change the Daily bill.`,`यह GST बिल डेली बिल ${x.fromDaily.no} से आया है। यहाँ बदलने से डेली बिल नहीं बदलेगा।`)}</div>`}
+  return h.slice(0,i)+card+h.slice(i)};
+const _dvgSave=A.saveBill;A.saveBill=st=>{const d=S.draft;if(!d)return _dvgSave(st);const g=S.book==='gst';
+  if(g&&!d.editId&&!d.dupOk){const dx=dvgDupFromDaily(d);if(dx){ask(L('Already in the GST book?','पहले से GST बुक में?'),L(`This looks like Daily bill ${dx.no} (${cOf(dx.cid).name}, ${fd(dx.date)}), already added to the GST book as ${dx.toGst.no}. Save it again?`,`यह डेली बिल ${dx.no} जैसा है, जो पहले ही GST बुक में ${dx.toGst.no} के रूप में जुड़ चुका है। फिर से सेव करें?`),L('Save again','फिर से सेव करें'),()=>{if(S.draft){S.draft.dupOk=true;A.saveBill(st)}});return}}
+  if(!g&&!d.editId&&d.toGst&&!d.dupOk){const gx=dvgDupInGst(d);if(gx){ask(L('Already in the GST book?','पहले से GST बुक में?'),L(`The GST book already has ${gx.no} for ${cOf(gx.cid).name} with the same items or amount (${fd(gx.date)}). Add this bill to the GST book again?`,`GST बुक में ${cOf(gx.cid).name} का ${gx.no} पहले से है। फिर भी GST बुक में जोड़ें?`),L('Add again','फिर भी जोड़ें'),()=>{if(S.draft){S.draft.dupOk=true;A.saveBill(st)}});return}}
+  const toGst=!g&&!d.editId&&d.toGst,pay={paid:d.paid||0,mode:d.mode};const ed=d.editId?B().bills.find(b=>b.id===d.editId):null;const ln=ed&&(ed.toGst||ed.fromDaily);
+  _dvgSave(st);if(S.draft)return; /* not saved (missing party/items or plan ended) */
+  if(toGst&&S.view.n==='bill'){const x=S.books.daily.bills.find(b=>b.id===S.view.id);if(x&&!x.toGst){const gx=copyToGst(x,pay);render();toast(L(`Saved · also added to GST book as ${gx.no}`,`सेव हुआ · GST बुक में ${gx.no} के रूप में भी जुड़ा`))}}
+  else if(ln)setTimeout(()=>toast(ed.toGst?L(`Daily bill updated. GST bill ${ed.toGst.no} was not changed.`,`डेली बिल बदला। GST बिल ${ed.toGst.no} नहीं बदला।`):L(`GST bill updated. Daily bill ${ed.fromDaily.no} was not changed.`,`GST बिल बदला। डेली बिल ${ed.fromDaily.no} नहीं बदला।`)),1600)};
+/* bill page: show the link both ways */
+const _dvgBill=V.bill;V.bill=v=>{const h=_dvgBill(v);const x=B().bills.find(b=>b.id===v.id);if(!x||!(x.toGst||x.fromDaily))return h;
+  const tag=x.fromDaily?`<div class="linktag" onclick="A.dvgOpen('daily','${x.fromDaily.id}')">${L('From Daily book','डेली बुक से')} · <b>${esc(x.fromDaily.no)}</b> ›</div>`:`<div class="linktag gst" onclick="A.dvgOpen('gst','${x.toGst.id}')">${L('In GST book','GST बुक में')} · <b>${esc(x.toGst.no)}</b> ›</div>`;
+  const i=h.indexOf('<div class="noprint">');return i<0?tag+h:h.slice(0,i)+'<div class="noprint">'+tag+'</div>'+h.slice(i)};
+const _dvgCancel=A.cancelBill;if(_dvgCancel)A.cancelBill=id=>{const x=B().bills.find(b=>b.id===id);_dvgCancel(id);if(x&&x.fromDaily)setTimeout(()=>{if(x.status==='cancelled')toast(L(`Remember: Daily bill ${x.fromDaily.no} is still in the Daily book.`,`ध्यान दें: डेली बिल ${x.fromDaily.no} डेली बुक में अब भी है।`))},800)};
+
+/* ---- files: Excel (.xlsx) and save/share ---- */
+function crc32(u){let t=crc32.t;if(!t){t=crc32.t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}}let x=0xFFFFFFFF;for(let i=0;i<u.length;i++)x=t[(x^u[i])&255]^(x>>>8);return (x^0xFFFFFFFF)>>>0}
+function zipStore(files,type){const en=new TextEncoder(),parts=[],cd=[];let off=0;
+  files.forEach(([name,data])=>{const nb=en.encode(name),db=typeof data==='string'?en.encode(data):data,crc=crc32(db);
+    const l=new DataView(new ArrayBuffer(30));l.setUint32(0,0x04034b50,true);l.setUint16(4,20,true);l.setUint16(6,0x0800,true);l.setUint16(12,0x21,true);l.setUint32(14,crc,true);l.setUint32(18,db.length,true);l.setUint32(22,db.length,true);l.setUint16(26,nb.length,true);parts.push(new Uint8Array(l.buffer),nb,db);
+    const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(14,0x21,true);c.setUint32(16,crc,true);c.setUint32(20,db.length,true);c.setUint32(24,db.length,true);c.setUint16(28,nb.length,true);c.setUint32(42,off,true);cd.push(new Uint8Array(c.buffer),nb);off+=30+nb.length+db.length});
+  const n=cd.reduce((a,b)=>a+b.length,0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,n,true);e.setUint32(16,off,true);
+  return new Blob([...parts,...cd,new Uint8Array(e.buffer)],{type})}
+/* sheets: [{name, rows:[[...]], widths:[...]}]; first row is bold */
+function makeXlsx(sheets){const x=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,'');
+  const col=i=>{let s='';i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};const N='http://schemas.openxmlformats.org/';
+  const sh=s=>`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="${N}spreadsheetml/2006/main"><cols>${(s.widths||s.rows[0].map(()=>16)).map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${s.rows.map((r,ri)=>`<row r="${ri+1}">${r.map((v,ci)=>{const ref=col(ci)+(ri+1),st=ri===0||(s.bold||[]).includes(ri)?' s="1"':'';return typeof v==='number'&&isFinite(v)?`<c r="${ref}"${st}><v>${Math.round(v*100)/100}</v></c>`:v===''||v==null?'':`<c r="${ref}" t="inlineStr"${st}><is><t xml:space="preserve">${x(v)}</t></is></c>`}).join('')}</row>`).join('')}</sheetData></worksheet>`;
+  const files=[['[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${N}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`],
+    ['_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${N}package/2006/relationships"><Relationship Id="rId1" Type="${N}officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${N}spreadsheetml/2006/main" xmlns:r="${N}officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${x(s.name.replace(/[\\/?*[\]:]/g,' ').slice(0,31))}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`],
+    ['xl/_rels/workbook.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${N}package/2006/relationships">${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="${N}officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="${N}officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="${N}spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
+    ...sheets.map((s,i)=>['xl/worksheets/sheet'+(i+1)+'.xml',sh(s)])];
+  return zipStore(files,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+async function saveFile(name,blob,title){
+  if(IS_APP&&NFS&&NSH){const b64=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=no;r.readAsDataURL(blob)});
+    const w=await NFS.writeFile({path:name,data:b64,directory:'CACHE'});await NSH.share({title:title||name,files:[w.uri],dialogTitle:L('Save or send the file','फ़ाइल सेव करें या भेजें')})}
+  else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}}
+const fileDay=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const xd=t=>{const d=new Date(t);return String(d.getDate()).padStart(2,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+d.getFullYear()};
+async function xlsxSave(base,sheets){try{await saveFile(base+'-'+fileDay()+'.xlsx',makeXlsx(sheets),base);toast(L('Excel file ready','Excel फ़ाइल तैयार'))}catch(e){toast(L('Could not make the file: ','फ़ाइल नहीं बनी: ')+errMsg(e))}}
+
+/* ---- report key (separate from the app PIN) ---- */
+async function rkHash(k){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('wk-rk|'+k));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){let h=5381;for(const c of 'wk-rk|'+k)h=((h<<5)+h+c.charCodeAt(0))|0;return 'd'+(h>>>0).toString(16)}}
+let RK_OK=0;
+function rkSheet(mode){const set=mode!=='enter';
+  sheet(`<h2>${set?(S.rkey?L('Change report key','रिपोर्ट की बदलें'):L('Set a report key','रिपोर्ट की बनाएँ')):L('Private report','प्राइवेट रिपोर्ट')}</h2><p class="small mute">${set?L('A separate key (4–6 digits) for private reports. It is different from the app PIN. Keep it safe — it cannot be recovered, only reset by setting a new key after unlocking with the app PIN.','प्राइवेट रिपोर्ट के लिए अलग की (4–6 अंक)। यह ऐप PIN से अलग है।'):L('Enter your report key.','अपनी रिपोर्ट की डालें।')}</p>
+  ${set&&S.rkey?`<label class="f"><span>${L('Current key','मौजूदा की')}</span><input class="inp" id="rk0" type="password" inputmode="numeric" maxlength="6"></label>`:''}
+  <label class="f"><span>${set?L('New key','नई की'):L('Report key','रिपोर्ट की')}</span><input class="inp" id="rk1" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+  ${set?`<label class="f"><span>${L('Type it again','फिर से डालें')}</span><input class="inp" id="rk2" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label>`:''}
+  <div class="warnbox" id="rke" style="display:none"></div><button class="btn" onclick="A.rkGo('${set?'set':'enter'}')">${set?L('Save key','की सेव करें'):L('Open report','रिपोर्ट खोलें')}</button>`);setTimeout(()=>{const e=$('#rk0')||$('#rk1');e&&e.focus()},250)}
+async function rkGo(m){const v=id=>($('#'+id)||{}).value||'';const err=t=>{const e=$('#rke');e.textContent=t;e.style.display='block'};
+  if(m==='enter'){if(await rkHash(v('rk1'))!==S.rkey)return err(L('Wrong key.','गलत की।'));RK_OK=Date.now();closeSheet();go('dvg');return}
+  if(S.rkey&&await rkHash(v('rk0'))!==S.rkey)return err(L('Current key is wrong.','मौजूदा की गलत है।'));
+  if(!/^\d{4,6}$/.test(v('rk1')))return err(L('Use 4 to 6 digits.','4 से 6 अंक डालें।'));if(v('rk1')!==v('rk2'))return err(L('The two keys do not match.','दोनों की मेल नहीं खातीं।'));
+  S.rkey=await rkHash(v('rk1'));saveLocal();RK_OK=Date.now();closeSheet();toast(L('Report key saved','रिपोर्ट की सेव हुई'));go('dvg')}
+function dvgOpenReport(){if(!S.rkey)return rkSheet('set');if(RK_OK&&Date.now()-RK_OK<5*60e3)return go('dvg');rkSheet('enter')}
+/* forgot key: confirm with the app PIN, then set a new one */
+function rkForgot(){sheet(`<h2>${L('Forgot report key','रिपोर्ट की भूल गए')}</h2><p class="small mute">${L('Enter the app PIN to set a new report key.','नई रिपोर्ट की बनाने के लिए ऐप PIN डालें।')}</p><label class="f"><span>${L('App PIN','ऐप PIN')}</span><input class="inp" id="rkp" type="password" inputmode="numeric" maxlength="4"></label><div class="warnbox" id="rke" style="display:none"></div><button class="btn" onclick="A.rkReset()">${L('Continue','आगे')}</button>`)}
+
+/* ---- Daily vs GST report ---- */
+function dvgRange(v){const y=NOW.getFullYear(),m=NOW.getMonth();const p=v.p||'m';
+  if(p==='m')return [new Date(y,m,1).getTime(),new Date(y,m+1,1).getTime(),L('This month','इस महीने')];
+  if(p==='lm')return [new Date(y,m-1,1).getTime(),new Date(y,m,1).getTime(),L('Last month','पिछला महीना')];
+  if(p==='fy'){const fy=m>=3?y:y-1;return [new Date(fy,3,1).getTime(),new Date(fy+1,3,1).getTime(),'FY '+fy+'-'+String((fy+1)%100).padStart(2,'0')]}
+  if(p==='c'){const a=v.a?new Date(v.a).setHours(0,0,0,0):today0-29*DAY,z=v.z?new Date(v.z).setHours(0,0,0,0)+DAY:today0+DAY;return [a,z,fd(a)+' – '+fd(z-DAY)]}
+  return [0,8.64e15,L('All time','अब तक')]}
+function dvgData(v){const [a,z,label]=dvgRange(v);const inR=x=>live(x)&&x.date>=a&&x.date<z;
+  const D=S.books.daily.bills.filter(inR),G=S.books.gst.bills.filter(inR);const sum=(xs,bk,f)=>xs.reduce((s,x)=>s+billTotal(x,bk)[f],0);
+  const r={label,a,z};['sale','purchase'].forEach(t=>{const d=D.filter(x=>x.type===t),g=G.filter(x=>x.type===t);
+    r[t]={dN:d.length,dAmt:sum(d,'daily','grand'),gN:g.length,gTax:sum(g,'gst','sub'),gGst:sum(g,'gst','tax'),gTot:sum(g,'gst','grand'),
+      linkedN:d.filter(x=>x.toGst).length,linkedAmt:sum(d.filter(x=>x.toGst),'daily','grand'),notIn:d.filter(x=>!x.toGst),gOnly:g.filter(x=>!x.fromDaily)};
+    r[t].diff=r[t].dAmt-r[t].gTax});return r}
+V.dvg=v=>{v.title=L('Daily vs GST','डेली बनाम GST');if(!RK_OK||Date.now()-RK_OK>30*60e3){setTimeout(()=>{back();dvgOpenReport()},0);return ''}
+  const r=dvgData(v);const p=v.p||'m';const pct=(a,b)=>b?Math.round(a/b*100)+'%':'–';
+  const blk=(t,nm)=>{const o=r[t];return `<div class="card"><b>${nm}</b><table class="t" style="margin-top:6px"><thead><tr><th></th><th class="r">${L('Daily book','डेली बुक')}</th><th class="r">${L('GST book','GST बुक')}</th></tr></thead><tbody>
+    <tr><td>${L('Bills','बिल')}</td><td class="r num">${o.dN}</td><td class="r num">${o.gN}</td></tr>
+    <tr><td>${L('Value (before tax)','मूल्य (टैक्स से पहले)')}</td><td class="r num">${inr(o.dAmt)}</td><td class="r num">${inr(o.gTax)}</td></tr>
+    <tr><td>GST</td><td class="r num mute">–</td><td class="r num">${inr(o.gGst)}</td></tr>
+    <tr><td>${L('Total with GST','GST सहित कुल')}</td><td class="r num mute">–</td><td class="r num">${inr(o.gTot)}</td></tr>
+    <tr><td><b>${L('Difference (Daily − GST value)','अंतर (डेली − GST मूल्य)')}</b></td><td class="r num" colspan="2"><b class="${o.diff>0?'out':o.diff<0?'in':''}">${inr(o.diff)}</b> <span class="small mute">(${L('GST shows','GST में')} ${pct(o.gTax,o.dAmt)})</span></td></tr></tbody></table>
+    <div class="small mute" style="margin-top:6px">${o.linkedN} ${L('Daily bills added to GST','डेली बिल GST में जुड़े')} (${inr(o.linkedAmt)}) · ${o.notIn.length} ${L('not added','नहीं जुड़े')} · ${o.gOnly.length} ${L('made only in GST book','केवल GST बुक में बने')}</div></div>`};
+  const list=(xs,bk,btn)=>xs.length?xs.slice(0,60).map(x=>`<div class="li"><div class="sp" onclick="A.dvgOpen('${bk}','${x.id}')" style="cursor:pointer"><div class="t">${esc(cOf(x.cid).name)}</div><div class="s">${esc(x.no)} · ${fd(x.date)} · ${x.type==='sale'?L('Sale','बिक्री'):L('Purchase','खरीद')}</div></div><div style="text-align:right"><div class="num" style="font-weight:600">${inr(billTotal(x,bk).grand)}</div>${btn?`<button class="lnk noprint" style="padding:4px 0" onclick="A.dvgAdd('${x.id}')">${L('Add to GST','GST में जोड़ें')}</button>`:''}</div></div>`).join('')+(xs.length>60?`<div class="small mute">+${xs.length-60} ${L('more in the Excel file','और Excel फ़ाइल में')}</div>`:''):`<div class="small mute">${L('None','कोई नहीं')}</div>`;
+  const notIn=[...r.sale.notIn,...r.purchase.notIn].sort((a,b)=>b.date-a.date),gOnly=[...r.sale.gOnly,...r.purchase.gOnly].sort((a,b)=>b.date-a.date);
+  return backBtn()+`<div class="small mute" style="margin:-4px 0 10px">${esc(S.shop.name)} · ${esc(r.label)} · ${L('private report','प्राइवेट रिपोर्ट')}</div>
+  <div class="seg noprint">${[['m',L('Month','महीना')],['lm',L('Last','पिछला')],['fy','FY'],['all',L('All','सभी')],['c',L('Dates','तारीख')]].map(([k,l])=>`<button class="${p===k?'on':''}" onclick="A.setv('p','${k}')">${l}</button>`).join('')}</div>
+  ${p==='c'?`<div class="g2 noprint"><label class="f"><span>${L('From','से')}</span><input class="inp" type="date" value="${v.a||new Date(today0-29*DAY).toISOString().slice(0,10)}" onchange="A.setv('a',this.value)"></label><label class="f"><span>${L('To','तक')}</span><input class="inp" type="date" value="${v.z||new Date(today0).toISOString().slice(0,10)}" onchange="A.setv('z',this.value)"></label></div>`:''}
+  ${blk('sale',L('Sales','बिक्री'))}${blk('purchase',L('Purchases','खरीद'))}
+  <div class="card"><b>${L('Daily bills not in GST book','डेली बिल जो GST बुक में नहीं')} (${notIn.length})</b>${list(notIn,'daily',true)}</div>
+  <div class="card"><b>${L('Bills made only in GST book','केवल GST बुक में बने बिल')} (${gOnly.length})</b>${list(gOnly,'gst',false)}</div>
+  <div class="btns noprint"><button class="btn" onclick="A.dvgXlsx()">${L('Excel file','Excel फ़ाइल')}</button><button class="btn ghost" onclick="A.printBill()">${L('Save PDF','PDF सेव करें')}</button></div>
+  <div class="small mute noprint" style="margin-top:8px">${L('Only you can open this report, with your report key. It is made on this phone; nothing is sent online.','यह रिपोर्ट केवल आप अपनी रिपोर्ट की से खोल सकते हैं। यह इसी फ़ोन पर बनती है।')}</div>`};
+function dvgXlsx(){const v=S.view;const r=dvgData(v);const row=(t,o)=>[[t,'Daily book','GST book'],['Bills',o.dN,o.gN],['Value before tax',o.dAmt,o.gTax],['GST','',o.gGst],['Total with GST','',o.gTot],['Difference (Daily − GST value)',o.diff,''],['Daily bills added to GST',o.linkedN,''],['Daily bills not added',o.notIn.length,''],['Bills made only in GST book','',o.gOnly.length]];
+  const s1=[[S.shop.name+' – Daily vs GST – '+r.label,'',''],...row('Sales',r.sale),['','',''],...row('Purchases',r.purchase)];
+  const bills=(xs,bk)=>[['Date','Bill no.','Type','Party / vendor','GSTIN','Value before tax','GST','Total','Linked bill'],...xs.sort((a,b)=>a.date-b.date).map(x=>{const t=billTotal(x,bk);const c=cOf(x.cid);return [xd(x.date),x.no,x.type==='sale'?'Sale':'Purchase',c.name,c.gstin||'',t.sub,bk==='gst'?t.tax:'',t.grand,x.toGst?x.toGst.no:x.fromDaily?x.fromDaily.no:'']})];
+  const [a,z]=dvgRange(v);const inR=x=>live(x)&&x.date>=a&&x.date<z;
+  xlsxSave('Daily-vs-GST',[{name:'Summary',rows:s1,widths:[34,16,16],bold:[0,10]},{name:'Daily not in GST',rows:bills([...r.sale.notIn,...r.purchase.notIn],'daily'),widths:[12,12,10,26,18,16,12,14,14]},{name:'GST only',rows:bills([...r.sale.gOnly,...r.purchase.gOnly],'gst'),widths:[12,18,10,26,18,16,12,14,14]},{name:'All Daily bills',rows:bills(S.books.daily.bills.filter(inR),'daily'),widths:[12,12,10,26,18,16,12,14,14]},{name:'All GST bills',rows:bills(S.books.gst.bills.filter(inR),'gst'),widths:[12,18,10,26,18,16,12,14,14]}])}
+
+/* ---- PDF and Excel on the other reports ---- */
+const repBtns=(xl)=>`<div class="btns noprint" style="margin-top:12px">${xl?`<button class="btn ghost" onclick="${xl}">${L('Excel file','Excel फ़ाइल')}</button>`:''}<button class="btn ghost" onclick="A.printBill()">${L('Save PDF','PDF सेव करें')}</button></div>`;
+[['stock','A.xlStock()'],['expenses','A.xlExp()'],['staff',''],['cheques',''],['delivery',''],['khata','A.xlKhata()']].forEach(([n,xl])=>{const f=V[n];if(typeof f!=='function')return;V[n]=v=>{const h=f(v);return h&&!/printBill\(\)/.test(h)?h+repBtns(xl):h}});
+const _repV=V.reports;V.reports=v=>{const h=_repV(v);return h.includes('A.xlRep()')?h:h.replace('<button class="btn" onclick="A.printBill()">Print / PDF</button>',`<button class="btn" onclick="A.printBill()">${L('Save PDF','PDF सेव करें')}</button><button class="btn ghost" onclick="A.xlRep()">${L('Excel file','Excel फ़ाइल')}</button>`)};
+const bkNm=()=>S.book==='gst'?'GST':'Daily';
+function xlStock(){const rows=[['Product','Size','Stock (pcs)','Stock','Avg cost / pc','Stock value']];products.forEach(p=>p.v.forEach(V_=>{const q=stockOf(V_.id),c=avgCost(V_.id);rows.push([p.name,V_.size,q,fq(q,V_.id),c,q*c])}));xlsxSave('Stock-'+bkNm(),[{name:'Stock',rows,widths:[28,12,12,16,14,14]}])}
+function xlExp(){const rows=[['Date','Head','Note','Amount']];B().exps.slice().sort((a,b)=>a.date-b.date).forEach(e=>rows.push([xd(e.date),e.head||'',e.note||'',e.amt]));xlsxSave('Expenses-'+bkNm(),[{name:'Expenses',rows,widths:[12,22,28,12]}])}
+function xlKhata(){const rows=[['Name','Type','Phone','GSTIN','Balance']];contacts.forEach(c=>rows.push([c.name,c.type==='party'?'Party':'Vendor',c.phone||'',c.gstin||'',balance(c.id)]));xlsxSave('Khata-'+bkNm(),[{name:'Khata',rows,widths:[28,10,14,18,14]}])}
+function xlRep(){const b=B();const rows=[['Date','Bill no.','Type','Party / vendor','Value before tax','GST','Total','Profit']];b.bills.filter(live).sort((a,c)=>a.date-c.date).forEach(x=>{const t=billTotal(x);rows.push([xd(x.date),x.no,x.type==='sale'?'Sale':'Purchase',cOf(x.cid).name,t.sub,S.book==='gst'?t.tax:'',t.grand,x.type==='sale'?profitOf(x):''])});
+  const ex=[['Date','Head','Note','Amount'],...b.exps.slice().sort((a,c)=>a.date-c.date).map(e=>[xd(e.date),e.head||'',e.note||'',e.amt])];xlsxSave('Report-'+bkNm(),[{name:'Bills',rows,widths:[12,16,10,26,16,12,14,12]},{name:'Expenses',rows:ex,widths:[12,22,28,12]}])}
+
+/* settings: private reports card */
+const _dvgSet=V.settings;V.settings=v=>{const h=_dvgSet(v);const card=`<div class="card"><b>${L('Private reports','प्राइवेट रिपोर्ट')}</b><div class="small mute">${L('Daily vs GST: what each book shows and the difference. Opens only with your report key.','डेली बनाम GST: हर बुक क्या दिखाती है और अंतर। केवल आपकी रिपोर्ट की से खुलती है।')}</div><div class="btns"><button class="btn" onclick="A.dvgReport()">${L('Daily vs GST report','डेली बनाम GST रिपोर्ट')}</button><button class="btn ghost" onclick="A.rkSet()">${S.rkey?L('Change key','की बदलें'):L('Set key','की बनाएँ')}</button></div>${S.rkey?`<button class="lnk" onclick="A.rkForgot()">${L('Forgot report key?','रिपोर्ट की भूल गए?')}</button>`:''}</div>`;
+  const i=h.indexOf('<div class="card"><b>App lock</b>');return i<0?h+card:h.slice(0,i)+card+h.slice(i)};
+Object.assign(A,{dvgTog:()=>{const d=S.draft;if(!d)return;d.toGst=!d.toGst;const y=$('#main').scrollTop;render();$('#main').scrollTop=y},
+  dvgOpen:(bk,id)=>{if(S.book!==bk){S.book=bk}S.stack.push(S.view);S.view={n:'bill',id};render(true)},
+  dvgAdd:id=>{const x=S.books.daily.bills.find(b=>b.id===id);if(!x||x.toGst)return;const gx=dvgDupInGst(x);
+    const go_=()=>{const g=copyToGst(x);render();toast(L(`Added to GST book as ${g.no}`,`GST बुक में ${g.no} के रूप में जुड़ा`))};
+    gx?ask(L('Already in the GST book?','पहले से GST बुक में?'),L(`The GST book already has ${gx.no} for ${cOf(gx.cid).name} with the same items or amount. Add again?`,`GST बुक में ${gx.no} पहले से है। फिर भी जोड़ें?`),L('Add again','फिर भी जोड़ें'),go_):go_()},
+  dvgReport:dvgOpenReport,dvgXlsx,rkSet:()=>rkSheet('set'),rkGo,rkForgot,
+  rkReset:()=>{const e=$('#rke');if(($('#rkp')||{}).value!==S.pin){e.textContent=L('Wrong PIN.','गलत PIN।');e.style.display='block';return}S.rkey=null;saveLocal();rkSheet('set')},
+  xlStock,xlExp,xlKhata,xlRep});
+window.__DVG={copyToGst,makeXlsx,dvgData};
 
 /* ---------- boot ---------- */
 try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}

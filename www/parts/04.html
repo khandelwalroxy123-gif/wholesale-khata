@@ -1,3 +1,12 @@
+  changePin:()=>sheet(`<h2>Change PIN</h2><label class="f"><span>New 4-digit PIN</span><input class="inp" id="np" inputmode="numeric" maxlength="4" type="password"></label><button class="btn" onclick="A.savePin()">${T('save')}</button>`),
+  savePin:()=>{const v=$('#np').value;if(!/^\d{4}$/.test(v)){toast('PIN must be 4 digits');return}S.pin=v;closeSheet();toast('PIN changed')},
+  saveShop:()=>{S.shop.name=$('#sh_n').value;S.shop.addr=$('#sh_a').value;S.shop.phone=$('#sh_p').value;S.shop.gstin=$('#sh_g').value;render();toast('Shop details saved')},
+  clearMonth:(y,m)=>ask('Clear '+MON[m]+' '+y+'?','First a backup file is made for you to save, and a copy is kept on this phone. Then daily bills, payments and expenses of '+MON[m]+' are deleted. Party balances and stock are carried forward.','Back up and clear',async()=>{
+    try{await IDB.set('before_clear_'+y+'_'+m,snapshot());await saveBackupFile()}catch(e){if(!(e&&/cancel/i.test(String(e.message||e)))){toast('Backup failed, nothing was cleared');return}}
+    const b=S.books.daily;const a=new Date(y,m,1).getTime(),z=new Date(y,m+1,1).getTime();const inM=o=>o.date>=a&&o.date<z;
+    b.bills.filter(inM).forEach(x=>{if(!live(x))return;b.cOpen[x.cid]=(b.cOpen[x.cid]||0)+billTotal(x,'daily').grand;x.items.forEach(i=>b.open[i.vid]=(b.open[i.vid]||0)+(x.type==='purchase'?pcs(i):-pcs(i)))});
+    b.pays.filter(inM).forEach(p=>{if(!(p.chq&&p.chq.st==='bounced'))b.cOpen[p.cid]=(b.cOpen[p.cid]||0)-p.amt});
+    const n=b.bills.filter(inM).length+b.pays.filter(o=>inM(o)&&!(o.chq&&o.chq.st==='pending')).length+b.exps.filter(inM).length;
     b.bills=b.bills.filter(o=>!inM(o));b.pays=b.pays.filter(o=>!inM(o)||(o.chq&&o.chq.st==='pending'&&(b.cOpen[o.cid]+=o.amt,true)));b.exps=b.exps.filter(o=>!inM(o));b.cleared.push(MON[m]+' '+y);render();toast(n+' records cleared · balances carried forward')},true),
   exportCA:()=>{const b=S.books.gst;const m0=new Date(NOW.getFullYear(),NOW.getMonth(),1).getTime();const rows=[['Type','Invoice','Date','Party','GSTIN','Taxable','CGST','SGST','IGST','Total']];
     b.bills.filter(x=>live(x)&&x.date>=m0).forEach(x=>{const t=billTotal(x,'gst');const c=cOf(x.cid);rows.push([x.type,x.no,fdy(x.date),c.name,c.gstin||'',t.sub.toFixed(2),t.igst?'0':(t.tax/2).toFixed(2),t.igst?'0':(t.tax/2).toFixed(2),t.igst?t.tax.toFixed(2):'0',t.grand])});
@@ -172,7 +181,7 @@ Object.assign(A,{
 /* ---------- saving: phone (local) + Google Drive + app server ---------- */
 const PR_BASE=JSON.parse(JSON.stringify(products)),CT_BASE=JSON.parse(JSON.stringify(contacts));
 S.cloud=S.cloud||{drive:true,server:true,driveAt:0,serverAt:0,driveOk:false,serverOk:false};S.localAt=0;S.localSize=0;
-const DATA_KEYS=['lang','book','pin','finger','autoBackup','shop','books','staff','cloud','lastBackup','lastFileBackup','online'];
+const DATA_KEYS=['lang','book','pin','finger','autoBackup','shop','books','staff','cloud','lastBackup','lastFileBackup','online','rkey'];
 function snapshot(){const o={v:1,app:'wholesale-khata',savedAt:Date.now()};DATA_KEYS.forEach(k=>o[k]=S[k]);o.products=products;o.contacts=contacts;return o}
 function restoreData(d){if(!d||d.app!=='wholesale-khata')throw new Error('Not a backup of this app');
   DATA_KEYS.forEach(k=>{if(d[k]!==undefined)S[k]=d[k]});
@@ -265,6 +274,3 @@ function autoB(){setTimeout(()=>{phoneCopy();if(!S.autoBackup)return;if(Date.now
 const GUIDE=[
 {ic:'stock',c:'#7d1d2c',go:"A.tab('home')",
  en:['Welcome to your shop in your pocket','This app replaces the bill book, khata diary, stock register, attendance register and calculator. Every sale, purchase, payment and expense goes in once, and stock, khata and profit update by themselves.','No more searching diaries. Your whole business is on one phone, safe and up to date.'],
- hi:['आपकी दुकान अब आपकी जेब में','यह ऐप बिल बुक, खाता डायरी, स्टॉक रजिस्टर, हाज़िरी रजिस्टर और कैलकुलेटर, सबका काम करता है। हर बिक्री, खरीद, पेमेंट और खर्चा एक बार डालिए, स्टॉक, खाता और मुनाफ़ा अपने आप अपडेट हो जाते हैं।','डायरी ढूँढने का झंझट ख़त्म। पूरा कारोबार एक फ़ोन में, सुरक्षित और हमेशा ताज़ा।']},
-{ic:'bills',c:'#173a6b',go:"A.tab('home')",icn:'expense',
- en:['Two separate books','At the top you switch between the Daily book and the GST book. Each has its own stock, khata and reports. Daily book entries of a finished month can be cleared. GST bills are locked once issued and stay forever, with credit notes for changes.','Your GST records stay clean and ready for your CA, while daily work stays quick and simple.'],

@@ -1,3 +1,11 @@
+  onSaveSet:async()=>{const upi=($('#on_upi2').value||'').trim();if(upi&&!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(upi)){toast('UPI ID looks wrong (like name@okaxis)');return}S.online.upi=upi;try{await onPublish(true);toast('Saved')}catch(e){toast('Could not save: '+errMsg(e))}render()},
+  onPub:async()=>{try{await onPublish(true);toast('Price list updated for customers')}catch(e){toast('Could not update: '+errMsg(e))}if(S.view.n==='online')render()},
+  onP:(vid,k,val)=>{const P=S.online.prices=S.online.prices||{};P[vid]=P[vid]||{};const n=+val;if(val===''||!(n>0))delete P[vid][k];else P[vid][k]=n;saveLocal()},
+  onHide:vid=>{const P=S.online.prices=S.online.prices||{};P[vid]=P[vid]||{};P[vid].hide=!P[vid].hide;saveLocal();$('#onpl').innerHTML=onPriceRows((S.view.q||'').toLowerCase())},
+  onPq:q=>{S.view.q=q;$('#onpl').innerHTML=onPriceRows(q.toLowerCase())},
+  onShare:async t=>{const url=onLink(t);const text=(t==='retail'?'Order from ':'Wholesale orders from ')+S.shop.name+': '+url;
+    if(IS_APP&&NSH){try{await NSH.share({title:S.shop.name,text,url,dialogTitle:'Share order link'})}catch(e){}return}
+    if(navigator.share){try{await navigator.share({title:S.shop.name,text,url})}catch(e){}return}A.onCopy(t)},
   onCopy:t=>{try{navigator.clipboard.writeText(onLink(t));toast('Link copied')}catch(e){toast(onLink(t))}},
   onDelete:()=>ask('Delete the online shop?','Customers can no longer open your links. All online orders, requests and the price list are deleted from your Firebase project. Bills already made stay in your books.','Delete',async()=>{
     try{for(const c of ['orders','sessions','catalog']){const q=await onCol(c).get();for(const d of q.docs)await d.ref.delete()}await onRef().delete()}catch(e){toast('Could not delete everything: '+errMsg(e));return}
@@ -240,10 +248,3 @@ function acCompList(){const c=(ACC.admin&&ACC.admin.comps||[]).filter(x=>!x.revo
   return `<div class="card"><b>${L('Complimentary access','मुफ़्त एक्सेस')}</b>${c.map(x=>{const j=us.find(u=>String(u.email||'').toLowerCase()===x.id);const un=x.until?onTs(x.until):0;return `<div class="li"><div class="sp"><div class="t">${esc(x.id)}</div><div class="s">${un?(un>now?L('till','तक')+' '+fdy(un):L('ended','खत्म')+' '+fdy(un)):L('no end date','कोई अंतिम तिथि नहीं')} · ${j?L('joined','जुड़ गए'):L('not joined yet','अभी नहीं जुड़े')}${x.note?' · '+esc(x.note):''}</div></div><button class="btn ghost" style="width:auto;padding:0 12px" onclick="A.acCompDel('${esc(x.id)}')">${L('Remove','हटाएँ')}</button></div>`}).join('')}<div class="small mute">${L('Works when they sign up with this email and verify it.','इसी ईमेल से साइन अप और सत्यापन करने पर लागू होता है।')}</div></div>`}
 function acCompNew(email){sheet(`<h2>${L('Give free access','मुफ़्त एक्सेस दें')}</h2><p class="small mute">${L('Full app, no payment. Works for an existing account or for someone who signs up later with this email (after they verify it).','पूरा ऐप, बिना भुगतान। मौजूदा खाते या बाद में इसी ईमेल से जुड़ने वाले के लिए (ईमेल सत्यापन के बाद)।')}</p>
   <label class="f"><span>${L('Email','ईमेल')}</span><input class="inp" id="cp_e" type="email" value="${esc(email||'')}"></label>
-  <div class="seg" id="cp_d">${COMP_D.map(([k,l],i)=>`<button class="${i===1?'on':''}" data-k="${k}" onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));this.classList.add('on')">${l()}</button>`).join('')}</div>
-  <label class="f"><span>${L('Note (only you see this)','नोट (केवल आपको दिखेगा)')}</span><input class="inp" id="cp_n" placeholder="${L('e.g. family, staff, demo shop','जैसे परिवार, स्टाफ़, डेमो दुकान')}"></label>
-  <div class="warnbox" id="cp_err" style="display:none"></div><button class="btn" onclick="A.acCompSave()">${L('Give access','एक्सेस दें')}</button>`)}
-async function acCompSave(){const e=$('#cp_e').value.trim().toLowerCase(),k=($('#cp_d .on')||{}).dataset.k,n=$('#cp_n').value.trim().slice(0,200);const er=$('#cp_err');
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){er.textContent=L('Enter a valid email.','सही ईमेल डालें।');er.style.display='block';return}
-  const yrs=COMP_D.find(x=>x[0]===k)[2];let until=null;if(yrs){const d=new Date();if(yrs<1)d.setMonth(d.getMonth()+1);else d.setFullYear(d.getFullYear()+yrs);until=ACC.fb.firestore.Timestamp.fromMillis(d.getTime())}
-  try{const doc={email:e,until,note:n,revoked:false,by:ACC.user.email,createdAt:ACC.fb.firestore.FieldValue.serverTimestamp()};await ACC.db.doc('comps/'+e).set(doc);

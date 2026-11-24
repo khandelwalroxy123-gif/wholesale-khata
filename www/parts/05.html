@@ -1,3 +1,6 @@
+ hi:['आपकी दुकान अब आपकी जेब में','यह ऐप बिल बुक, खाता डायरी, स्टॉक रजिस्टर, हाज़िरी रजिस्टर और कैलकुलेटर, सबका काम करता है। हर बिक्री, खरीद, पेमेंट और खर्चा एक बार डालिए, स्टॉक, खाता और मुनाफ़ा अपने आप अपडेट हो जाते हैं।','डायरी ढूँढने का झंझट ख़त्म। पूरा कारोबार एक फ़ोन में, सुरक्षित और हमेशा ताज़ा।']},
+{ic:'bills',c:'#173a6b',go:"A.tab('home')",icn:'expense',
+ en:['Two separate books','At the top you switch between the Daily book and the GST book. Each has its own stock, khata and reports. Daily book entries of a finished month can be cleared. GST bills are locked once issued and stay forever, with credit notes for changes.','Your GST records stay clean and ready for your CA, while daily work stays quick and simple.'],
  hi:['दो अलग बही','ऊपर से आप रोज़ का खाता और GST खाता बदल सकते हैं। दोनों का स्टॉक, खाता और रिपोर्ट अलग है। रोज़ के खाते का पूरा महीना बाद में साफ़ कर सकते हैं। GST बिल जारी होने के बाद लॉक हो जाता है और हमेशा रहता है, बदलाव क्रेडिट नोट से होता है।','GST का हिसाब साफ़ और CA के लिए तैयार, और रोज़ का काम तेज़ और आसान।']},
 {ic:'reports',c:'#a34a1f',go:"A.go('variant',{vid:'p0v1'})",icn:'sale',
  en:['Search any product, see every rate','Type a product name, pick the size, and you see stock and all sale and purchase rates, newest first. You also see the last 5 rates for every vendor and every party, and the full history below.','When a party asks for a rate, you answer in seconds and never quote below your cost.'],
@@ -220,11 +223,3 @@ Object.assign(A,{
   onOpen:async()=>{S.online.open=S.online.open===false;await onPublish(true).catch(e=>toast(errMsg(e)));render()},
   onBook:b=>{S.online.book=b;saveLocal();render()},
   onAuto:async(t,v)=>{S.online[t==='retail'?'autoRetail':'autoWholesale']=v;saveLocal();render();try{await onPublish(true);toast(v?(t==='retail'?'Retail':'Wholesale')+' customers can now order without waiting':'You will be asked before each '+t+' visit')}catch(e){toast('Could not save: '+errMsg(e))}render()},
-  onSaveSet:async()=>{const upi=($('#on_upi2').value||'').trim();if(upi&&!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(upi)){toast('UPI ID looks wrong (like name@okaxis)');return}S.online.upi=upi;try{await onPublish(true);toast('Saved')}catch(e){toast('Could not save: '+errMsg(e))}render()},
-  onPub:async()=>{try{await onPublish(true);toast('Price list updated for customers')}catch(e){toast('Could not update: '+errMsg(e))}if(S.view.n==='online')render()},
-  onP:(vid,k,val)=>{const P=S.online.prices=S.online.prices||{};P[vid]=P[vid]||{};const n=+val;if(val===''||!(n>0))delete P[vid][k];else P[vid][k]=n;saveLocal()},
-  onHide:vid=>{const P=S.online.prices=S.online.prices||{};P[vid]=P[vid]||{};P[vid].hide=!P[vid].hide;saveLocal();$('#onpl').innerHTML=onPriceRows((S.view.q||'').toLowerCase())},
-  onPq:q=>{S.view.q=q;$('#onpl').innerHTML=onPriceRows(q.toLowerCase())},
-  onShare:async t=>{const url=onLink(t);const text=(t==='retail'?'Order from ':'Wholesale orders from ')+S.shop.name+': '+url;
-    if(IS_APP&&NSH){try{await NSH.share({title:S.shop.name,text,url,dialogTitle:'Share order link'})}catch(e){}return}
-    if(navigator.share){try{await navigator.share({title:S.shop.name,text,url})}catch(e){}return}A.onCopy(t)},
