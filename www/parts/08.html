@@ -86,6 +86,9 @@ const _pV=V.product;V.product=v=>{const h=_pV(v);const p=products.find(x=>x.id==
   const i=h.indexOf('<h2>');return i<0?top+h:h.slice(0,i)+top+h.slice(i)};
 Object.assign(A,{setLook:k=>{LOOK=k;try{localStorage.setItem('wk_look',k)}catch(e){}applyLook();render()},pPhoto,pFind:pid=>{const p=products.find(x=>x.id===pid);PFX={pid,q:p?p.name:'',res:null,busy:false,err:''};drawPF();if(PFX.q)pfSearch()},pfGo:q=>{PFX.q=q;pfSearch()},pfUse,
   pNoPhoto:pid=>{const p=products.find(x=>x.id===pid);if(!p)return;delete p.img;delete p.imgBy;saveLocal();render()}});
+/* empty books: offer the sample shop on the home screen */
+const _hEmpty=V.home;V.home=v=>{const h=_hEmpty(v);const n=S.books.daily.bills.length+S.books.gst.bills.length;if(n)return h;
+  return `<div class="card" style="text-align:center"><b>${L('Your books are empty','आपकी बही खाली है')}</b><div class="small mute" style="margin:4px 0 10px">${L('Load a sample shop with bills, parties, stock and khata to try every feature. You can clear it later from Settings → Start fresh.','बिल, पार्टी, स्टॉक और खाते वाली नमूना दुकान लोड करें और हर सुविधा आज़माएँ। बाद में सेटिंग → नए सिरे से शुरू से हटा सकते हैं।')}</div><button class="btn" onclick="A.resetSample()">${L('Load sample data','नमूना डेटा लोड करें')}</button></div>`+h};
 /* ---------- boot ---------- */
 try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
 (async()=>{let d=null,readErr=false,ok=false,recovered='';
