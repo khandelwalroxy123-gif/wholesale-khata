@@ -1,3 +1,22 @@
+    b.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0112 0c0 7 3 8 3 8H3s3-1 3-8M10.3 21a1.9 1.9 0 003.4 0"/></svg>'+(n?`<i class="bdg">${n>99?'99+':n}</i>`:'');const f=row.querySelector('.ib');f?row.insertBefore(b,f):row.appendChild(b)}
+  const more=document.querySelectorAll('#nav button')[4];if(more){const o=more.querySelector('.bdg');if(o)o.remove();if(n)more.insertAdjacentHTML('beforeend',`<i class="bdg">${n>99?'99+':n}</i>`)}}
+const _acAR=window.__afterRender;window.__afterRender=()=>{try{_acAR&&_acAR()}catch(e){}try{acDecorate()}catch(e){}};
+let acNid=1;
+async function acNotifInit(){if(!S.online)return;
+  if(LNOT){try{let p=await LNOT.checkPermissions();if(p.display!=='granted')p=await LNOT.requestPermissions();ACC.notif=p.display==='granted';
+    if(!ACC.nl){ACC.nl=1;LNOT.addListener('localNotificationActionPerformed',()=>{S.locked||A.go('online')});
+      try{await LNOT.createChannel({id:'orders',name:'Online orders',description:'Customer requests and new orders',importance:5,visibility:1,vibration:true})}catch(e){}}}catch(e){}}
+  else if('Notification' in window&&Notification.permission==='granted')ACC.notif=true}
+async function acNotifAsk(){if(LNOT)return acNotifInit();if(!('Notification' in window)){toast(L('This browser cannot show alerts.','यह ब्राउज़र अलर्ट नहीं दिखा सकता।'));return}const p=await Notification.requestPermission();ACC.notif=p==='granted';render()}
+function acNotify(msg){const n=acCount();
+  if(LNOT&&ACC.notif){LNOT.schedule({notifications:[{id:acNid++,title:'Wholesale Khata',body:msg,channelId:'orders',extra:{go:'online'}}]}).catch(()=>{});return}
+  if(!LNOT&&document.hidden&&ACC.notif){try{const x=new Notification('Wholesale Khata',{body:msg,tag:'wk-orders',icon:'icon-192.png'});x.onclick=()=>{window.focus();A.go('online');x.close()}}catch(e){}}
+  try{if(navigator.setAppBadge)n?navigator.setAppBadge(n):navigator.clearAppBadge()}catch(e){}}
+/* online page: phone alerts switch */
+const _acOnl=V.online;V.online=v=>{const h=_acOnl(v);if(!S.online||!ONL.on||ACC.notif)return h;
+  return `<div class="alert" onclick="A.acNotifAsk()"><b>${L('Turn on phone alerts','फ़ोन अलर्ट चालू करें')}</b> · ${L('get a notification when a customer asks or orders','ग्राहक के पूछने या ऑर्डर पर सूचना पाएँ')}<span class="sp"></span>›</div>`+h};
+
+/* website: keep files for fast, offline-friendly opening (not needed inside the app) */
 if(!IS_APP&&'serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 
 Object.assign(A,{acCompNew,acCompSave,acCompDel:id=>ask(L('Remove free access?','मुफ़्त एक्सेस हटाएँ?'),esc(id),L('Remove','हटाएँ'),async()=>{try{await ACC.db.doc('comps/'+id).delete();const u=(ACC.admin.users||[]).find(x=>String(x.email||'').toLowerCase()===id);if(u&&u.plan==='comp'){await ACC.db.doc('users/'+u.id).update({plan:'',planUntil:null});Object.assign(u,{plan:'',planUntil:null})}ACC.admin.comps=ACC.admin.comps.filter(x=>x.id!==id);render()}catch(e){toast(acErr(e))}}),acFull:()=>{const u=onBase()+'admin.html';try{window.open(u,'_blank')||(location.href=u)}catch(e){location.href=u}},acMode:m=>{ACC.mode=m;ACC.err='';ACC.msg='';acScreen()},acGo,acDoc,acLang:()=>{S.lang=S.lang==='hi'?'en':'hi';try{localStorage.setItem('wk_lang',S.lang)}catch(e){}acScreen()},acPaywall:()=>acPaywall(),acBuy,acRestore,acAdminLoad,acAu,acAdm,acAdminBuys,acNotifAsk,

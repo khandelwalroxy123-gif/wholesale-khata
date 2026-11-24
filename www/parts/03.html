@@ -1,3 +1,9 @@
+  const byM={};[...b.bills,...b.pays,...b.exps].forEach(o=>{if(o.date<m0){const d=new Date(o.date);const k=d.getFullYear()+'-'+d.getMonth();byM[k]=(byM[k]||0)+1}});
+  return backBtn()+`<h2>Settings</h2>
+  <div class="card"><b>Backup to Google Drive</b><div class="small mute">Last backup: ${fd(S.lastBackup)}, ${ft(S.lastBackup)}</div><div class="prog" id="bkp" style="display:none"><i></i></div><div class="btns"><button class="btn" onclick="A.backup()">Back up now</button><button class="btn ghost" onclick="A.tog('autoBackup')">Auto daily: ${S.autoBackup?'On':'Off'}</button></div></div>
+  <div class="card"><b>App lock</b><div class="small mute">PIN needed every time the app opens.</div><div class="btns"><button class="btn ghost" onclick="A.changePin()">Change PIN</button>${IS_APP?`<button class="btn ghost" onclick="A.fingerTog()">${L('Fingerprint','फ़िंगरप्रिंट')}: ${S.finger?L('On','चालू'):L('Off','बंद')}</button>`:''}</div></div>
+  <div class="card"><b>Language</b><div class="seg" style="margin:8px 0 0"><button class="${S.lang==='en'?'on':''}" onclick="A.setLang('en')">English</button><button class="${S.lang==='hi'?'on':''}" onclick="A.setLang('hi')">हिंदी</button></div></div>
+  <div class="card"><b>Clear a finished month (daily book only)</b><div class="small mute">Deletes that month's daily bills, payments and expenses. Balances and stock are carried forward, so nothing goes wrong. GST book is never cleared.</div>
   ${Object.entries(byM).map(([k,n])=>{const [y,m]=k.split('-').map(Number);return `<div class="li" style="padding:8px 2px"><div class="sp"><div class="t">${MON[m]} ${y}</div><div class="s">${n} records</div></div><button class="btn danger sm" onclick="A.clearMonth(${y},${m})">Clear</button></div>`}).join('')||'<div class="mute small" style="margin-top:6px">No finished month to clear.</div>'}
   ${b.cleared.length?`<div class="small mute" style="margin-top:6px">Cleared: ${b.cleared.join(', ')}</div>`:''}</div>
   <div class="card"><b>GST export for CA</b><div class="small mute">Sale and purchase register of this month as a table to paste in Excel or Tally.</div><button class="btn ghost" style="margin-top:8px" onclick="A.exportCA()">Make export</button></div>
@@ -205,7 +211,7 @@ const A=window.A={go,back,tab,setBook,closeSheet,addMenu,psearch,newBill,editBil
   voiceBill:()=>{const r=S.view.r;S.draft={type:'sale',cid:r.cid,items:[{vid:r.vid,unit:r.unit,qty:r.qty,rate:r.rate,rt:'wholesale'}],transport:0,paid:0,mode:'cash',date:Date.now(),vinv:''};go('billform')},
   /* settings */
   tog:k=>{S[k]=!S[k];render()},
-  fingerTog:async()=>{if(S.finger){S.finger=false;render();return}if(!BIO){toast('Fingerprint is not available');return}try{const a=await BIO.isAvailable();if(!a||!a.isAvailable){toast('First add a fingerprint in your phone settings');return}await BIO.verifyIdentity({reason:'Turn on fingerprint unlock',title:'Confirm fingerprint',negativeButtonText:'Cancel'});S.finger=true;render();toast('Fingerprint unlock is on')}catch(e){toast('Fingerprint not confirmed')}},
+  fingerTog:async()=>{if(S.finger){S.finger=false;render();return}if(!BIO){toast(L('Fingerprint needs the app installed on the phone.','फ़िंगरप्रिंट के लिए फ़ोन में ऐप इंस्टॉल होना चाहिए।'));return}try{const a=await BIO.isAvailable({useFallback:false});if(!a||!a.isAvailable){toast(bioWhy(a));return}await BIO.verifyIdentity({reason:'Turn on fingerprint unlock',title:L('Confirm fingerprint','फ़िंगरप्रिंट की पुष्टि करें'),subtitle:L('Touch the fingerprint sensor','फ़िंगरप्रिंट सेंसर छुएँ'),negativeButtonText:L('Cancel','रद्द करें')});S.finger=true;render();toast(L('Fingerprint unlock is on','फ़िंगरप्रिंट लॉक चालू'))}catch(e){toast(L('Fingerprint not confirmed','फ़िंगरप्रिंट की पुष्टि नहीं हुई'))}},
   backup:()=>{const p=$('#bkp');p.style.display='block';const i=p.querySelector('i');let w=0;const tm=setInterval(()=>{w+=20;i.style.width=w+'%';if(w>=100){clearInterval(tm);S.lastBackup=Date.now();render();toast('Backed up to Google Drive (simulated in preview)')}},250)},
   changePin:()=>sheet(`<h2>Change PIN</h2><label class="f"><span>New 4-digit PIN</span><input class="inp" id="np" inputmode="numeric" maxlength="4" type="password"></label><button class="btn" onclick="A.savePin()">${T('save')}</button>`),
   savePin:()=>{const v=$('#np').value;if(!/^\d{4}$/.test(v)){toast('PIN must be 4 digits');return}S.pin=v;closeSheet();toast('PIN changed')},
@@ -216,15 +222,3 @@ const A=window.A={go,back,tab,setBook,closeSheet,addMenu,psearch,newBill,editBil
     b.bills.filter(inM).forEach(x=>{if(!live(x))return;b.cOpen[x.cid]=(b.cOpen[x.cid]||0)+billTotal(x,'daily').grand;x.items.forEach(i=>b.open[i.vid]=(b.open[i.vid]||0)+(x.type==='purchase'?pcs(i):-pcs(i)))});
     b.pays.filter(inM).forEach(p=>{if(!(p.chq&&p.chq.st==='bounced'))b.cOpen[p.cid]=(b.cOpen[p.cid]||0)-p.amt});
     const n=b.bills.filter(inM).length+b.pays.filter(o=>inM(o)&&!(o.chq&&o.chq.st==='pending')).length+b.exps.filter(inM).length;
-    b.bills=b.bills.filter(o=>!inM(o));b.pays=b.pays.filter(o=>!inM(o)||(o.chq&&o.chq.st==='pending'&&(b.cOpen[o.cid]+=o.amt,true)));b.exps=b.exps.filter(o=>!inM(o));b.cleared.push(MON[m]+' '+y);render();toast(n+' records cleared · balances carried forward')},true),
-  exportCA:()=>{const b=S.books.gst;const m0=new Date(NOW.getFullYear(),NOW.getMonth(),1).getTime();const rows=[['Type','Invoice','Date','Party','GSTIN','Taxable','CGST','SGST','IGST','Total']];
-    b.bills.filter(x=>live(x)&&x.date>=m0).forEach(x=>{const t=billTotal(x,'gst');const c=cOf(x.cid);rows.push([x.type,x.no,fdy(x.date),c.name,c.gstin||'',t.sub.toFixed(2),t.igst?'0':(t.tax/2).toFixed(2),t.igst?'0':(t.tax/2).toFixed(2),t.igst?t.tax.toFixed(2):'0',t.grand])});
-    const csv=rows.map(r=>r.join('\t')).join('\n');sheet(`<h2>GST register · ${MON[NOW.getMonth()]}</h2><div class="small mute" style="margin:-6px 0 8px">${rows.length-1} bills. Copy and paste into Excel.</div><textarea class="inp" style="height:220px;font-size:12px" readonly id="cav">${esc(csv)}</textarea><button class="btn" onclick="A.copyCA()">Copy</button>`)},
-  copyCA:()=>{const v=$('#cav').value;navigator.clipboard&&navigator.clipboard.writeText(v).then(()=>toast('Copied'),()=>{$('#cav').select();toast('Select all and copy')})}
-};
-
-/* ---------- voice assistant (offline rules + AI) ---------- */
-/* ---------- native Android (Capacitor) speech ---------- */
-const IS_APP=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
-let NSR=null,NTTS=null,BIO=null,PRN=null,NFS=null,NSH=null;if(IS_APP){const rp=n=>{try{return window.Capacitor.registerPlugin(n)}catch(e){return null}};NSR=rp('SpeechRecognition');NTTS=rp('TextToSpeech');BIO=rp('NativeBiometric');PRN=rp('Printer');NFS=rp('Filesystem');NSH=rp('Share')}
-const APP_VERSION='1.2.0';

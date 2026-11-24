@@ -41,6 +41,32 @@ jobs:
       - name: Create Android project (Capacitor 8, target SDK 36)
         run: npx cap add android
 
+      - name: Keep the app's text size fixed (no zoom from phone font settings)
+        run: |
+          F=$(find android/app/src/main/java -name MainActivity.java)
+          cat > "$F" <<'JAVA'
+          package com.wholesalekhata.app;
+
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  try {
+                      android.webkit.WebSettings s = getBridge().getWebView().getSettings();
+                      s.setTextZoom(100);
+                      s.setSupportZoom(false);
+                      s.setBuiltInZoomControls(false);
+                      s.setDisplayZoomControls(false);
+                  } catch (Exception ignored) {}
+              }
+          }
+          JAVA
+          sed -i 's/^          //' "$F"
+          cat "$F"
+
       - name: App icon and splash screen
         run: npx capacitor-assets generate --android
 

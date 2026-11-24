@@ -4,6 +4,10 @@
   "webDir": "www",
   "android": {
     "allowMixedContent": false,
-    "webContentsDebuggingEnabled": false
+    "webContentsDebuggingEnabled": false,
+    "zoomEnabled": false
+  },
+  "ios": {
+    "scrollEnabled": true
   }
 }

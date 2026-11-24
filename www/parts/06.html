@@ -1,3 +1,15 @@
+  onCopy:t=>{try{navigator.clipboard.writeText(onLink(t));toast('Link copied')}catch(e){toast(onLink(t))}},
+  onDelete:()=>ask('Delete the online shop?','Customers can no longer open your links. All online orders, requests and the price list are deleted from your Firebase project. Bills already made stay in your books.','Delete',async()=>{
+    try{for(const c of ['orders','sessions','catalog']){const q=await onCol(c).get();for(const d of q.docs)await d.ref.delete()}await onRef().delete()}catch(e){toast('Could not delete everything: '+errMsg(e));return}
+    ONL.unsub.forEach(u=>{try{u()}catch(e){}});Object.assign(ONL,{on:false,reqs:[],orders:[],unsub:[]});S.online=null;saveLocal();render();toast('Online shop deleted')},true)
+});
+/* keep the bill's delivery step and the customer's order status together */
+const _onAdvDel=A.advDel;A.advDel=id=>{_onAdvDel(id);const x=B().bills.find(b=>b.id===id);if(x&&x.orderId&&ONL.on){const st=x.del==='dispatched'?'out':(x.del==='delivered'||x.del==='received')?'delivered':null;const o=ONL.orders.find(y=>y.id===x.orderId);if(st&&o&&o.status!==st&&ON_STEPS.indexOf(st)>ON_STEPS.indexOf(o.status))onCol('orders').doc(o.id).update({status:st,statusAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{})}};
+/* home: show waiting customers and new orders */
+const _onHome=V.home;V.home=v=>{let h=_onHome(v);if(ONL.on){const n=ONL.reqs.length,m=ONL.orders.filter(o=>o.status==='placed').length;
+  const al=(n?`<div class="alert" onclick="A.go('online')"><b>${n} customer${n>1?'s':''}</b> waiting for you to allow ordering<span class="sp"></span>›</div>`:'')+(m?`<div class="alert" onclick="A.go('online')"><b>${m} new online order${m>1?'s':''}</b> to accept<span class="sp"></span>›</div>`:'');
+  if(al)h=h.replace('<div class="stats">',al+'<div class="stats">')}return h};
+/* more menu entry */
 const _onMore=V.more;V.more=v=>{const h=_onMore(v);const i=h.indexOf('<div class="li"');if(i<0)return h;
   return h.slice(0,i)+`<div class="li" onclick="A.go('online')">${icT('upload','#157a46')}<div class="sp"><div class="t">${L('Online orders · link & QR','ऑनलाइन ऑर्डर · लिंक और QR')}</div><div class="s">${S.online?(ONL.reqs.length?ONL.reqs.length+L(' waiting · ',' इंतज़ार में · '):'')+ONL.orders.filter(o=>o.status==='placed').length+L(' new',' नए'):L('Retail & wholesale price list for customers','ग्राहकों के लिए रिटेल और होलसेल रेट लिस्ट')}</div></div><span class="chev">›</span></div>`+h.slice(i)};
 
@@ -42,7 +54,7 @@ async function acBoot(){if(!onCfg()){onStart();return}
     if(!u||u.isAnonymous||!u.email){ACC.user=u||null;ACC.need=true;ACC.ready=true;render();return}
     ACC.user=u;ACC.ready=true;const was=ACC.need;ACC.need=false;
     if(was){S.locked=false;closeSheet();render(true)}
-    await acLoadDoc();acDataOwner();onStart();acPlayCheck();acNotifInit();
+    await acLoadDoc();acDataOwner();onStart();acPlayCheck();acNotifInit();if(was)acOfferFinger();
     if(!acCan()&&!S.locked)acPaywall(true)})}
 
 async function acLoadComp(){let u=ACC.user;if(!u||!u.email)return;try{if(!u.emailVerified){await u.reload();u=ACC.au.currentUser;ACC.user=u;if(u.emailVerified)await u.getIdToken(true)}}catch(e){}
@@ -60,6 +72,8 @@ function acDataOwner(){const uid=ACC.user.uid;let o=null;try{o=localStorage.getI
   try{localStorage.setItem('wk_data_uid',uid)}catch(e){}
   if(o&&o!==uid)setTimeout(()=>ask(L('Another account used this phone','इस फ़ोन पर दूसरा खाता था'),L('The books on this phone were made with another login. Keep them, or start fresh (a copy is kept on the phone first)?','इस फ़ोन की बही दूसरे लॉगिन की है। इन्हें रखें या नए सिरे से शुरू करें?'),L('Start fresh','नए सिरे से'),()=>{phoneCopy();A.startFresh()}),400)}
 
+async function acOfferFinger(){if(!BIO||S.finger)return;try{if(localStorage.getItem('wk_fp_asked'))return;const a=await BIO.isAvailable({useFallback:false});if(!a||!a.isAvailable)return;localStorage.setItem('wk_fp_asked','1');
+  let n=0;const w=()=>{if(++n>40)return;if($('#layer').innerHTML||S.locked)return setTimeout(w,1500);ask(L('Open with fingerprint?','फ़िंगरप्रिंट से खोलें?'),L('Use your fingerprint instead of typing the PIN each time you open the app.','हर बार PIN डालने की जगह फ़िंगरप्रिंट से ऐप खोलें।'),L('Turn on','चालू करें'),()=>A.fingerTog())};setTimeout(w,1500)}catch(e){}}
 /* ---- login screen ---- */
 function acScreen(){const m=ACC.mode,up=m==='up',rs=m==='reset';const dis=ACC.busy||!ACC.ready?'disabled':'';
   $('#layer').innerHTML=`<div class="lockscr acscr"><div class="acbox">
@@ -97,7 +111,7 @@ async function acGo(){const v=id=>{const e=$('#'+id);return e?e.value.trim():''}
       try{await cr.user.updateProfile({displayName:ACC.pending.name})}catch(e){}
       try{await cr.user.sendEmailVerification()}catch(e){}
       if(S.shop&&ACC.pending.shop)S.shop.name=ACC.pending.shop;S.locked=false;
-      ACC.user=cr.user;ACC.need=false;ACC.busy=false;closeSheet();render(true);await acLoadDoc();acDataOwner();onStart();acNotifInit();
+      ACC.user=cr.user;ACC.need=false;ACC.busy=false;closeSheet();render(true);await acLoadDoc();acDataOwner();onStart();acNotifInit();acOfferFinger();
       toast(L('Welcome! Your 30-day free trial has started.','स्वागत है! 30 दिन का फ्री ट्रायल शुरू।'));if(S.pin==='1234')setTimeout(()=>A.startFresh(),1200);return}
     else await au.signInWithEmailAndPassword(email,pw)}
   catch(e){ACC.err=acErr(e)}
@@ -238,22 +252,3 @@ async function acCompSave(){const e=$('#cp_e').value.trim().toLowerCase(),k=($('
 const acCount=()=>S.online&&ONL.on?ONL.reqs.length+ONL.orders.filter(o=>o.status==='placed').length:0;
 function acDecorate(){const n=acCount();const row=document.querySelector('#hdr .toprow');
   if(row&&S.online&&!row.querySelector('.bell')){const b=document.createElement('button');b.className='ib bell';b.setAttribute('aria-label','Online orders');b.onclick=()=>A.go('online');
-    b.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0112 0c0 7 3 8 3 8H3s3-1 3-8M10.3 21a1.9 1.9 0 003.4 0"/></svg>'+(n?`<i class="bdg">${n>99?'99+':n}</i>`:'');const f=row.querySelector('.ib');f?row.insertBefore(b,f):row.appendChild(b)}
-  const more=document.querySelectorAll('#nav button')[4];if(more){const o=more.querySelector('.bdg');if(o)o.remove();if(n)more.insertAdjacentHTML('beforeend',`<i class="bdg">${n>99?'99+':n}</i>`)}}
-const _acAR=window.__afterRender;window.__afterRender=()=>{try{_acAR&&_acAR()}catch(e){}try{acDecorate()}catch(e){}};
-let acNid=1;
-async function acNotifInit(){if(!S.online)return;
-  if(LNOT){try{let p=await LNOT.checkPermissions();if(p.display!=='granted')p=await LNOT.requestPermissions();ACC.notif=p.display==='granted';
-    if(!ACC.nl){ACC.nl=1;LNOT.addListener('localNotificationActionPerformed',()=>{S.locked||A.go('online')});
-      try{await LNOT.createChannel({id:'orders',name:'Online orders',description:'Customer requests and new orders',importance:5,visibility:1,vibration:true})}catch(e){}}}catch(e){}}
-  else if('Notification' in window&&Notification.permission==='granted')ACC.notif=true}
-async function acNotifAsk(){if(LNOT)return acNotifInit();if(!('Notification' in window)){toast(L('This browser cannot show alerts.','यह ब्राउज़र अलर्ट नहीं दिखा सकता।'));return}const p=await Notification.requestPermission();ACC.notif=p==='granted';render()}
-function acNotify(msg){const n=acCount();
-  if(LNOT&&ACC.notif){LNOT.schedule({notifications:[{id:acNid++,title:'Wholesale Khata',body:msg,channelId:'orders',extra:{go:'online'}}]}).catch(()=>{});return}
-  if(!LNOT&&document.hidden&&ACC.notif){try{const x=new Notification('Wholesale Khata',{body:msg,tag:'wk-orders',icon:'icon-192.png'});x.onclick=()=>{window.focus();A.go('online');x.close()}}catch(e){}}
-  try{if(navigator.setAppBadge)n?navigator.setAppBadge(n):navigator.clearAppBadge()}catch(e){}}
-/* online page: phone alerts switch */
-const _acOnl=V.online;V.online=v=>{const h=_acOnl(v);if(!S.online||!ONL.on||ACC.notif)return h;
-  return `<div class="alert" onclick="A.acNotifAsk()"><b>${L('Turn on phone alerts','फ़ोन अलर्ट चालू करें')}</b> · ${L('get a notification when a customer asks or orders','ग्राहक के पूछने या ऑर्डर पर सूचना पाएँ')}<span class="sp"></span>›</div>`+h};
-
-/* website: keep files for fast, offline-friendly opening (not needed inside the app) */

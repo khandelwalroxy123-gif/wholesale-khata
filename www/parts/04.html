@@ -1,3 +1,15 @@
+    b.bills=b.bills.filter(o=>!inM(o));b.pays=b.pays.filter(o=>!inM(o)||(o.chq&&o.chq.st==='pending'&&(b.cOpen[o.cid]+=o.amt,true)));b.exps=b.exps.filter(o=>!inM(o));b.cleared.push(MON[m]+' '+y);render();toast(n+' records cleared · balances carried forward')},true),
+  exportCA:()=>{const b=S.books.gst;const m0=new Date(NOW.getFullYear(),NOW.getMonth(),1).getTime();const rows=[['Type','Invoice','Date','Party','GSTIN','Taxable','CGST','SGST','IGST','Total']];
+    b.bills.filter(x=>live(x)&&x.date>=m0).forEach(x=>{const t=billTotal(x,'gst');const c=cOf(x.cid);rows.push([x.type,x.no,fdy(x.date),c.name,c.gstin||'',t.sub.toFixed(2),t.igst?'0':(t.tax/2).toFixed(2),t.igst?'0':(t.tax/2).toFixed(2),t.igst?t.tax.toFixed(2):'0',t.grand])});
+    const csv=rows.map(r=>r.join('\t')).join('\n');sheet(`<h2>GST register · ${MON[NOW.getMonth()]}</h2><div class="small mute" style="margin:-6px 0 8px">${rows.length-1} bills. Copy and paste into Excel.</div><textarea class="inp" style="height:220px;font-size:12px" readonly id="cav">${esc(csv)}</textarea><button class="btn" onclick="A.copyCA()">Copy</button>`)},
+  copyCA:()=>{const v=$('#cav').value;navigator.clipboard&&navigator.clipboard.writeText(v).then(()=>toast('Copied'),()=>{$('#cav').select();toast('Select all and copy')})}
+};
+
+/* ---------- voice assistant (offline rules + AI) ---------- */
+/* ---------- native Android (Capacitor) speech ---------- */
+const IS_APP=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+let NSR=null,NTTS=null,BIO=null,PRN=null,NFS=null,NSH=null;if(IS_APP){const rp=n=>{try{return window.Capacitor.registerPlugin(n)}catch(e){return null}};NSR=rp('SpeechRecognition');NTTS=rp('TextToSpeech');BIO=rp('NativeBiometric');PRN=rp('Printer');NFS=rp('Filesystem');NSH=rp('Share')}
+const APP_VERSION='1.2.0';
 async function nativeSpeak(text){if(!NTTS)return false;try{await NTTS.stop().catch(()=>{});await NTTS.speak({text:text.slice(0,3900),lang:S.lang==='hi'?'hi-IN':'en-IN',rate:0.95,pitch:1,volume:1,category:'playback'});return true}catch(e){return false}}
 async function nativeListen(){if(!NSR)return false;try{const a=await NSR.available();if(a&&a.available===false){toast('Speech recognition not available on this phone');return true}const p=await NSR.requestPermissions();if(p&&p.speechRecognition&&p.speechRecognition!=='granted'){toast('Microphone permission was not given');return true}
   vMicState(true);const r=await NSR.start({language:S.lang==='hi'?'hi-IN':'en-IN',maxResults:1,prompt:S.lang==='hi'?'बोलिए…':'Speak now…',partialResults:false,popup:true});S.vlisten=false;vMicState(false);const t=r&&r.matches&&r.matches[0];if(t){const e=$('#vtxt');if(e)e.value=t;A.vrun()}}catch(e){S.vlisten=false;vMicState(false);toast('Did not catch that. Try again.')}return true}
@@ -256,8 +268,3 @@ const GUIDE=[
  hi:['आपकी दुकान अब आपकी जेब में','यह ऐप बिल बुक, खाता डायरी, स्टॉक रजिस्टर, हाज़िरी रजिस्टर और कैलकुलेटर, सबका काम करता है। हर बिक्री, खरीद, पेमेंट और खर्चा एक बार डालिए, स्टॉक, खाता और मुनाफ़ा अपने आप अपडेट हो जाते हैं।','डायरी ढूँढने का झंझट ख़त्म। पूरा कारोबार एक फ़ोन में, सुरक्षित और हमेशा ताज़ा।']},
 {ic:'bills',c:'#173a6b',go:"A.tab('home')",icn:'expense',
  en:['Two separate books','At the top you switch between the Daily book and the GST book. Each has its own stock, khata and reports. Daily book entries of a finished month can be cleared. GST bills are locked once issued and stay forever, with credit notes for changes.','Your GST records stay clean and ready for your CA, while daily work stays quick and simple.'],
- hi:['दो अलग बही','ऊपर से आप रोज़ का खाता और GST खाता बदल सकते हैं। दोनों का स्टॉक, खाता और रिपोर्ट अलग है। रोज़ के खाते का पूरा महीना बाद में साफ़ कर सकते हैं। GST बिल जारी होने के बाद लॉक हो जाता है और हमेशा रहता है, बदलाव क्रेडिट नोट से होता है।','GST का हिसाब साफ़ और CA के लिए तैयार, और रोज़ का काम तेज़ और आसान।']},
-{ic:'reports',c:'#a34a1f',go:"A.go('variant',{vid:'p0v1'})",icn:'sale',
- en:['Search any product, see every rate','Type a product name, pick the size, and you see stock and all sale and purchase rates, newest first. You also see the last 5 rates for every vendor and every party, and the full history below.','When a party asks for a rate, you answer in seconds and never quote below your cost.'],
- hi:['कोई भी सामान खोजें, हर रेट देखें','सामान का नाम लिखिए, साइज़ चुनिए, और स्टॉक के साथ सारे बिक्री और खरीद के रेट दिखेंगे, नए से पुराने। हर वेंडर और हर पार्टी के आखिरी 5 रेट भी दिखते हैं, और नीचे पूरी हिस्ट्री।','पार्टी रेट पूछे तो सेकंडों में जवाब, और कभी लागत से कम रेट नहीं।']},
-{ic:'sale',c:'#1f7a4d',go:"A.newBill('sale','c1')",

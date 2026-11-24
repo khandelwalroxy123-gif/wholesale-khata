@@ -1,3 +1,8 @@
+ hi:['दो अलग बही','ऊपर से आप रोज़ का खाता और GST खाता बदल सकते हैं। दोनों का स्टॉक, खाता और रिपोर्ट अलग है। रोज़ के खाते का पूरा महीना बाद में साफ़ कर सकते हैं। GST बिल जारी होने के बाद लॉक हो जाता है और हमेशा रहता है, बदलाव क्रेडिट नोट से होता है।','GST का हिसाब साफ़ और CA के लिए तैयार, और रोज़ का काम तेज़ और आसान।']},
+{ic:'reports',c:'#a34a1f',go:"A.go('variant',{vid:'p0v1'})",icn:'sale',
+ en:['Search any product, see every rate','Type a product name, pick the size, and you see stock and all sale and purchase rates, newest first. You also see the last 5 rates for every vendor and every party, and the full history below.','When a party asks for a rate, you answer in seconds and never quote below your cost.'],
+ hi:['कोई भी सामान खोजें, हर रेट देखें','सामान का नाम लिखिए, साइज़ चुनिए, और स्टॉक के साथ सारे बिक्री और खरीद के रेट दिखेंगे, नए से पुराने। हर वेंडर और हर पार्टी के आखिरी 5 रेट भी दिखते हैं, और नीचे पूरी हिस्ट्री।','पार्टी रेट पूछे तो सेकंडों में जवाब, और कभी लागत से कम रेट नहीं।']},
+{ic:'sale',c:'#1f7a4d',go:"A.newBill('sale','c1')",
  en:['Sale bill in 30 seconds','Tap plus, choose Sale, pick the party and add items. Enter cartons and loose pieces together. The rate fills in from the last rate given to that party. The app warns you if you sell below cost, have less stock, or the party crosses its credit limit. Print the bill as PDF or send it on WhatsApp.','Fast, correct bills with no calculation mistakes, and no loss-making sale goes out by accident.'],
  hi:['30 सेकंड में बिक्री बिल','प्लस दबाइए, बिक्री चुनिए, पार्टी चुनिए और सामान जोड़िए। पेटी और खुले पीस एक साथ डालिए। उस पार्टी का पिछला रेट अपने आप आ जाता है। लागत से कम रेट, कम स्टॉक या पार्टी की उधार सीमा पार होने पर ऐप चेतावनी देता है। बिल PDF में प्रिंट करें या WhatsApp पर भेजें।','तेज़ और सही बिल, हिसाब में गलती नहीं, और घाटे का सौदा गलती से नहीं होगा।']},
 {ic:'upload',c:'#173a6b',go:"A.upload()",
@@ -223,15 +228,3 @@ Object.assign(A,{
   onShare:async t=>{const url=onLink(t);const text=(t==='retail'?'Order from ':'Wholesale orders from ')+S.shop.name+': '+url;
     if(IS_APP&&NSH){try{await NSH.share({title:S.shop.name,text,url,dialogTitle:'Share order link'})}catch(e){}return}
     if(navigator.share){try{await navigator.share({title:S.shop.name,text,url})}catch(e){}return}A.onCopy(t)},
-  onCopy:t=>{try{navigator.clipboard.writeText(onLink(t));toast('Link copied')}catch(e){toast(onLink(t))}},
-  onDelete:()=>ask('Delete the online shop?','Customers can no longer open your links. All online orders, requests and the price list are deleted from your Firebase project. Bills already made stay in your books.','Delete',async()=>{
-    try{for(const c of ['orders','sessions','catalog']){const q=await onCol(c).get();for(const d of q.docs)await d.ref.delete()}await onRef().delete()}catch(e){toast('Could not delete everything: '+errMsg(e));return}
-    ONL.unsub.forEach(u=>{try{u()}catch(e){}});Object.assign(ONL,{on:false,reqs:[],orders:[],unsub:[]});S.online=null;saveLocal();render();toast('Online shop deleted')},true)
-});
-/* keep the bill's delivery step and the customer's order status together */
-const _onAdvDel=A.advDel;A.advDel=id=>{_onAdvDel(id);const x=B().bills.find(b=>b.id===id);if(x&&x.orderId&&ONL.on){const st=x.del==='dispatched'?'out':(x.del==='delivered'||x.del==='received')?'delivered':null;const o=ONL.orders.find(y=>y.id===x.orderId);if(st&&o&&o.status!==st&&ON_STEPS.indexOf(st)>ON_STEPS.indexOf(o.status))onCol('orders').doc(o.id).update({status:st,statusAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{})}};
-/* home: show waiting customers and new orders */
-const _onHome=V.home;V.home=v=>{let h=_onHome(v);if(ONL.on){const n=ONL.reqs.length,m=ONL.orders.filter(o=>o.status==='placed').length;
-  const al=(n?`<div class="alert" onclick="A.go('online')"><b>${n} customer${n>1?'s':''}</b> waiting for you to allow ordering<span class="sp"></span>›</div>`:'')+(m?`<div class="alert" onclick="A.go('online')"><b>${m} new online order${m>1?'s':''}</b> to accept<span class="sp"></span>›</div>`:'');
-  if(al)h=h.replace('<div class="stats">',al+'<div class="stats">')}return h};
-/* more menu entry */
