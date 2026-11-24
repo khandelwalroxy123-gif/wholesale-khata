@@ -120,21 +120,24 @@ async function xlsxSave(base,sheets){try{await saveFile(base+'-'+fileDay()+'.xls
 
 /* ---- report key (separate from the app PIN) ---- */
 async function rkHash(k){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('wk-rk|'+k));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){let h=5381;for(const c of 'wk-rk|'+k)h=((h<<5)+h+c.charCodeAt(0))|0;return 'd'+(h>>>0).toString(16)}}
-let RK_OK=0;
+let RK_OK=0,RK_NEXT=null;window.__rkReset=()=>{RK_OK=0};
+const rkFresh=()=>RK_OK&&Date.now()-RK_OK<5*60e3;
+window.__gstGate=cb=>{if(rkFresh())return true;RK_NEXT=cb;rkSheet(S.rkey?'enter':'set');return false};
 function rkSheet(mode){const set=mode!=='enter';
-  sheet(`<h2>${set?(S.rkey?L('Change report key','रिपोर्ट की बदलें'):L('Set a report key','रिपोर्ट की बनाएँ')):L('Private report','प्राइवेट रिपोर्ट')}</h2><p class="small mute">${set?L('A separate key (4–6 digits) for private reports. It is different from the app PIN. Keep it safe — it cannot be recovered, only reset by setting a new key after unlocking with the app PIN.','प्राइवेट रिपोर्ट के लिए अलग की (4–6 अंक)। यह ऐप PIN से अलग है।'):L('Enter your report key.','अपनी रिपोर्ट की डालें।')}</p>
+  sheet(`<h2>${set?(S.rkey?L('Change security key','सुरक्षा की बदलें'):L('Set a security key','सुरक्षा की बनाएँ')):L('Security key','सुरक्षा की')}</h2><p class="small mute">${set?L('A separate key (4–6 digits) to open the GST book and private reports. It is different from the app PIN. If you forget it, you can set a new one with the app PIN.','GST बुक और प्राइवेट रिपोर्ट खोलने के लिए अलग की (4–6 अंक)। यह ऐप PIN से अलग है। भूलने पर ऐप PIN से नई बना सकते हैं।'):L('Enter your security key.','अपनी सुरक्षा की डालें।')}</p>
   ${set&&S.rkey?`<label class="f"><span>${L('Current key','मौजूदा की')}</span><input class="inp" id="rk0" type="password" inputmode="numeric" maxlength="6"></label>`:''}
-  <label class="f"><span>${set?L('New key','नई की'):L('Report key','रिपोर्ट की')}</span><input class="inp" id="rk1" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+  <label class="f"><span>${set?L('New key','नई की'):L('Security key','सुरक्षा की')}</span><input class="inp" id="rk1" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label>
   ${set?`<label class="f"><span>${L('Type it again','फिर से डालें')}</span><input class="inp" id="rk2" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label>`:''}
-  <div class="warnbox" id="rke" style="display:none"></div><button class="btn" onclick="A.rkGo('${set?'set':'enter'}')">${set?L('Save key','की सेव करें'):L('Open report','रिपोर्ट खोलें')}</button>`);setTimeout(()=>{const e=$('#rk0')||$('#rk1');e&&e.focus()},250)}
+  <div class="warnbox" id="rke" style="display:none"></div><button class="btn" onclick="A.rkGo('${set?'set':'enter'}')">${set?L('Save key','की सेव करें'):L('Open','खोलें')}</button>`);setTimeout(()=>{const e=$('#rk0')||$('#rk1');e&&e.focus()},250)}
 async function rkGo(m){const v=id=>($('#'+id)||{}).value||'';const err=t=>{const e=$('#rke');e.textContent=t;e.style.display='block'};
-  if(m==='enter'){if(await rkHash(v('rk1'))!==S.rkey)return err(L('Wrong key.','गलत की।'));RK_OK=Date.now();closeSheet();go('dvg');return}
+  const next=()=>{const f=RK_NEXT||(()=>go('dvg'));RK_NEXT=null;f()};
+  if(m==='enter'){if(await rkHash(v('rk1'))!==S.rkey)return err(L('Wrong key.','गलत की।'));RK_OK=Date.now();closeSheet();next();return}
   if(S.rkey&&await rkHash(v('rk0'))!==S.rkey)return err(L('Current key is wrong.','मौजूदा की गलत है।'));
   if(!/^\d{4,6}$/.test(v('rk1')))return err(L('Use 4 to 6 digits.','4 से 6 अंक डालें।'));if(v('rk1')!==v('rk2'))return err(L('The two keys do not match.','दोनों की मेल नहीं खातीं।'));
-  S.rkey=await rkHash(v('rk1'));saveLocal();RK_OK=Date.now();closeSheet();toast(L('Report key saved','रिपोर्ट की सेव हुई'));go('dvg')}
-function dvgOpenReport(){if(!S.rkey)return rkSheet('set');if(RK_OK&&Date.now()-RK_OK<5*60e3)return go('dvg');rkSheet('enter')}
+  S.rkey=await rkHash(v('rk1'));saveLocal();RK_OK=Date.now();closeSheet();toast(L('Security key saved','सुरक्षा की सेव हुई'));if(RK_NEXT)next()}
+function dvgOpenReport(){if(rkFresh())return go('dvg');RK_NEXT=()=>go('dvg');rkSheet(S.rkey?'enter':'set')}
 /* forgot key: confirm with the app PIN, then set a new one */
-function rkForgot(){sheet(`<h2>${L('Forgot report key','रिपोर्ट की भूल गए')}</h2><p class="small mute">${L('Enter the app PIN to set a new report key.','नई रिपोर्ट की बनाने के लिए ऐप PIN डालें।')}</p><label class="f"><span>${L('App PIN','ऐप PIN')}</span><input class="inp" id="rkp" type="password" inputmode="numeric" maxlength="4"></label><div class="warnbox" id="rke" style="display:none"></div><button class="btn" onclick="A.rkReset()">${L('Continue','आगे')}</button>`)}
+function rkForgot(){sheet(`<h2>${L('Forgot security key','सुरक्षा की भूल गए')}</h2><p class="small mute">${L('Enter the app PIN to set a new security key.','नई सुरक्षा की बनाने के लिए ऐप PIN डालें।')}</p><label class="f"><span>${L('App PIN','ऐप PIN')}</span><input class="inp" id="rkp" type="password" inputmode="numeric" maxlength="4"></label><div class="warnbox" id="rke" style="display:none"></div><button class="btn" onclick="A.rkReset()">${L('Continue','आगे')}</button>`)}
 
 /* ---- Daily vs GST report ---- */
 function dvgRange(v){const y=NOW.getFullYear(),m=NOW.getMonth();const p=v.p||'m';
@@ -167,7 +170,7 @@ V.dvg=v=>{v.title=L('Daily vs GST','डेली बनाम GST');if(!RK_OK||D
   <div class="card"><b>${L('Daily bills not in GST book','डेली बिल जो GST बुक में नहीं')} (${notIn.length})</b>${list(notIn,'daily',true)}</div>
   <div class="card"><b>${L('Bills made only in GST book','केवल GST बुक में बने बिल')} (${gOnly.length})</b>${list(gOnly,'gst',false)}</div>
   <div class="btns noprint"><button class="btn" onclick="A.dvgXlsx()">${L('Excel file','Excel फ़ाइल')}</button><button class="btn ghost" onclick="A.printBill()">${L('Save PDF','PDF सेव करें')}</button></div>
-  <div class="small mute noprint" style="margin-top:8px">${L('Only you can open this report, with your report key. It is made on this phone; nothing is sent online.','यह रिपोर्ट केवल आप अपनी रिपोर्ट की से खोल सकते हैं। यह इसी फ़ोन पर बनती है।')}</div>`};
+  <div class="small mute noprint" style="margin-top:8px">${L('Only you can open this report, with your security key. It is made on this phone; nothing is sent online.','यह रिपोर्ट केवल आप अपनी सुरक्षा की से खोल सकते हैं। यह इसी फ़ोन पर बनती है।')}</div>`};
 function dvgXlsx(){const v=S.view;const r=dvgData(v);const row=(t,o)=>[[t,'Daily book','GST book'],['Bills',o.dN,o.gN],['Value before tax',o.dAmt,o.gTax],['GST','',o.gGst],['Total with GST','',o.gTot],['Difference (Daily − GST value)',o.diff,''],['Daily bills added to GST',o.linkedN,''],['Daily bills not added',o.notIn.length,''],['Bills made only in GST book','',o.gOnly.length]];
   const s1=[[S.shop.name+' – Daily vs GST – '+r.label,'',''],...row('Sales',r.sale),['','',''],...row('Purchases',r.purchase)];
   const bills=(xs,bk)=>[['Date','Bill no.','Type','Party / vendor','GSTIN','Value before tax','GST','Total','Linked bill'],...xs.sort((a,b)=>a.date-b.date).map(x=>{const t=billTotal(x,bk);const c=cOf(x.cid);return [xd(x.date),x.no,x.type==='sale'?'Sale':'Purchase',c.name,c.gstin||'',t.sub,bk==='gst'?t.tax:'',t.grand,x.toGst?x.toGst.no:x.fromDaily?x.fromDaily.no:'']})];
@@ -186,14 +189,16 @@ function xlRep(){const b=B();const rows=[['Date','Bill no.','Type','Party / vend
   const ex=[['Date','Head','Note','Amount'],...b.exps.slice().sort((a,c)=>a.date-c.date).map(e=>[xd(e.date),e.head||'',e.note||'',e.amt])];xlsxSave('Report-'+bkNm(),[{name:'Bills',rows,widths:[12,16,10,26,16,12,14,12]},{name:'Expenses',rows:ex,widths:[12,22,28,12]}])}
 
 /* settings: private reports card */
-const _dvgSet=V.settings;V.settings=v=>{const h=_dvgSet(v);const card=`<div class="card"><b>${L('Private reports','प्राइवेट रिपोर्ट')}</b><div class="small mute">${L('Daily vs GST: what each book shows and the difference. Opens only with your report key.','डेली बनाम GST: हर बुक क्या दिखाती है और अंतर। केवल आपकी रिपोर्ट की से खुलती है।')}</div><div class="btns"><button class="btn" onclick="A.dvgReport()">${L('Daily vs GST report','डेली बनाम GST रिपोर्ट')}</button><button class="btn ghost" onclick="A.rkSet()">${S.rkey?L('Change key','की बदलें'):L('Set key','की बनाएँ')}</button></div>${S.rkey?`<button class="lnk" onclick="A.rkForgot()">${L('Forgot report key?','रिपोर्ट की भूल गए?')}</button>`:''}</div>`;
+const _dvgSet=V.settings;V.settings=v=>{const h=_dvgSet(v);const card=`<div class="card"><b>${L('User security','यूज़र सुरक्षा')}</b><div class="small mute">${L('The GST book and private reports open only with your security key (separate from the app PIN).','GST बुक और प्राइवेट रिपोर्ट केवल आपकी सुरक्षा की से खुलती हैं (ऐप PIN से अलग)।')}</div>
+  <div class="btns"><button class="btn ${S.book==='gst'?'ghost':''}" onclick="A.setBook('${S.book==='gst'?'daily':'gst'}')">${S.book==='gst'?L('Close GST book','GST बुक बंद करें'):L('Open GST book','GST बुक खोलें')}</button><button class="btn ghost" onclick="A.dvgReport()">${L('Daily vs GST report','डेली बनाम GST रिपोर्ट')}</button></div>
+  <div class="btns"><button class="btn ghost" onclick="A.rkSet()">${S.rkey?L('Change security key','सुरक्षा की बदलें'):L('Set security key','सुरक्षा की बनाएँ')}</button>${S.rkey?`<button class="btn ghost" onclick="A.rkForgot()">${L('Forgot key?','की भूल गए?')}</button>`:''}</div></div>`;
   const i=h.indexOf('<div class="card"><b>App lock</b>');return i<0?h+card:h.slice(0,i)+card+h.slice(i)};
 Object.assign(A,{dvgTog:()=>{const d=S.draft;if(!d)return;d.toGst=!d.toGst;const y=$('#main').scrollTop;render();$('#main').scrollTop=y},
-  dvgOpen:(bk,id)=>{if(S.book!==bk){S.book=bk}S.stack.push(S.view);S.view={n:'bill',id};render(true)},
+  dvgOpen:(bk,id)=>{const go_=()=>{if(S.book!==bk){S.book=bk}S.stack.push(S.view);S.view={n:'bill',id};render(true)};if(bk==='gst'&&S.book!=='gst'&&!window.__gstGate(go_))return;go_()},
   dvgAdd:id=>{const x=S.books.daily.bills.find(b=>b.id===id);if(!x||x.toGst)return;const gx=dvgDupInGst(x);
     const go_=()=>{const g=copyToGst(x);render();toast(L(`Added to GST book as ${g.no}`,`GST बुक में ${g.no} के रूप में जुड़ा`))};
     gx?ask(L('Already in the GST book?','पहले से GST बुक में?'),L(`The GST book already has ${gx.no} for ${cOf(gx.cid).name} with the same items or amount. Add again?`,`GST बुक में ${gx.no} पहले से है। फिर भी जोड़ें?`),L('Add again','फिर भी जोड़ें'),go_):go_()},
-  dvgReport:dvgOpenReport,dvgXlsx,rkSet:()=>rkSheet('set'),rkGo,rkForgot,
+  dvgReport:dvgOpenReport,dvgXlsx,rkSet:()=>{RK_NEXT=null;rkSheet('set')},rkGo,rkForgot,
   rkReset:()=>{const e=$('#rke');if(($('#rkp')||{}).value!==S.pin){e.textContent=L('Wrong PIN.','गलत PIN।');e.style.display='block';return}S.rkey=null;saveLocal();rkSheet('set')},
   xlStock,xlExp,xlKhata,xlRep});
 window.__DVG={copyToGst,makeXlsx,dvgData};

@@ -1,10 +1,14 @@
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],DOWH=['रवि','सोम','मंगल','बुध','गुरु','शुक्र','शनि'];const dow=i=>(S.lang==='hi'?DOWH:DOW)[i];
+
+const ICON={
+home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>',
 bills:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>',
 khata:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h11a3 3 0 013 3v13H7a3 3 0 01-3-3z"/><path d="M4 17a3 3 0 013-3h11"/><path d="M9 8h5"/></svg>',
 more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>'};
 const go=(n,p={})=>{S.stack.push(S.view);S.view={n,...p};render(true)};
 const back=()=>{S.view=S.stack.pop()||{n:S.tab};render(true)};
 const tab=n=>{S.tab=n;S.stack=[];S.view={n};render(true)};
-const setBook=bk=>{if(S.book===bk)return;S.book=bk;S.stack=[];S.view={n:S.tab==='more'?'more':S.tab};render(true);toast(bk==='gst'?'GST book open — separate stock & khata':'Daily book open')};
+const setBook=bk=>{if(S.book===bk)return;if(bk==='gst'&&window.__gstGate&&!window.__gstGate(()=>setBook('gst')))return;S.book=bk;S.stack=[];S.view={n:S.tab==='more'?'more':S.tab};render(true);toast(bk==='gst'?'GST book open — separate stock & khata':'Daily book open')};
 let tt;const toast=m=>{clearTimeout(tt);let e=$('#toast');if(!e){e=document.createElement('div');e.id='toast';e.className='toast';$('#app').appendChild(e)}e.textContent=m;e.style.display='block';tt=setTimeout(()=>e.style.display='none',2600)};
 const sheet=h=>{$('#layer').innerHTML='<div class="sheetbg" onclick="if(event.target===this)A.closeSheet()"><div class="sheet"><div class="grab"></div>'+h+'</div></div>'};
 const closeSheet=()=>$('#layer').innerHTML='';
@@ -18,11 +22,12 @@ const TITLES={home:()=>S.shop.name,bills:()=>T('bills'),khata:()=>T('khata'),mor
 function render(top){
   const app=$('#app');app.classList.toggle('gst',S.book==='gst');
   if(ACC.need){$('#hdr').innerHTML='';$('#nav').innerHTML='';$('#main').innerHTML='';acScreen();return}
+  if(S.locked&&S.book==='gst'){S.book='daily';S.stack=[];S.view={n:'home'};S.tab='home'}if(S.locked&&window.__rkReset)window.__rkReset();
   if(S.locked){$('#hdr').innerHTML='';$('#nav').innerHTML='';$('#main').innerHTML='';lockScreen();return}
   const v=S.view;const fn=V[v.n]||V.home;
   $('#main').innerHTML=fn(v);
   $('#hdr').innerHTML=`<div class="toprow"><h1>${esc((TITLES[v.n]||(()=>v.title||T(v.n)))())}<div class="sub">${S.book==='gst'?T('gst'):T('daily')} · ${dow(NOW.getDay())}, ${fd(NOW)}</div></h1><button class="ib" onclick="A.voiceGo()" aria-label="Voice assistant"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button><button class="ib" onclick="A.lang()" aria-label="Language">${S.lang==='hi'?'EN':'हिं'}</button><button class="ib" onclick="A.lock()" aria-label="Lock app"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-3px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></button></div>
-  <div class="booksw"><button class="${S.book==='daily'?'on':''}" onclick="A.setBook('daily')">${T('daily')}</button><button class="${S.book==='gst'?'on':''}" onclick="A.setBook('gst')">${T('gst')}</button></div>`;
+  ${S.book==='gst'?`<div class="gststrip"><span>${L('GST book is open','GST बुक खुली है')}</span><button onclick="A.setBook('daily')">${L('Close GST book','GST बुक बंद करें')}</button></div>`:''}`;
   const nb=(n,l)=>`<button class="${S.tab===n?'on':''}" onclick="A.tab('${n}')">${ICON[n]}<span>${l}</span></button>`;
   $('#nav').innerHTML=nb('home',T('home'))+nb('bills',T('bills'))+`<button onclick="A.addMenu()" aria-label="Add new"><span class="plus" style="display:grid;place-items:center">+</span></button>`+nb('khata',T('khata'))+nb('more',T('more'));
   if(top)$('#main').scrollTop=0;
@@ -255,5 +260,3 @@ V.reports=v=>{v.title=T('reports');const p=v.p||'day';const b=B();
   <h3>Profit by product</h3><div class="card bars">${barList(byP)}</div>
   <h3>Profit by party</h3><div class="card bars">${barList(byC,k=>cOf(k).name)}</div>
   <h3>Purchase by vendor</h3><div class="card">${Object.entries(byVd).map(([k,o])=>{const d=o.diff/o.n*100;return `<div class="li" style="padding:9px 2px"><div class="sp"><div class="t">${esc(cOf(k).name)}</div><div class="s">${d<=0?'<span class="in">'+Math.abs(d).toFixed(1)+'% cheaper</span>':'<span class="out">'+d.toFixed(1)+'% costlier</span>'} than your average rate</div></div><b class="num">${inr(o.amt)}</b></div>`}).join('')||'<div class="mute small">No purchases in this period.</div>'}</div>
-  <div class="btns"><button class="btn" onclick="A.printBill()">Print / PDF</button>${waBtn(S.shop.phone,summ,'Send to my WhatsApp')}</div>`};
-/* ---------- more & settings ---------- */

@@ -1,3 +1,5 @@
+  <div class="btns"><button class="btn" onclick="A.printBill()">Print / PDF</button>${waBtn(S.shop.phone,summ,'Send to my WhatsApp')}</div>`};
+/* ---------- more & settings ---------- */
 V.more=()=>{const H=S.lang==='hi';const items=[['stock',H?'स्टॉक और कम माल':'Stock & low items',"A.go('stock')",'#5f5f5a'],['reports',H?'मुनाफ़ा / घाटा रिपोर्ट':'Profit / loss reports',"A.go('reports')",'#2559a6'],['staff',H?'स्टाफ़ हाज़िरी और तनख़्वाह':'Staff attendance & salary',"A.go('staff')",'#2559a6'],['expense',H?'खर्चे':'Expenses',"A.go('expenses')",'#c0362c'],['delivery',H?'डिलीवरी स्थिति':'Delivery status',"A.go('delivery')",'#b7791f'],['cheques',H?'चेक':'Cheques',"A.go('cheques')",'#b7791f'],['voice',H?'बोलकर एंट्री':'Speak an entry',"A.go('voice')",'#2559a6'],['upload',H?'GST खरीद बिल':'GST purchase bill','A.upload()','#c0362c'],['settings',H?'सेटिंग, बैकअप, PIN':'Settings, backup, PIN',"A.go('settings')",'#5f5f5a']];
   return `<div class="card">${items.map(i=>`<div class="li" onclick="${i[2]}">${icT(i[0],i[3])}<div class="sp t">${i[1]}</div><span class="chev">›</span></div>`).join('')}</div><div class="sample">${S.lang==='hi'?'नमूना डेटा · Android ऐप की झलक':'Sample data · preview of the Android app'}</div>`};
 V.settings=v=>{v.title=T('settings');const months=[];const b=S.books.daily;const m0=new Date(NOW.getFullYear(),NOW.getMonth(),1).getTime();
@@ -116,7 +118,7 @@ function drawExp(){sheet(`<h2>Add expense</h2><div style="display:flex;flex-wrap
   <label class="f"><span>Amount (₹)</span><input class="inp" id="ef_a" inputmode="numeric" value="${EF.amt}" oninput="A.efin('amt',this.value)" style="font-size:22px;font-weight:600"></label><label class="f"><span>Note</span><input class="inp" value="${esc(EF.note)}" oninput="A.efin('note',this.value)" placeholder="e.g. MPEB November"></label><button class="btn" onclick="A.efSave()">${T('save')}</button>`)}
 /* ---------- GST upload ---------- */
 let UP=null;
-function upload(){if(S.book!=='gst'){setBook('gst')}UP={step:'pick'};drawUp()}
+function upload(){if(S.book!=='gst'){if(window.__gstGate&&!window.__gstGate(()=>{setBook('gst');upload()}))return;setBook('gst')}UP={step:'pick'};drawUp()}
 const SAMPLE_INV={vendor:'v2',inv:'AA/2627/7781',rows:[{txt:'CLINIC PLUS SHAMPOO 175ML',vid:'p3v0',qty:4,unit:'ctn',rate:3110,gst:18},{txt:'COLGATE ST 100GM',vid:'p5v0',qty:3,unit:'ctn',rate:3250,gst:18},{txt:'H&S SMOOTH SILKY 180ML',vid:'p4v0',qty:2,unit:'ctn',rate:5590,gst:18},{txt:'COLGATE STRONG TEETH 200G NEW',vid:'',qty:2,unit:'ctn',rate:4190,gst:18}]};
 function drawUp(){
   if(UP.step==='pick')sheet(`<h2>GST purchase bill</h2><div class="small mute" style="margin:-6px 0 10px">Keep the vendor's bill PDF or photo with this entry, then type the items. Automatic reading of bills is coming in a later version.</div>

@@ -259,6 +259,7 @@ header.top{background:var(--card);color:var(--ink);border-top:4px solid var(--bo
 .tgl{width:52px;height:30px;border-radius:15px;background:#cfccc6;position:relative;display:inline-block;flex:none;transition:background .15s}.tgl i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .15s}.tgl.on{background:var(--in)}.tgl.on i{left:25px}
 .infobox{font-size:14px;margin-top:8px;background:color-mix(in srgb,var(--info) 9%,transparent);color:var(--info);border-radius:10px;padding:8px 10px}
 .linktag{display:inline-block;margin:0 0 10px;padding:6px 12px;border-radius:99px;font-size:14px;background:color-mix(in srgb,var(--info) 10%,transparent);color:var(--info);cursor:pointer}.linktag.gst{background:color-mix(in srgb,var(--in) 10%,transparent);color:var(--in)}
+.gststrip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding:6px 6px 6px 12px;border-radius:12px;background:color-mix(in srgb,var(--book) 10%,transparent);color:var(--book);font-weight:600;font-size:14px}.gststrip button{border:0;background:var(--book);color:#fff;border-radius:9px;padding:7px 12px;font:inherit;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -458,7 +459,3 @@ const svg=(n,w)=>`<svg viewBox="0 0 24 24" width="${w||24}" height="${w||24}" fi
 const icT=(n,c)=>/^rgba/.test(c)?`<span class="ic" style="background:${c}">${svg(n)}</span>`:`<span class="ic tint" style="--c:${c}">${svg(n)}</span>`;
 const AVC=['#7d1d2c','#173a6b','#8a6a1f','#1f6b52','#6b3a7d','#a34a1f','#2f5d7c','#5a5a2a'];
 const avs=n=>{let h=0;for(const ch of String(n))h=(h*31+ch.charCodeAt(0))%997;const c=AVC[h%AVC.length];return `style="background:color-mix(in srgb,${c} 13%,transparent);color:light-dark(${c},color-mix(in srgb,${c} 40%,#fff))"`};
-const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],DOWH=['रवि','सोम','मंगल','बुध','गुरु','शुक्र','शनि'];const dow=i=>(S.lang==='hi'?DOWH:DOW)[i];
-
-const ICON={
-home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>',
