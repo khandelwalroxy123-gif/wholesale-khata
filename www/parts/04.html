@@ -1,3 +1,6 @@
+    const b=B();let x;if(d.editId){x=b.bills.find(y=>y.id===d.editId);Object.assign(x,{cid:d.cid,items:d.items,transport:d.transport,vinv:d.vinv,status:st==='saved'?x.status:st})}else{x={id:uid(),type:d.type,no:nextNo(d.type),date:Date.now(),cid:d.cid,items:d.items,transport:d.transport,status:st,del:'pending',delBy:'',vinv:d.vinv};b.bills.push(x)}
+    if(d.paid>0)b.pays.push({id:uid(),cid:d.cid,dir:d.type==='sale'?'in':'out',amt:d.paid,mode:d.mode,date:Date.now(),note:'Against '+x.no,chq:d.mode==='cheque'?{no:'',bank:'',due:today0,st:'pending'}:null});
+    S.draft=null;S.stack.pop();S.view={n:'bill',id:x.id};render(true);toast(st==='draft'?'Draft saved':st==='issued'&&S.book==='gst'?'GST bill issued and locked':'Bill saved · stock updated')},
   isq:q=>{IT.q=q;const r=products.filter(p=>!q||p.name.toLowerCase().includes(q.toLowerCase())||p.cat.toLowerCase().includes(q.toLowerCase()));$('#isr').innerHTML=r.map(p=>`<div class="li" onclick="A.ipick('${p.id}')">${pThumb(p)}<div class="sp"><div class="t">${esc(p.name)}</div><div class="s">${p.v.map(v=>esc(v.size)).join(' · ')}</div></div></div>`).join('')},
   ipick:pid=>{IT.pid=pid;const p=products.find(p=>p.id===pid);if(p.v.length===1){A.ivar(p.v[0].id)}else{IT.step='v';drawItem()}},
   ivar:vid=>{IT.vid=vid;IT.ppc=VAR[vid].ppc;IT.step='q';IT.ctn=1;IT.pc=0;autoRate();drawItem()},istep:s=>{IT.step=s;drawItem()},
@@ -275,10 +278,3 @@ async function backupServer(){const col=await srvCol();const json=JSON.stringify
   S.cloud.serverAt=Date.now();S.cloud.serverOk=true}
 async function listServer(){const col=await srvCol();const idx=(await docData(await col.doc('index').get()))||{};return (idx.list||[]).map(o=>({id:o.key,at:o.at,parts:o.parts,title:'Backup · '+kb(o.size)}))}
 async function readServer(o){const col=await srvCol();let s='';for(let i=0;i<o.parts;i++){const d=await docData(await col.doc(o.id+'_p'+i).get());s+=(d&&d.chunk)||''}return JSON.parse(s)}
-const errMsg=e=>e&&e.code==='unavailable'?'Not available in this view':e&&e.code==='not_granted'?'Permission was not given':e&&(e.code==='server_not_connected'||/connect/i.test(e.message||''))?'Google Drive is not connected':((e&&e.message)||'Failed').slice(0,90);
-async function runBackup(which,silent){const done=[],fail=[];
-  if(which.includes('drive')){try{await backupDrive();done.push('Google Drive')}catch(e){fail.push('Google Drive: '+errMsg(e))}}
-  if(which.includes('server')){try{await backupServer();done.push('App server')}catch(e){fail.push('App server: '+errMsg(e))}}
-  if(done.length)S.lastBackup=Date.now();await IDB.set('data',snapshot());if(S.view.n==='settings')render();
-  if(!silent||fail.length)toast((done.length?'Backed up to '+done.join(' and ')+'. ':'')+(fail.length?fail.join('. '):''))}
-/* settings card + restore sheet */

@@ -1,3 +1,14 @@
+        b.bills.push({id:uid(),type:'sale',no:bk==='gst'?'GST/26-27/'+String(sn++).padStart(4,'0'):'S-'+(sn++),date:t,cid,items,transport:rnd()<.3?pick([100,150,250]):0,status:st,del:d>2?'received':pick(['pending','dispatched','delivered','received']),delBy:d>2?'Shop owner':''});
+      }
+    }
+    b.bills.sort((a,c)=>a.date-c.date);
+    // payments: pay most older bills
+    b.bills.forEach(x=>{
+      if(x.status==='draft')return;
+      const tot=billTotal(x,bk).grand;const age=(today0-x.date)/DAY;
+      let frac=age>14?(rnd()<.96?1:.5):age>5?(rnd()<.7?1:.5):(rnd()<.45?1:0);
+      if(x.cid==='c4'&&age<12)frac=0;
+      if(x.cid==='c7'&&age<50&&age>32)frac=.4;
       if(frac>0){const mode=x.cid==='c4'?'cheque':pick(['cash','upi','upi','cash']);b.pays.push({id:uid(),cid:x.cid,dir:x.type==='sale'?'in':'out',amt:Math.round(tot*frac),mode,date:x.date+ri(0,Math.min(6,Math.max(0,age-.5)))*DAY,note:'Against '+x.no,chq:mode==='cheque'?{no:String(ri(100000,999999)),bank:pick(['SBI','HDFC','Bank of Baroda']),due:x.date+ri(5,12)*DAY,st:'cleared'}:null})}
     });
     // pending cheques
@@ -157,10 +168,10 @@ V.home=()=>{
   return `<div class="search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--mute)"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="ps" placeholder="${esc(T('searchp'))}" value="${esc(q)}" oninput="A.psearch(this.value)" autocomplete="off"></div>
   <div id="sres">${q?searchRes(q):''}</div>
   <div id="homebody" style="${q?'display:none':''}">
-  <div class="hero"><div class="g">${T('morning')} · ${T('todaysale')}</div><div class="amt num">${inr(sum(tb,'sale'))}</div><span class="pr">${T('profit')} <b class="num">${inr(prof(tb))}</b></span>
+  <div class="hero"><div class="g eyerow"><span>${T('morning')} · ${T('todaysale')}</span>${eyeAllBtn()}</div><div class="amt num eyeln">${msk('sale',inr(sum(tb,'sale')))}${eyeBtn('sale')}</div>
   <div class="spark">${sp.map((o,k)=>`<div><i class="${k===6?'t':''}" style="height:${Math.max(4,o.v/spm*100)}%"></i><span>${o.l}</span></div>`).join('')}</div>
-  <div class="note">${S.lang==='hi'?`कल ${inr(sum(yb,'sale'))} बिक्री, ${inr(prof(yb))} मुनाफ़ा।${chq.length?` ${chq.length} चेक जल्द आने वाले।`:''}`:`Yesterday ${inr(sum(yb,'sale'))} sale, ${inr(prof(yb))} profit.${chq.length?` ${chq.length} cheque${chq.length>1?'s':''} due soon.`:''}`}</div></div>
-  <div class="stats"><div class="stat"><div class="l">${T('todaypur')}</div><div class="big num">${inr(sum(tb,'purchase'))}</div></div><div class="stat"><div class="l">${T('cashin')}</div><div class="big num in">${inr(cashIn)}</div></div></div>
+  <div class="note">${S.lang==='hi'?`कल ${msk('sale',inr(sum(yb,'sale')))} बिक्री।${chq.length?` ${chq.length} चेक जल्द आने वाले।`:''}`:`Yesterday ${msk('sale',inr(sum(yb,'sale')))} sale.${chq.length?` ${chq.length} cheque${chq.length>1?'s':''} due soon.`:''}`}</div></div>
+  <div class="stats"><div class="stat"><div class="l">${T('todaypur')}</div><div class="big num eyeln">${msk('pur',inr(sum(tb,'purchase')))}${eyeBtn('pur')}</div></div><div class="stat"><div class="l">${T('cashin')}</div><div class="big num in eyeln">${msk('cash',inr(cashIn))}${eyeBtn('cash')}</div></div></div>
   ${low.length?`<div class="alert" onclick="A.go('stock',{f:'low'})"><b>${T('lowstock')}:</b> ${low.slice(0,2).map(v=>esc(vname(v))).join(', ')}${low.length>2?' +'+(low.length-2):''}<span class="sp"></span>›</div>`:''}
   ${over.length?`<div class="alert" onclick="A.tab('khata')">${S.lang==='hi'?`<b>${over.length} पार्टी</b> पर 30+ दिन से पैसा बाकी`:`<b>${over.length} ${over.length>1?'parties':'party'}</b> ${over.length>1?'owe':'owes'} money for 30+ days`}<span class="sp"></span>›</div>`:''}
   ${chq.length?`<div class="alert" onclick="A.go('cheques')"><b>${S.lang==='hi'?'चेक:':'Cheques:'}</b> ${chq.map(p=>esc(cOf(p.cid).name.split(' ')[0])+' '+inr(p.amt)+(S.lang==='hi'?' – ':' on ')+fd(p.chq.due)).join(', ')}<span class="sp"></span>›</div>`:''}
@@ -299,6 +310,3 @@ V.staff=v=>{v.title=T('staff');const k=dkey(today0);
   <div class="att">${['P','H','A','L'].map(x=>`<button class="${a===x?'on'+x:''}" onclick="A.mark('${s.id}','${k}','${x}')">${x}</button>`).join('')}</div></div>`}).join('')}
   <button class="btn ghost" onclick="A.addStaff()">+ Add staff</button>`};
 V.staffd=v=>{const s=S.staff.find(x=>x.id===v.sid);v.title=s.name;const ym=v.ym||[NOW.getFullYear(),NOW.getMonth()];const [y,m]=ym;const days=new Date(y,m+1,0).getDate();const first=new Date(y,m,1).getDay();const sl=salary(s,y,m);
-  let cells=['S','M','T','W','T','F','S'].map(d=>`<div class="h">${d}</div>`).join('')+'<div></div>'.repeat(first);
-  for(let d=1;d<=days;d++){const k=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');const a=s.att[k];const sun=new Date(y,m,d).getDay()===0;const fut=new Date(y,m,d).getTime()>today0;cells+=`<button class="d ${a||''} ${sun||fut?'S':''}" onclick="A.cyc('${s.id}','${k}')" ${fut?'disabled':''} aria-label="${d} ${a?AT[a]:''}">${d}${s.ot[k]?'<sup style="font-size:9px">+'+s.ot[k]+'</sup>':''}</button>`}
-  const pm=m===0?[y-1,11]:[y,m-1],nm=m===11?[y+1,0]:[y,m+1];

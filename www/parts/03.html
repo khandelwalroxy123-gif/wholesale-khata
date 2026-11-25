@@ -1,3 +1,6 @@
+  let cells=['S','M','T','W','T','F','S'].map(d=>`<div class="h">${d}</div>`).join('')+'<div></div>'.repeat(first);
+  for(let d=1;d<=days;d++){const k=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');const a=s.att[k];const sun=new Date(y,m,d).getDay()===0;const fut=new Date(y,m,d).getTime()>today0;cells+=`<button class="d ${a||''} ${sun||fut?'S':''}" onclick="A.cyc('${s.id}','${k}')" ${fut?'disabled':''} aria-label="${d} ${a?AT[a]:''}">${d}${s.ot[k]?'<sup style="font-size:9px">+'+s.ot[k]+'</sup>':''}</button>`}
+  const pm=m===0?[y-1,11]:[y,m-1],nm=m===11?[y+1,0]:[y,m+1];
   const slip=`Salary slip – ${MON[m]} ${y}\n${s.name} (${s.role})\nPresent ${sl.P}, Half ${sl.H}, Leave ${sl.L}, Absent ${sl.A}, OT ${sl.ot} hrs\nEarned ${inr(sl.earned)}\nAdvance ${inr(sl.adv)}\nPayable ${inr(sl.net)}\n– ${S.shop.name}`;
   return backBtn()+`<div class="row"><h2 class="sp">${esc(s.name)}</h2><span class="small mute">Ph ${s.phone}</span></div>
   <div class="card"><div class="row" style="margin-bottom:8px"><button class="btn ghost sm" onclick="A.setv('ym',[${pm}])">‹</button><b class="sp" style="text-align:center">${MON[m]} ${y}</b><button class="btn ghost sm" onclick="A.setv('ym',[${nm}])" ${y===NOW.getFullYear()&&m===NOW.getMonth()?'disabled':''}>›</button></div><div class="cal">${cells}</div>
@@ -203,6 +206,3 @@ const A=window.A={go,back,tab,setBook,closeSheet,addMenu,psearch,newBill,editBil
   /* bill form */
   dmode:m=>{S.draft.mode=m;render()},fullPaid:g=>{S.draft.paid=g;const e=$('#paidnow');if(e)e.value=g},
   saveBill:st=>{const d=S.draft;if(!d.cid){toast('Choose '+(d.type==='sale'?'party':'vendor')+' first');return}if(!d.items.length){toast('Add at least one item');return}
-    const b=B();let x;if(d.editId){x=b.bills.find(y=>y.id===d.editId);Object.assign(x,{cid:d.cid,items:d.items,transport:d.transport,vinv:d.vinv,status:st==='saved'?x.status:st})}else{x={id:uid(),type:d.type,no:nextNo(d.type),date:Date.now(),cid:d.cid,items:d.items,transport:d.transport,status:st,del:'pending',delBy:'',vinv:d.vinv};b.bills.push(x)}
-    if(d.paid>0)b.pays.push({id:uid(),cid:d.cid,dir:d.type==='sale'?'in':'out',amt:d.paid,mode:d.mode,date:Date.now(),note:'Against '+x.no,chq:d.mode==='cheque'?{no:'',bank:'',due:today0,st:'pending'}:null});
-    S.draft=null;S.stack.pop();S.view={n:'bill',id:x.id};render(true);toast(st==='draft'?'Draft saved':st==='issued'&&S.book==='gst'?'GST bill issued and locked':'Bill saved · stock updated')},

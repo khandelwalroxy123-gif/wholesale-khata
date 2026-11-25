@@ -1,3 +1,7 @@
+  const list=(xs,bk,btn)=>xs.length?xs.slice(0,60).map(x=>`<div class="li"><div class="sp" onclick="A.dvgOpen('${bk}','${x.id}')" style="cursor:pointer"><div class="t">${esc(cOf(x.cid).name)}</div><div class="s">${esc(x.no)} · ${fd(x.date)} · ${x.type==='sale'?L('Sale','बिक्री'):L('Purchase','खरीद')}</div></div><div style="text-align:right"><div class="num" style="font-weight:600">${inr(billTotal(x,bk).grand)}</div>${btn?`<button class="lnk noprint" style="padding:4px 0" onclick="A.dvgAdd('${x.id}')">${L('Add to GST','GST में जोड़ें')}</button>`:''}</div></div>`).join('')+(xs.length>60?`<div class="small mute">+${xs.length-60} ${L('more in the Excel file','और Excel फ़ाइल में')}</div>`:''):`<div class="small mute">${L('None','कोई नहीं')}</div>`;
+  const notIn=[...r.sale.notIn,...r.purchase.notIn].sort((a,b)=>b.date-a.date),gOnly=[...r.sale.gOnly,...r.purchase.gOnly].sort((a,b)=>b.date-a.date);
+  return backBtn()+`<div class="small mute" style="margin:-4px 0 10px">${esc(S.shop.name)} · ${esc(r.label)} · ${L('private report','प्राइवेट रिपोर्ट')}</div>
+  <div class="seg noprint">${[['m',L('Month','महीना')],['lm',L('Last','पिछला')],['fy','FY'],['all',L('All','सभी')],['c',L('Dates','तारीख')]].map(([k,l])=>`<button class="${p===k?'on':''}" onclick="A.setv('p','${k}')">${l}</button>`).join('')}</div>
   ${p==='c'?`<div class="g2 noprint"><label class="f"><span>${L('From','से')}</span><input class="inp" type="date" value="${v.a||new Date(today0-29*DAY).toISOString().slice(0,10)}" onchange="A.setv('a',this.value)"></label><label class="f"><span>${L('To','तक')}</span><input class="inp" type="date" value="${v.z||new Date(today0).toISOString().slice(0,10)}" onchange="A.setv('z',this.value)"></label></div>`:''}
   ${blk('sale',L('Sales','बिक्री'))}${blk('purchase',L('Purchases','खरीद'))}
   <div class="card"><b>${L('Daily bills not in GST book','डेली बिल जो GST बुक में नहीं')} (${notIn.length})</b>${list(notIn,'daily',true)}</div>
@@ -22,8 +26,9 @@ function xlRep(){const b=B();const rows=[['Date','Bill no.','Type','Party / vend
   const ex=[['Date','Head','Note','Amount'],...b.exps.slice().sort((a,c)=>a.date-c.date).map(e=>[xd(e.date),e.head||'',e.note||'',e.amt])];xlsxSave('Report-'+bkNm(),[{name:'Bills',rows,widths:[12,16,10,26,16,12,14,12]},{name:'Expenses',rows:ex,widths:[12,22,28,12]}])}
 
 /* settings: private reports card */
-const _dvgSet=V.settings;V.settings=v=>{const h=_dvgSet(v);const card=`<div class="card"><b>${L('User security','यूज़र सुरक्षा')}</b><div class="small mute">${L('The GST book and private reports open only with your security key (separate from the app PIN).','GST बुक और प्राइवेट रिपोर्ट केवल आपकी सुरक्षा की से खुलती हैं (ऐप PIN से अलग)।')}</div>
+const _dvgSet=V.settings;V.settings=v=>{const h=_dvgSet(v);const card=`<div class="card"><b>${L('User security','यूज़र सुरक्षा')}</b><div class="small mute">${L('The GST book, profit and private reports open only with your security key (separate from the app PIN).','GST बुक, मुनाफ़ा और प्राइवेट रिपोर्ट केवल आपकी सुरक्षा की से खुलती हैं (ऐप PIN से अलग)।')}</div>
   <div class="btns"><button class="btn ${S.book==='gst'?'ghost':''}" onclick="A.setBook('${S.book==='gst'?'daily':'gst'}')">${S.book==='gst'?L('Close GST book','GST बुक बंद करें'):L('Open GST book','GST बुक खोलें')}</button><button class="btn ghost" onclick="A.dvgReport()">${L('Daily vs GST report','डेली बनाम GST रिपोर्ट')}</button></div>
+  <div class="btns"><button class="btn ghost" onclick="A.profitOpen()">${L('Profit','मुनाफ़ा')}</button></div>
   <div class="btns"><button class="btn ghost" onclick="A.rkSet()">${S.rkey?L('Change security key','सुरक्षा की बदलें'):L('Set security key','सुरक्षा की बनाएँ')}</button>${S.rkey?`<button class="btn ghost" onclick="A.rkForgot()">${L('Forgot key?','की भूल गए?')}</button>`:''}</div></div>`;
   const i=h.indexOf('<div class="card"><b>App lock</b>');return i<0?h+card:h.slice(0,i)+card+h.slice(i)};
 Object.assign(A,{dvgTog:()=>{const d=S.draft;if(!d)return;d.toGst=!d.toGst;const y=$('#main').scrollTop;render();$('#main').scrollTop=y},
@@ -120,6 +125,28 @@ function ntSheet(){const l=ntList();sheet(`<h2>${L('Notifications','सूचन
 A.notifs=ntSheet;
 /* keep the bell number current between screens, e.g. when online orders arrive */
 let ntLast=-1;setInterval(()=>{if(document.hidden||!booted)return;const n=ntCount();if(n!==ntLast){ntLast=n;try{acDecorate()}catch(e){}}},15000);
+/* eye: home amounts hidden by default; shown per amount or all at once; hidden again whenever the app is left */
+const EYE={sale:false,pur:false,cash:false};
+const EYEI=o=>o?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0112 5c6.4 0 10 7 10 7a17 17 0 01-3.2 4.2M6.5 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 004.9-1.3M9.9 9.9a3 3 0 004.2 4.2"/></svg>';
+const msk=(k,h)=>EYE[k]?h:'<span class="mask">₹ xxxxxx</span>';
+const eyeBtn=k=>`<button class="eyeb" aria-label="${EYE[k]?L('Hide amount','रकम छिपाएँ'):L('Show amount','रकम दिखाएँ')}" onclick="event.stopPropagation();A.eye('${k}')">${EYEI(!EYE[k])}</button>`;
+const eyeAll=()=>EYE.sale&&EYE.pur&&EYE.cash;
+const eyeAllBtn=()=>`<button class="eyeall" onclick="event.stopPropagation();A.eye('all')">${EYEI(!eyeAll())}${eyeAll()?L('Hide all','सब छिपाएँ'):L('Show all','सब दिखाएँ')}</button>`;
+function eyeHide(){if(EYE.sale||EYE.pur||EYE.cash){EYE.sale=EYE.pur=EYE.cash=false;if(S.view&&S.view.n==='home'&&!S.locked)render()}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)eyeHide()});
+window.addEventListener('pagehide',eyeHide);window.addEventListener('blur',()=>{if(document.hidden)eyeHide()});
+try{const CapApp=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App;CapApp&&CapApp.addListener('appStateChange',s=>{if(!s.isActive)eyeHide()});CapApp&&CapApp.addListener('pause',eyeHide)}catch(e){}
+A.eye=k=>{if(k==='all'){const v=!eyeAll();EYE.sale=EYE.pur=EYE.cash=v}else EYE[k]=!EYE[k];const y=($('#main')||{}).scrollTop||0;render();if($('#main'))$('#main').scrollTop=y};
+/* profit: moved off the home screen into Settings → User security, behind the security key */
+function profitRows(){const b=B();const now=new Date();const fy=new Date(now.getMonth()>=3?now.getFullYear():now.getFullYear()-1,3,1).getTime();
+  const wk=today0-((new Date(today0).getDay()+6)%7)*DAY;const mo=new Date(now.getFullYear(),now.getMonth(),1).getTime();
+  const R=[[L('Today','आज'),today0,Infinity],[L('Yesterday','कल'),today0-DAY,today0],[L('This week','इस हफ़्ते'),wk,Infinity],[L('This month','इस महीने'),mo,Infinity],[L('This financial year','इस वित्त वर्ष'),fy,Infinity]];
+  return R.map(([n,a,z])=>{const bs=b.bills.filter(x=>live(x)&&x.type==='sale'&&x.date>=a&&x.date<z);const sale=bs.reduce((s,x)=>s+billTotal(x).grand,0);const p=bs.reduce((s,x)=>s+profitOf(x),0);return {n,sale,p,m:sale?Math.round(p/sale*1000)/10:0}})}
+V.profit=v=>{v.title=L('Profit','मुनाफ़ा');if(!RK_OK||Date.now()-RK_OK>30*60e3){setTimeout(()=>{back();A.profitOpen()},0);return ''}
+  const r=profitRows();return `<h2>${L('Profit','मुनाफ़ा')} · ${esc(bkNm())}</h2><div class="small mute" style="margin:-4px 0 12px">${L('Sale value minus the cost of the goods sold. Private: opens only with your security key.','बिक्री में से बेचे गए माल की लागत घटाकर। प्राइवेट: केवल सुरक्षा की से खुलता है।')}</div>
+  <div class="hero"><div class="g">${L('Today','आज')}</div><div class="amt num">${inr(r[0].p)}</div><div class="note">${L(`On sale of ${inr(r[0].sale)} · margin ${r[0].m}%`,`${inr(r[0].sale)} की बिक्री पर · मार्जिन ${r[0].m}%`)}</div></div>
+  <div class="card"><table class="t"><thead><tr><th></th><th class="r">${L('Sale','बिक्री')}</th><th class="r">${L('Profit','मुनाफ़ा')}</th><th class="r">%</th></tr></thead><tbody>${r.map(o=>`<tr><td>${o.n}</td><td class="r num">${inr(o.sale)}</td><td class="r num ${o.p<0?'out':'in'}"><b>${inr(o.p)}</b></td><td class="r">${o.m}%</td></tr>`).join('')}</tbody></table></div>`};
+A.profitOpen=()=>{if(rkFresh())return go('profit');RK_NEXT=()=>go('profit');rkSheet(S.rkey?'enter':'set')};
 /* ---------- boot ---------- */
 try{const l=localStorage.getItem('wk_lang');if(l)S.lang=l}catch(e){}
 (async()=>{let d=null,readErr=false,ok=false,recovered='';

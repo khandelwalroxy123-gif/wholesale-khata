@@ -1,3 +1,10 @@
+const errMsg=e=>e&&e.code==='unavailable'?'Not available in this view':e&&e.code==='not_granted'?'Permission was not given':e&&(e.code==='server_not_connected'||/connect/i.test(e.message||''))?'Google Drive is not connected':((e&&e.message)||'Failed').slice(0,90);
+async function runBackup(which,silent){const done=[],fail=[];
+  if(which.includes('drive')){try{await backupDrive();done.push('Google Drive')}catch(e){fail.push('Google Drive: '+errMsg(e))}}
+  if(which.includes('server')){try{await backupServer();done.push('App server')}catch(e){fail.push('App server: '+errMsg(e))}}
+  if(done.length)S.lastBackup=Date.now();await IDB.set('data',snapshot());if(S.view.n==='settings')render();
+  if(!silent||fail.length)toast((done.length?'Backed up to '+done.join(' and ')+'. ':'')+(fail.length?fail.join('. '):''))}
+/* settings card + restore sheet */
 function storageCard(){const c=S.cloud;const row=(k,name,desc,ok,at,avail)=>`<div class="li" style="cursor:default;align-items:flex-start"><div class="sp"><div class="t">${name}</div><div class="s">${desc}</div><div class="s">${avail?(at?'Last backup '+fd(at)+', '+ft(at):'No backup yet'):'<span class="out">Not available in this view</span>'}</div></div><button class="btn ${c[k]?'':'ghost'} sm" onclick="A.stTog('${k}')" ${avail?'':'disabled'}>${c[k]?'On':'Off'}</button></div>`;
   return `<div class="card"><b>Where your data is saved</b>
   <div class="li" style="cursor:default"><div class="sp"><div class="t">This phone</div><div class="s" id="locst">${localLine()}</div><div class="s">Always on. Every entry is saved instantly and works without internet.</div></div><span class="pill green">Always</span></div>
@@ -219,6 +226,3 @@ V.online=v=>{v.title='Online orders';const cfg=onCfg();
   if(!ONL.on&&!ONL.loading&&!ONL.err)setTimeout(onStart,0);
   if(ONL.loading||(!ONL.on&&!ONL.err))return backBtn()+`<h2>Online orders</h2><div class="card"><div class="prog"><i style="width:60%"></i></div><div class="mute">Connecting…</div></div>`;
   if(!ONL.on)return backBtn()+`<h2>Online orders</h2><div class="card"><b>Not connected</b><div class="small mute">${esc(ONL.err||'No internet?')}</div><button class="btn" style="margin-top:8px" onclick="A.onRetry()">Try again</button>${/not the owner/.test(ONL.err)?`<button class="btn ghost" style="margin-top:8px" onclick="A.onReset()">Make a new shop link from this phone</button>`:''}</div>`;
-  const f=v.f||'active';const os=ONL.orders.filter(o=>f==='active'?!['delivered','cancelled'].includes(o.status)||(o.status==='delivered'&&o.payStatus!=='paid'):f==='done'?['delivered','cancelled'].includes(o.status):true);
-  const card=t=>`<div class="card"><b>${t==='retail'?'Retail customers':'Wholesale customers'}</b><div style="display:flex;gap:12px;align-items:center;margin-top:8px"><div style="width:120px;height:120px;background:#fff;border-radius:10px;padding:4px;flex:none">${onQR(onLink(t),120)}</div><div class="sp" style="min-width:0"><div class="small" style="word-break:break-all">${esc(onLink(t))}</div><div class="btns" style="margin-top:8px"><button class="btn ghost sm" onclick="A.onShare('${t}')">Share</button><button class="btn ghost sm" onclick="A.onCopy('${t}')">Copy</button></div></div></div></div>`;
-  return backBtn()+`<h2>Online orders</h2>
